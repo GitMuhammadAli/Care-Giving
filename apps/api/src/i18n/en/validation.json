@@ -1,0 +1,21 @@
+{
+  "IS_STRING": "{property} must be a string",
+  "IS_EMAIL": "{property} must be a valid email address",
+  "IS_PHONE": "{property} must be a valid phone number",
+  "MIN_LENGTH": "{property} must be at least {constraints.0} characters",
+  "MAX_LENGTH": "{property} must be at most {constraints.0} characters",
+  "PASSWORD_MIN_LENGTH": "Password must be at least 12 characters",
+  "PASSWORD_STRENGTH": "Password must contain at least one uppercase letter, one lowercase letter, and one number",
+  "IS_NOT_EMPTY": "{property} is required",
+  "IS_UUID": "{property} must be a valid UUID",
+  "IS_DATE": "{property} must be a valid date",
+  "IS_ENUM": "{property} must be one of: {constraints.1}",
+  "IS_BOOLEAN": "{property} must be a boolean",
+  "IS_NUMBER": "{property} must be a number",
+  "IS_ARRAY": "{property} must be an array",
+  "IS_POSITIVE": "{property} must be a positive number",
+  "IS_INT": "{property} must be an integer",
+  "ARRAY_MIN_SIZE": "{property} must contain at least {constraints.0} elements",
+  "ARRAY_MAX_SIZE": "{property} must contain at most {constraints.0} elements"
+}
+

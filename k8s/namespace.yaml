@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: carecircle
+  labels:
+    app.kubernetes.io/name: carecircle
+    app.kubernetes.io/part-of: carecircle
+

@@ -1,0 +1,73 @@
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true,
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.cloudinary.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'api.dicebear.com',
+      },
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+      },
+    ],
+  },
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+        ],
+      },
+    ];
+  },
+  // Startup log
+  onDemandEntries: {
+    // Keep pages in memory for 5 minutes
+    maxInactiveAge: 5 * 60 * 1000,
+  },
+  logging: {
+    fetches: {
+      fullUrl: true,
+    },
+  },
+};
+
+// Log startup info
+if (process.env.NODE_ENV !== 'production') {
+  console.log('');
+  console.log('╔══════════════════════════════════════════════════════════════╗');
+  console.log('║                                                              ║');
+  console.log('║   🌐  CareCircle Web App (Next.js)                           ║');
+  console.log('║                                                              ║');
+  console.log('╠══════════════════════════════════════════════════════════════╣');
+  console.log('║                                                              ║');
+  console.log('║   🚀  App:     http://localhost:3000                         ║');
+  console.log(`║   🔗  API:     ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}`.padEnd(63) + '║');
+  console.log('║                                                              ║');
+  console.log('╚══════════════════════════════════════════════════════════════╝');
+  console.log('');
+}
+
+module.exports = nextConfig;

@@ -1,0 +1,174 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { RabbitSubscribe, Nack } from '@golevelup/nestjs-rabbitmq';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+
+import { EXCHANGES, QUEUES, ROUTING_KEYS } from '../events.constants';
+import { BaseEvent } from '../dto/events.dto';
+
+/**
+ * WebSocket Consumer
+ * 
+ * Listens to domain events from RabbitMQ and emits them to the internal
+ * EventEmitter, which the WebSocket Gateway subscribes to.
+ * 
+ * This decouples the event source (RabbitMQ) from the WebSocket broadcasting.
+ */
+@Injectable()
+export class WebSocketConsumer {
+  private readonly logger = new Logger(WebSocketConsumer.name);
+
+  constructor(private readonly eventEmitter: EventEmitter2) {}
+
+  /**
+   * Listen to all medication events
+   */
+  @RabbitSubscribe({
+    exchange: EXCHANGES.DOMAIN_EVENTS,
+    routingKey: 'medication.*',
+    queue: QUEUES.WEBSOCKET_UPDATES,
+    queueOptions: {
+      durable: true,
+    },
+  })
+  async handleMedicationEvent(event: BaseEvent): Promise<void | Nack> {
+    try {
+      this.logger.debug(`Received medication event: ${event.type}`);
+      
+      // Emit to internal event system for WebSocket gateway
+      this.eventEmitter.emit('ws.broadcast', {
+        event: event.type,
+        data: event.data,
+        rooms: this.getRoomsForEvent(event),
+      });
+    } catch (error) {
+      this.logger.error(`Error handling medication event: ${error}`);
+      // Return Nack to reject and requeue
+      return new Nack(true);
+    }
+  }
+
+  /**
+   * Listen to all appointment events
+   */
+  @RabbitSubscribe({
+    exchange: EXCHANGES.DOMAIN_EVENTS,
+    routingKey: 'appointment.*',
+    queue: QUEUES.WEBSOCKET_UPDATES,
+    queueOptions: {
+      durable: true,
+    },
+  })
+  async handleAppointmentEvent(event: BaseEvent): Promise<void | Nack> {
+    try {
+      this.logger.debug(`Received appointment event: ${event.type}`);
+      
+      this.eventEmitter.emit('ws.broadcast', {
+        event: event.type,
+        data: event.data,
+        rooms: this.getRoomsForEvent(event),
+      });
+    } catch (error) {
+      this.logger.error(`Error handling appointment event: ${error}`);
+      return new Nack(true);
+    }
+  }
+
+  /**
+   * Listen to emergency events (highest priority)
+   */
+  @RabbitSubscribe({
+    exchange: EXCHANGES.DOMAIN_EVENTS,
+    routingKey: 'emergency.*',
+    queue: QUEUES.WEBSOCKET_UPDATES,
+    queueOptions: {
+      durable: true,
+    },
+  })
+  async handleEmergencyEvent(event: BaseEvent): Promise<void | Nack> {
+    try {
+      this.logger.log(`EMERGENCY EVENT: ${event.type}`);
+      
+      // Emergency events are broadcast with high priority
+      this.eventEmitter.emit('ws.emergency', {
+        event: event.type,
+        data: event.data,
+        rooms: this.getRoomsForEvent(event),
+      });
+    } catch (error) {
+      this.logger.error(`Error handling emergency event: ${error}`);
+      return new Nack(true);
+    }
+  }
+
+  /**
+   * Listen to shift events
+   */
+  @RabbitSubscribe({
+    exchange: EXCHANGES.DOMAIN_EVENTS,
+    routingKey: 'shift.*',
+    queue: QUEUES.WEBSOCKET_UPDATES,
+    queueOptions: {
+      durable: true,
+    },
+  })
+  async handleShiftEvent(event: BaseEvent): Promise<void | Nack> {
+    try {
+      this.logger.debug(`Received shift event: ${event.type}`);
+      
+      this.eventEmitter.emit('ws.broadcast', {
+        event: event.type,
+        data: event.data,
+        rooms: this.getRoomsForEvent(event),
+      });
+    } catch (error) {
+      this.logger.error(`Error handling shift event: ${error}`);
+      return new Nack(true);
+    }
+  }
+
+  /**
+   * Listen to timeline events
+   */
+  @RabbitSubscribe({
+    exchange: EXCHANGES.DOMAIN_EVENTS,
+    routingKey: 'timeline.*',
+    queue: QUEUES.WEBSOCKET_UPDATES,
+    queueOptions: {
+      durable: true,
+    },
+  })
+  async handleTimelineEvent(event: BaseEvent): Promise<void | Nack> {
+    try {
+      this.logger.debug(`Received timeline event: ${event.type}`);
+      
+      this.eventEmitter.emit('ws.broadcast', {
+        event: event.type,
+        data: event.data,
+        rooms: this.getRoomsForEvent(event),
+      });
+    } catch (error) {
+      this.logger.error(`Error handling timeline event: ${error}`);
+      return new Nack(true);
+    }
+  }
+
+  /**
+   * Determine which WebSocket rooms should receive the event
+   */
+  private getRoomsForEvent(event: BaseEvent): string[] {
+    const rooms: string[] = [];
+
+    // Add family room if present
+    if (event.familyId) {
+      rooms.push(`family:${event.familyId}`);
+    }
+
+    // Add care recipient room if present
+    if (event.careRecipientId) {
+      rooms.push(`care-recipient:${event.careRecipientId}`);
+    }
+
+    return rooms;
+  }
+}
+

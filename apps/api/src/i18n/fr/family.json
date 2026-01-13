@@ -1,0 +1,16 @@
+{
+  "FAMILY_CREATED": "Famille créée avec succès",
+  "FAMILY_NOT_FOUND": "Famille non trouvée",
+  "MEMBER_INVITED": "Invitation envoyée avec succès",
+  "INVITATION_ACCEPTED": "Vous avez rejoint la famille",
+  "INVITATION_DECLINED": "Invitation refusée",
+  "INVITATION_EXPIRED": "L'invitation a expiré",
+  "INVITATION_NOT_FOUND": "Invitation non trouvée ou déjà utilisée",
+  "ALREADY_MEMBER": "Vous êtes déjà membre de cette famille",
+  "CANNOT_REMOVE_SELF": "Vous ne pouvez pas vous retirer de la famille",
+  "CANNOT_CHANGE_OWN_ROLE": "Vous ne pouvez pas changer votre propre rôle",
+  "LAST_ADMIN": "Impossible de retirer le dernier administrateur de la famille",
+  "ROLE_UPDATED": "Rôle du membre mis à jour",
+  "MEMBER_REMOVED": "Membre retiré de la famille"
+}
+

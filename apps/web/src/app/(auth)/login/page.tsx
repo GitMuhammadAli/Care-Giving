@@ -1,0 +1,155 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card } from '@/components/ui/card';
+import { Eye, EyeOff, Heart } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
+import { ApiError } from '@/lib/api/client';
+
+export default function LoginPage() {
+  const router = useRouter();
+  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+  });
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      router.push('/dashboard');
+    }
+  }, [authLoading, isAuthenticated, router]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
+
+    try {
+      await login(formData);
+      router.push('/dashboard');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message || 'Invalid email or password');
+      } else {
+        setError('Invalid email or password');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="w-full max-w-md mx-auto"
+    >
+      {/* Logo/Brand */}
+      <div className="text-center mb-8">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-sage/20 mb-4">
+          <Heart className="w-8 h-8 text-sage" />
+        </div>
+        <h1 className="font-serif text-3xl md:text-4xl text-foreground mb-2">Welcome Back</h1>
+        <p className="text-muted-foreground">Sign in to continue caring together</p>
+      </div>
+
+      {/* Form Card */}
+      <Card padding="spacious" className="shadow-sm">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20"
+            >
+              {error}
+            </motion.div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-sm font-medium">
+              Email Address
+            </Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="you@example.com"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              inputSize="lg"
+              required
+              autoComplete="email"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password" className="text-sm font-medium">
+                Password
+              </Label>
+              <Link
+                href="/forgot-password"
+                className="text-sm text-sage hover:text-sage/80 transition-colors"
+              >
+                Forgot password?
+              </Link>
+            </div>
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Enter your password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                inputSize="lg"
+                required
+                autoComplete="current-password"
+                className="pr-12"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+          </div>
+
+          <Button type="submit" variant="editorial" size="lg" fullWidth isLoading={isLoading}>
+            Sign In
+          </Button>
+        </form>
+
+        <div className="mt-6 text-center">
+          <p className="text-muted-foreground">
+            Don&apos;t have an account?{' '}
+            <Link
+              href="/register"
+              className="text-sage hover:text-sage/80 font-medium transition-colors"
+            >
+              Create one
+            </Link>
+          </p>
+        </div>
+      </Card>
+
+      {/* Trust message */}
+      <p className="text-center text-sm text-muted-foreground mt-6">
+        Your data is protected with enterprise-grade security
+      </p>
+    </motion.div>
+  );
+}

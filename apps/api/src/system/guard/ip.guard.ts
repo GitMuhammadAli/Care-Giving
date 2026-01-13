@@ -1,0 +1,21 @@
+import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { ContextHelper } from '../helper/context.helper';
+
+@Injectable()
+export class IpGuard implements CanActivate {
+  canActivate(context: ExecutionContext): boolean {
+    const request = context.switchToHttp().getRequest();
+    
+    const ip =
+      request.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+      request.headers['x-real-ip'] ||
+      request.connection?.remoteAddress ||
+      request.ip ||
+      'unknown';
+
+    ContextHelper.setIp(ip);
+    
+    return true;
+  }
+}
+

@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: carecircle-workers
+  namespace: carecircle
+  labels:
+    app: carecircle-workers
+    app.kubernetes.io/name: carecircle-workers
+    app.kubernetes.io/component: workers
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: carecircle-workers
+  template:
+    metadata:
+      labels:
+        app: carecircle-workers
+    spec:
+      containers:
+        - name: workers
+          image: ghcr.io/your-org/carecircle/workers:latest
+          envFrom:
+            - configMapRef:
+                name: carecircle-config
+            - secretRef:
+                name: carecircle-secrets
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            readOnlyRootFilesystem: true
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: carecircle-workers
+                topologyKey: kubernetes.io/hostname
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: carecircle-workers-hpa
+  namespace: carecircle
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: carecircle-workers
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+

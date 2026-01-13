@@ -1,0 +1,604 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USERS & AUTHENTICATION
+// ============================================
+
+model User {
+  id                     String       @id @default(uuid())
+  email                  String       @unique
+  passwordHash           String
+  fullName               String
+  phone                  String?
+  timezone               String       @default("America/New_York")
+  avatarUrl              String?
+  status                 String       @default("PENDING")
+  emailVerified          Boolean      @default(false)
+  emailVerifiedAt        DateTime?
+  phoneVerified          Boolean      @default(false)
+  phoneVerifiedAt        DateTime?
+  lastLoginAt            DateTime?
+  failedLoginAttempts    Int          @default(0)
+  lockedUntil            DateTime?
+  passwordResetToken     String?
+  passwordResetExpiresAt DateTime?
+  passwordChangedAt      DateTime?
+  preferences            Json?
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+
+  sessions            Session[]
+  familyMemberships   FamilyMember[]
+  caregiverShifts     CaregiverShift[]
+  medicationLogs      MedicationLog[]
+  timelineEntries     TimelineEntry[]
+  notifications       Notification[]
+  emergencyAlerts     EmergencyAlert[]
+  pushTokens          PushToken[]
+}
+
+model Session {
+  id           String    @id @default(uuid())
+  userId       String
+  refreshToken String    @unique
+  expiresAt    DateTime
+  ipAddress    String?
+  userAgent    String?
+  deviceInfo   String?
+  isActive     Boolean   @default(true)
+  lastUsedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([refreshToken])
+  @@index([expiresAt])
+}
+
+model PushToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  platform  Platform
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum Platform {
+  WEB
+  IOS
+  ANDROID
+}
+
+// ============================================
+// FAMILY & CARE RECIPIENTS
+// ============================================
+
+model Family {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members        FamilyMember[]
+  careRecipients CareRecipient[]
+  documents      Document[]
+  invitations    FamilyInvitation[]
+}
+
+model FamilyMember {
+  id       String     @id @default(uuid())
+  familyId String
+  userId   String
+  role     FamilyRole
+  nickname String?
+  canEdit  Boolean    @default(true)
+  joinedAt DateTime   @default(now())
+
+  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([familyId, userId])
+  @@index([userId])
+}
+
+enum FamilyRole {
+  ADMIN
+  CAREGIVER
+  VIEWER
+}
+
+model FamilyInvitation {
+  id          String           @id @default(uuid())
+  familyId    String
+  email       String
+  role        FamilyRole
+  token       String           @unique
+  status      InvitationStatus @default(PENDING)
+  invitedById String
+  expiresAt   DateTime
+  createdAt   DateTime         @default(now())
+
+  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  @@index([familyId])
+  @@index([email])
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  CANCELLED
+}
+
+model CareRecipient {
+  id            String   @id @default(uuid())
+  familyId      String
+  firstName     String
+  lastName      String
+  preferredName String?
+  dateOfBirth   DateTime
+  photoUrl      String?
+
+  // Medical info
+  bloodType  String?
+  allergies  String[] @default([])
+  conditions String[] @default([])
+  notes      String?
+
+  // Emergency info
+  primaryHospital   String?
+  hospitalAddress   String?
+  insuranceProvider String?
+  insurancePolicyNo String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  family            Family             @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  doctors           Doctor[]
+  medications       Medication[]
+  appointments      Appointment[]
+  caregiverShifts   CaregiverShift[]
+  timelineEntries   TimelineEntry[]
+  emergencyContacts EmergencyContact[]
+  emergencyAlerts   EmergencyAlert[]
+
+  @@index([familyId])
+}
+
+// ============================================
+// MEDICAL CONTACTS
+// ============================================
+
+model Doctor {
+  id              String  @id @default(uuid())
+  careRecipientId String
+  name            String
+  specialty       String
+  phone           String
+  fax             String?
+  email           String?
+  address         String?
+  notes           String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  careRecipient CareRecipient @relation(fields: [careRecipientId], references: [id], onDelete: Cascade)
+  appointments  Appointment[]
+
+  @@index([careRecipientId])
+}
+
+model EmergencyContact {
+  id              String  @id @default(uuid())
+  careRecipientId String
+  name            String
+  relationship    String
+  phone           String
+  email           String?
+  isPrimary       Boolean @default(false)
+  notes           String?
+
+  createdAt DateTime @default(now())
+
+  careRecipient CareRecipient @relation(fields: [careRecipientId], references: [id], onDelete: Cascade)
+
+  @@index([careRecipientId])
+}
+
+// ============================================
+// CALENDAR & APPOINTMENTS
+// ============================================
+
+model Appointment {
+  id              String @id @default(uuid())
+  careRecipientId String
+  doctorId        String?
+
+  title     String
+  type      AppointmentType
+  startTime DateTime
+  endTime   DateTime
+  location  String?
+  address   String?
+  notes     String?
+
+  // Recurrence
+  isRecurring    Boolean @default(false)
+  recurrenceRule String?
+
+  // Reminders (minutes before)
+  reminderMinutes Int[] @default([60, 1440])
+
+  status AppointmentStatus @default(SCHEDULED)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  careRecipient       CareRecipient        @relation(fields: [careRecipientId], references: [id], onDelete: Cascade)
+  doctor              Doctor?              @relation(fields: [doctorId], references: [id])
+  transportAssignment TransportAssignment?
+
+  @@index([careRecipientId])
+  @@index([startTime])
+}
+
+enum AppointmentType {
+  DOCTOR_VISIT
+  PHYSICAL_THERAPY
+  LAB_WORK
+  IMAGING
+  SPECIALIST
+  HOME_HEALTH
+  OTHER
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model TransportAssignment {
+  id            String  @id @default(uuid())
+  appointmentId String  @unique
+  assignedToId  String
+  notes         String?
+  confirmed     Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+}
+
+// ============================================
+// MEDICATIONS
+// ============================================
+
+model Medication {
+  id              String @id @default(uuid())
+  careRecipientId String
+
+  name         String
+  genericName  String?
+  dosage       String
+  form         MedicationForm
+  instructions String?
+  prescribedBy String?
+  pharmacy     String?
+  pharmacyPhone String?
+
+  // Schedule
+  frequency      MedicationFrequency
+  timesPerDay    Int      @default(1)
+  scheduledTimes String[] @default([])
+
+  // Supply tracking
+  currentSupply  Int?
+  refillAt       Int?
+  lastRefillDate DateTime?
+
+  // Status
+  isActive  Boolean   @default(true)
+  startDate DateTime  @default(now())
+  endDate   DateTime?
+
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  careRecipient CareRecipient   @relation(fields: [careRecipientId], references: [id], onDelete: Cascade)
+  logs          MedicationLog[]
+
+  @@index([careRecipientId])
+  @@index([isActive])
+}
+
+enum MedicationForm {
+  TABLET
+  CAPSULE
+  LIQUID
+  INJECTION
+  PATCH
+  CREAM
+  INHALER
+  DROPS
+  OTHER
+}
+
+enum MedicationFrequency {
+  DAILY
+  TWICE_DAILY
+  THREE_TIMES_DAILY
+  FOUR_TIMES_DAILY
+  WEEKLY
+  AS_NEEDED
+  OTHER
+}
+
+model MedicationLog {
+  id           String @id @default(uuid())
+  medicationId String
+  givenById    String
+
+  scheduledTime DateTime
+  givenTime     DateTime?
+  status        MedicationLogStatus
+  skipReason    String?
+  notes         String?
+
+  createdAt DateTime @default(now())
+
+  medication Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  givenBy    User       @relation(fields: [givenById], references: [id])
+
+  @@index([medicationId, scheduledTime])
+  @@index([givenById])
+}
+
+enum MedicationLogStatus {
+  GIVEN
+  SKIPPED
+  MISSED
+  PENDING
+}
+
+// ============================================
+// CAREGIVER SCHEDULING
+// ============================================
+
+model CaregiverShift {
+  id              String @id @default(uuid())
+  careRecipientId String
+  caregiverId     String
+
+  startTime DateTime
+  endTime   DateTime
+  notes     String?
+
+  status       ShiftStatus @default(SCHEDULED)
+  checkedInAt  DateTime?
+  checkedOutAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  careRecipient CareRecipient @relation(fields: [careRecipientId], references: [id], onDelete: Cascade)
+  caregiver     User          @relation(fields: [caregiverId], references: [id])
+
+  @@index([careRecipientId, startTime])
+  @@index([caregiverId])
+}
+
+enum ShiftStatus {
+  SCHEDULED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+// ============================================
+// HEALTH TIMELINE
+// ============================================
+
+model TimelineEntry {
+  id              String @id @default(uuid())
+  careRecipientId String
+  createdById     String
+
+  type        TimelineType
+  title       String
+  description String?
+  severity    Severity?
+
+  // Vitals (if applicable)
+  vitals Json?
+
+  // Attachments
+  attachments String[] @default([])
+
+  occurredAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  careRecipient CareRecipient @relation(fields: [careRecipientId], references: [id], onDelete: Cascade)
+  createdBy     User          @relation(fields: [createdById], references: [id])
+
+  @@index([careRecipientId, occurredAt])
+  @@index([createdById])
+}
+
+enum TimelineType {
+  NOTE
+  VITALS
+  SYMPTOM
+  INCIDENT
+  MOOD
+  MEAL
+  ACTIVITY
+  SLEEP
+  BATHROOM
+  MEDICATION_CHANGE
+  APPOINTMENT_SUMMARY
+  OTHER
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+// ============================================
+// DOCUMENTS
+// ============================================
+
+model Document {
+  id           String @id @default(uuid())
+  familyId     String
+  uploadedById String
+
+  name      String
+  type      DocumentType
+  s3Key     String
+  mimeType  String
+  sizeBytes Int
+
+  // Optional metadata
+  expiresAt DateTime?
+  notes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  @@index([familyId, type])
+}
+
+enum DocumentType {
+  INSURANCE_CARD
+  PHOTO_ID
+  MEDICAL_RECORD
+  LAB_RESULT
+  PRESCRIPTION
+  POWER_OF_ATTORNEY
+  LIVING_WILL
+  DNR
+  OTHER
+}
+
+// ============================================
+// EMERGENCY & NOTIFICATIONS
+// ============================================
+
+model EmergencyAlert {
+  id              String @id @default(uuid())
+  careRecipientId String
+  createdById     String
+
+  type        EmergencyType
+  title       String
+  description String
+  location    String?
+
+  status          AlertStatus @default(ACTIVE)
+  resolvedAt      DateTime?
+  resolvedById    String?
+  resolutionNotes String?
+
+  createdAt DateTime @default(now())
+
+  careRecipient CareRecipient @relation(fields: [careRecipientId], references: [id], onDelete: Cascade)
+  createdBy     User          @relation(fields: [createdById], references: [id])
+
+  @@index([careRecipientId])
+  @@index([status])
+}
+
+enum EmergencyType {
+  FALL
+  MEDICAL
+  MISSING
+  HOSPITALIZATION
+  OTHER
+}
+
+enum AlertStatus {
+  ACTIVE
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+model Notification {
+  id     String @id @default(uuid())
+  userId String
+
+  type  NotificationType
+  title String
+  body  String
+  data  Json?
+
+  read   Boolean   @default(false)
+  readAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read, createdAt])
+}
+
+enum NotificationType {
+  MEDICATION_REMINDER
+  MEDICATION_MISSED
+  APPOINTMENT_REMINDER
+  SHIFT_REMINDER
+  SHIFT_HANDOFF
+  EMERGENCY_ALERT
+  FAMILY_INVITE
+  DOCUMENT_SHARED
+  TIMELINE_UPDATE
+  REFILL_NEEDED
+  GENERAL
+}
+
+// ============================================
+// AUDIT LOG (for HIPAA compliance)
+// ============================================
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  resource  String?
+  resourceId String?
+  ipAddress String?
+  userAgent String?
+  metadata  Json?
+  timestamp DateTime @default(now())
+
+  @@index([userId])
+  @@index([timestamp])
+  @@index([resource, resourceId])
+}
+

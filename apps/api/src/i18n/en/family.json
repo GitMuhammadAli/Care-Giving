@@ -1,0 +1,16 @@
+{
+  "FAMILY_CREATED": "Family created successfully",
+  "FAMILY_NOT_FOUND": "Family not found",
+  "MEMBER_INVITED": "Invitation sent successfully",
+  "INVITATION_ACCEPTED": "You have joined the family",
+  "INVITATION_DECLINED": "Invitation declined",
+  "INVITATION_EXPIRED": "Invitation has expired",
+  "INVITATION_NOT_FOUND": "Invitation not found or already used",
+  "ALREADY_MEMBER": "You are already a member of this family",
+  "CANNOT_REMOVE_SELF": "You cannot remove yourself from the family",
+  "CANNOT_CHANGE_OWN_ROLE": "You cannot change your own role",
+  "LAST_ADMIN": "Cannot remove the last admin from the family",
+  "ROLE_UPDATED": "Member role updated",
+  "MEMBER_REMOVED": "Member removed from family"
+}
+

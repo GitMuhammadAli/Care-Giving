@@ -1,0 +1,23 @@
+{
+  "name": "carecircle",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/dev.js",
+    "dev:all": "turbo dev",
+    "dev:web": "pnpm --filter @carecircle/web dev",
+    "dev:api": "pnpm --filter @carecircle/api dev",
+    "dev:workers": "pnpm --filter @carecircle/workers dev",
+    "build": "turbo build",
+    "db:migrate": "pnpm --filter @carecircle/api migration:run",
+    "db:seed": "pnpm --filter @carecircle/api seed:run",
+    "db:generate": "pnpm --filter @carecircle/api migration:generate",
+    "lint": "turbo lint",
+    "clean": "turbo clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "typescript": "^5.3.0",
+    "concurrently": "^8.2.2"
+  },
+  "packageManager": "pnpm@9.0.0"
+}

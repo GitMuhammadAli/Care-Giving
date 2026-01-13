@@ -1,0 +1,75 @@
+#####################################################################
+# 1. Environment & Secrets (NEVER COMMIT)
+#####################################################################
+# Block all .env files in any directory
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Block your specific env/ folder and local settings
+env/
+env/*.env
+settings.local.json
+.claude/settings.local.json
+
+# Allow ONLY safe templates
+!.env.example
+!env/*.env.example
+
+#####################################################################
+# 2. Project Folders & Files to Ignore
+#####################################################################
+# Entire docs folder
+docs/
+file-structure.txt
+
+# Dependencies
+node_modules/
+.pnpm-store/
+.yarn/
+.pnp*
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+.turbo/
+.cache/
+
+#####################################################################
+# 3. Infrastructure & Logs
+#####################################################################
+# Logs
+logs/
+*.log
+*-debug.log*
+*-error.log*
+
+# Docker volumes & Database local files
+postgres_data/
+redis_data/
+minio_data/
+rabbitmq_data/
+prisma/*.db
+prisma/*.db-journal
+
+#####################################################################
+# 4. IDE & OS
+#####################################################################
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+#####################################################################
+# 5. Service Workers & Misc
+#####################################################################
+public/sw.js
+public/workbox-*.js
+*.tgz
+*.tar.gz
+*.zip

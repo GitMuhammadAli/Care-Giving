@@ -1,0 +1,11 @@
+{
+  "NOT_FOUND": "{entity} not found",
+  "ALREADY_EXISTS": "{entity} already exists",
+  "ACCESS_DENIED": "Access denied",
+  "FORBIDDEN": "You don't have permission to perform this action",
+  "BAD_REQUEST": "Invalid request",
+  "INTERNAL_ERROR": "An unexpected error occurred",
+  "RATE_LIMITED": "Too many requests. Please try again later",
+  "SERVICE_UNAVAILABLE": "Service temporarily unavailable"
+}
+

@@ -1,0 +1,174 @@
+name: Deploy to Production
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to deploy (e.g., v1.0.0)'
+        required: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository }}
+
+jobs:
+  validate:
+    name: Validate Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    
+    steps:
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "version=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate version format
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if [[ ! $VERSION =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid version format: $VERSION"
+            exit 1
+          fi
+
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: validate
+    environment: production
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.version }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push images
+        run: |
+          VERSION=${{ needs.validate.outputs.version }}
+          
+          # Build and tag images
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            -t ${{ env.IMAGE_PREFIX }}/api:$VERSION \
+            -t ${{ env.IMAGE_PREFIX }}/api:latest \
+            -f apps/api/Dockerfile \
+            --push .
+
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            -t ${{ env.IMAGE_PREFIX }}/web:$VERSION \
+            -t ${{ env.IMAGE_PREFIX }}/web:latest \
+            -f apps/web/Dockerfile \
+            --build-arg NEXT_PUBLIC_API_URL=${{ secrets.PRODUCTION_API_URL }} \
+            --push .
+
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            -t ${{ env.IMAGE_PREFIX }}/workers:$VERSION \
+            -t ${{ env.IMAGE_PREFIX }}/workers:latest \
+            -f apps/workers/Dockerfile \
+            --push .
+
+      - name: Deploy to Kubernetes
+        uses: azure/k8s-set-context@v4
+        with:
+          kubeconfig: ${{ secrets.KUBE_CONFIG }}
+
+      - name: Update Kubernetes deployments
+        run: |
+          VERSION=${{ needs.validate.outputs.version }}
+          
+          # Update image tags in deployments
+          kubectl set image deployment/carecircle-api \
+            api=${{ env.IMAGE_PREFIX }}/api:$VERSION \
+            -n carecircle
+            
+          kubectl set image deployment/carecircle-web \
+            web=${{ env.IMAGE_PREFIX }}/web:$VERSION \
+            -n carecircle
+            
+          kubectl set image deployment/carecircle-workers \
+            workers=${{ env.IMAGE_PREFIX }}/workers:$VERSION \
+            -n carecircle
+          
+          # Wait for rollout
+          kubectl rollout status deployment/carecircle-api -n carecircle --timeout=300s
+          kubectl rollout status deployment/carecircle-web -n carecircle --timeout=300s
+          kubectl rollout status deployment/carecircle-workers -n carecircle --timeout=300s
+
+      - name: Run database migrations
+        run: |
+          POD=$(kubectl get pods -n carecircle -l app=carecircle-api -o jsonpath='{.items[0].metadata.name}')
+          kubectl exec -n carecircle $POD -- npx prisma migrate deploy
+
+      - name: Health Check
+        run: |
+          sleep 30
+          curl -f ${{ secrets.PRODUCTION_API_URL }}/health || exit 1
+          curl -f ${{ secrets.PRODUCTION_WEB_URL }} || exit 1
+          echo "✅ Production deployment successful!"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify on Slack
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          text: 'Production deployment ${{ needs.validate.outputs.version }}: ${{ job.status }}'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  rollback:
+    name: Rollback on Failure
+    runs-on: ubuntu-latest
+    needs: [validate, deploy]
+    if: failure()
+    environment: production
+    
+    steps:
+      - name: Configure kubectl
+        uses: azure/k8s-set-context@v4
+        with:
+          kubeconfig: ${{ secrets.KUBE_CONFIG }}
+
+      - name: Rollback deployments
+        run: |
+          echo "⚠️ Deployment failed, rolling back..."
+          kubectl rollout undo deployment/carecircle-api -n carecircle
+          kubectl rollout undo deployment/carecircle-web -n carecircle
+          kubectl rollout undo deployment/carecircle-workers -n carecircle
+          echo "✅ Rollback complete"
+
+      - name: Notify on Slack
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          channel: '#deployments'
+          text: '🚨 Production deployment failed and was rolled back!'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
