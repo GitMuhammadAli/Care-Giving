@@ -1,13 +1,34 @@
 'use client';
 
 import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
+import { toast } from 'react-hot-toast';
 import { cn, formatDate } from '@/lib/utils';
+import { useAuth } from '@/hooks/use-auth';
+import { shiftsApi, familyApi, type CaregiverShift, type CreateShiftDto } from '@/lib/api';
 import { PageHeader } from '@/components/layout/page-header';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Plus,
   Calendar,
@@ -17,7 +38,8 @@ import {
   LogOut,
   MessageSquare,
   ChevronRight,
-  User,
+  AlertCircle,
+  X,
 } from 'lucide-react';
 import {
   format,
@@ -30,75 +52,191 @@ import {
   subWeeks,
 } from 'date-fns';
 
-const mockShifts = [
-  {
-    id: 'shift-1',
-    caregiver: { id: 'u-1', name: 'Sarah Thompson' },
-    date: new Date(),
-    startTime: '8:00 AM',
-    endTime: '6:00 PM',
-    status: 'IN_PROGRESS',
-    checkedInAt: new Date().setHours(7, 55, 0, 0),
-  },
-  {
-    id: 'shift-2',
-    caregiver: { id: 'u-2', name: 'Mike Thompson' },
-    date: new Date(),
-    startTime: '6:00 PM',
-    endTime: '10:00 PM',
-    status: 'SCHEDULED',
-  },
-  {
-    id: 'shift-3',
-    caregiver: { id: 'u-1', name: 'Sarah Thompson' },
-    date: new Date(Date.now() + 24 * 60 * 60000),
-    startTime: '8:00 AM',
-    endTime: '2:00 PM',
-    status: 'SCHEDULED',
-  },
-  {
-    id: 'shift-4',
-    caregiver: { id: 'u-3', name: 'Jennifer Thompson' },
-    date: new Date(Date.now() + 24 * 60 * 60000),
-    startTime: '2:00 PM',
-    endTime: '8:00 PM',
-    status: 'SCHEDULED',
-  },
-  {
-    id: 'shift-5',
-    caregiver: { id: 'u-2', name: 'Mike Thompson' },
-    date: new Date(Date.now() - 24 * 60 * 60000),
-    startTime: '8:00 AM',
-    endTime: '6:00 PM',
-    status: 'COMPLETED',
-    checkedInAt: new Date(Date.now() - 24 * 60 * 60000).setHours(7, 58, 0, 0),
-    checkedOutAt: new Date(Date.now() - 24 * 60 * 60000).setHours(18, 5, 0, 0),
-    handoffNotes: 'Good day overall. Took all medications. Ate well. No concerns.',
-  },
-];
-
 const statusConfig = {
   SCHEDULED: { label: 'Scheduled', color: 'bg-bg-muted text-text-secondary' },
   IN_PROGRESS: { label: 'In Progress', color: 'bg-success-light text-success' },
   COMPLETED: { label: 'Completed', color: 'bg-accent-primary-light text-accent-primary' },
   CANCELLED: { label: 'Cancelled', color: 'bg-error-light text-error' },
+  NO_SHOW: { label: 'No Show', color: 'bg-warning-light text-warning' },
 };
 
 export default function CaregiversPage() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
+
+  // Dialog states
+  const [createShiftOpen, setCreateShiftOpen] = useState(false);
+  const [checkInShiftId, setCheckInShiftId] = useState<string | null>(null);
+  const [checkOutShiftId, setCheckOutShiftId] = useState<string | null>(null);
+
+  // Form states
+  const [shiftForm, setShiftForm] = useState({
+    caregiverId: '',
+    startTime: '',
+    endTime: '',
+    notes: '',
+  });
+
+  const [checkInForm, setCheckInForm] = useState({
+    notes: '',
+    location: '',
+  });
+
+  const [checkOutForm, setCheckOutForm] = useState({
+    notes: '',
+    location: '',
+    handoffNotes: '',
+  });
+
+  // Get care recipient ID
+  const familyId = user?.families?.[0]?.id;
+  const careRecipientId = user?.families?.[0]?.careRecipients?.[0]?.id;
 
   const weekStart = startOfWeek(currentWeek);
   const weekEnd = endOfWeek(currentWeek);
   const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
-  const currentShift = mockShifts.find(
-    (s) => s.status === 'IN_PROGRESS' && isSameDay(s.date, new Date())
-  );
+  // Fetch family members (potential caregivers)
+  const { data: familyMembers = [] } = useQuery({
+    queryKey: ['family-members', familyId],
+    queryFn: () => familyApi.getMembers(familyId!),
+    enabled: !!familyId,
+  });
 
-  const selectedDayShifts = mockShifts.filter((s) => isSameDay(s.date, selectedDate));
+  // Fetch shifts
+  const { data: shifts = [], isLoading: shiftsLoading } = useQuery({
+    queryKey: ['shifts', careRecipientId],
+    queryFn: () => shiftsApi.getAll(careRecipientId!),
+    enabled: !!careRecipientId,
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
 
-  const getShiftsForDay = (day: Date) => mockShifts.filter((s) => isSameDay(s.date, day));
+  // Fetch on-duty caregiver
+  const { data: onDuty } = useQuery({
+    queryKey: ['on-duty', careRecipientId],
+    queryFn: () => shiftsApi.getOnDuty(careRecipientId!),
+    enabled: !!careRecipientId,
+    refetchInterval: 30000,
+  });
+
+  // Create shift mutation
+  const createShiftMutation = useMutation({
+    mutationFn: (data: CreateShiftDto) => shiftsApi.create(careRecipientId!, data),
+    onSuccess: () => {
+      toast.success('Shift created successfully');
+      queryClient.invalidateQueries({ queryKey: ['shifts'] });
+      queryClient.invalidateQueries({ queryKey: ['on-duty'] });
+      setCreateShiftOpen(false);
+      setShiftForm({ caregiverId: '', startTime: '', endTime: '', notes: '' });
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || 'Failed to create shift');
+    },
+  });
+
+  // Check in mutation
+  const checkInMutation = useMutation({
+    mutationFn: ({ shiftId, data }: { shiftId: string; data: typeof checkInForm }) =>
+      shiftsApi.checkIn(careRecipientId!, shiftId, data),
+    onSuccess: () => {
+      toast.success('Checked in successfully');
+      queryClient.invalidateQueries({ queryKey: ['shifts'] });
+      queryClient.invalidateQueries({ queryKey: ['on-duty'] });
+      setCheckInShiftId(null);
+      setCheckInForm({ notes: '', location: '' });
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || 'Failed to check in');
+    },
+  });
+
+  // Check out mutation
+  const checkOutMutation = useMutation({
+    mutationFn: ({ shiftId, data }: { shiftId: string; data: typeof checkOutForm }) =>
+      shiftsApi.checkOut(careRecipientId!, shiftId, data),
+    onSuccess: () => {
+      toast.success('Checked out successfully');
+      queryClient.invalidateQueries({ queryKey: ['shifts'] });
+      queryClient.invalidateQueries({ queryKey: ['on-duty'] });
+      setCheckOutShiftId(null);
+      setCheckOutForm({ notes: '', location: '', handoffNotes: '' });
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || 'Failed to check out');
+    },
+  });
+
+  // Cancel shift mutation
+  const cancelShiftMutation = useMutation({
+    mutationFn: (shiftId: string) => shiftsApi.cancel(careRecipientId!, shiftId),
+    onSuccess: () => {
+      toast.success('Shift cancelled');
+      queryClient.invalidateQueries({ queryKey: ['shifts'] });
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || 'Failed to cancel shift');
+    },
+  });
+
+  const getShiftsForDay = (day: Date) =>
+    shifts.filter((s) => isSameDay(new Date(s.startTime), day));
+
+  const selectedDayShifts = getShiftsForDay(selectedDate);
+
+  const handleCreateShift = () => {
+    if (!shiftForm.caregiverId || !shiftForm.startTime || !shiftForm.endTime) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+
+    createShiftMutation.mutate({
+      caregiverId: shiftForm.caregiverId,
+      startTime: shiftForm.startTime,
+      endTime: shiftForm.endTime,
+      notes: shiftForm.notes || undefined,
+    });
+  };
+
+  const handleCheckIn = (shiftId: string) => {
+    checkInMutation.mutate({
+      shiftId,
+      data: checkInForm,
+    });
+  };
+
+  const handleCheckOut = (shiftId: string) => {
+    if (!checkOutForm.handoffNotes?.trim()) {
+      toast.error('Please provide handoff notes');
+      return;
+    }
+
+    checkOutMutation.mutate({
+      shiftId,
+      data: checkOutForm,
+    });
+  };
+
+  if (!careRecipientId) {
+    return (
+      <div className="pb-6">
+        <PageHeader title="Caregiver Schedule" subtitle="Shifts and handoffs" />
+        <div className="px-4 sm:px-6 py-6">
+          <Card>
+            <CardContent className="py-12 text-center">
+              <AlertCircle className="w-12 h-12 mx-auto text-text-tertiary mb-4" />
+              <p className="text-text-secondary">No care recipient found</p>
+              <p className="text-sm text-text-tertiary mt-2">
+                Please add a care recipient to manage shifts
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pb-6">
@@ -106,7 +244,12 @@ export default function CaregiversPage() {
         title="Caregiver Schedule"
         subtitle="Shifts and handoffs"
         actions={
-          <Button variant="primary" size="default" leftIcon={<Plus className="w-4 h-4" />}>
+          <Button
+            variant="primary"
+            size="default"
+            leftIcon={<Plus className="w-4 h-4" />}
+            onClick={() => setCreateShiftOpen(true)}
+          >
             Add Shift
           </Button>
         }
@@ -114,15 +257,26 @@ export default function CaregiversPage() {
 
       <div className="px-4 sm:px-6 py-6 space-y-6">
         {/* Current On Duty */}
-        {currentShift && (
+        {onDuty && (
           <Card variant="success">
             <div className="flex items-center gap-4">
-              <Avatar name={currentShift.caregiver.name} size="lg" showStatus status="online" />
+              <Avatar
+                name={onDuty.caregiver.fullName}
+                src={onDuty.caregiver.avatarUrl}
+                size="lg"
+                showStatus
+                status="online"
+              />
               <div className="flex-1">
-                <p className="text-xs font-medium text-success uppercase tracking-wide">Currently On Duty</p>
-                <h3 className="text-lg font-semibold text-text-primary">{currentShift.caregiver.name}</h3>
+                <p className="text-xs font-medium text-success uppercase tracking-wide">
+                  Currently On Duty
+                </p>
+                <h3 className="text-lg font-semibold text-text-primary">
+                  {onDuty.caregiver.fullName}
+                </h3>
                 <p className="text-sm text-text-secondary">
-                  {currentShift.startTime} - {currentShift.endTime}
+                  {format(new Date(onDuty.shift.startTime), 'h:mm a')} -{' '}
+                  {format(new Date(onDuty.shift.endTime), 'h:mm a')}
                 </p>
               </div>
               <div className="text-right">
@@ -130,9 +284,11 @@ export default function CaregiversPage() {
                   <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
                   Checked In
                 </Badge>
-                <p className="text-xs text-text-tertiary mt-1">
-                  Since 7:55 AM
-                </p>
+                {onDuty.shift.actualStartTime && (
+                  <p className="text-xs text-text-tertiary mt-1">
+                    Since {format(new Date(onDuty.shift.actualStartTime), 'h:mm a')}
+                  </p>
+                )}
               </div>
             </div>
           </Card>
@@ -180,7 +336,9 @@ export default function CaregiversPage() {
                         : 'hover:bg-bg-muted'
                     )}
                   >
-                    <span className="text-xs font-medium opacity-60">{format(day, 'EEE')}</span>
+                    <span className="text-xs font-medium opacity-60">
+                      {format(day, 'EEE')}
+                    </span>
                     <span className="text-lg font-semibold">{format(day, 'd')}</span>
                     {dayShifts.length > 0 && (
                       <div className="flex gap-0.5 mt-1">
@@ -208,12 +366,32 @@ export default function CaregiversPage() {
             {formatDate(selectedDate)}
           </h3>
 
-          {selectedDayShifts.length === 0 ? (
+          {shiftsLoading ? (
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <Card key={i}>
+                  <div className="flex items-start gap-4">
+                    <Skeleton className="w-12 h-12 rounded-full" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-5 w-32" />
+                      <Skeleton className="h-4 w-48" />
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : selectedDayShifts.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
                 <Calendar className="w-12 h-12 mx-auto text-text-tertiary mb-4" />
                 <p className="text-text-secondary">No shifts scheduled</p>
-                <Button variant="secondary" size="default" className="mt-4" leftIcon={<Plus className="w-4 h-4" />}>
+                <Button
+                  variant="secondary"
+                  size="default"
+                  className="mt-4"
+                  leftIcon={<Plus className="w-4 h-4" />}
+                  onClick={() => setCreateShiftOpen(true)}
+                >
                   Add Shift
                 </Button>
               </CardContent>
@@ -222,6 +400,12 @@ export default function CaregiversPage() {
             <div className="space-y-3">
               {selectedDayShifts.map((shift, index) => {
                 const status = statusConfig[shift.status as keyof typeof statusConfig];
+                const canCheckIn =
+                  shift.status === 'SCHEDULED' &&
+                  isSameDay(new Date(shift.startTime), new Date()) &&
+                  shift.caregiverId === user?.id;
+                const canCheckOut =
+                  shift.status === 'IN_PROGRESS' && shift.caregiverId === user?.id;
 
                 return (
                   <motion.div
@@ -232,32 +416,51 @@ export default function CaregiversPage() {
                   >
                     <Card variant={shift.status === 'IN_PROGRESS' ? 'success' : 'interactive'}>
                       <div className="flex items-start gap-4">
-                        <Avatar name={shift.caregiver.name} size="lg" />
+                        <Avatar
+                          name={shift.caregiver?.fullName || 'Unknown'}
+                          src={shift.caregiver?.avatarUrl}
+                          size="lg"
+                        />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <h4 className="font-semibold text-text-primary">{shift.caregiver.name}</h4>
-                            <Badge className={status.color} size="sm">{status.label}</Badge>
+                            <h4 className="font-semibold text-text-primary">
+                              {shift.caregiver?.fullName || 'Unknown'}
+                            </h4>
+                            <Badge className={status.color} size="sm">
+                              {status.label}
+                            </Badge>
                           </div>
                           <div className="flex items-center gap-3 mt-1 text-sm text-text-secondary">
                             <span className="flex items-center gap-1">
                               <Clock className="w-4 h-4" />
-                              {shift.startTime} - {shift.endTime}
+                              {format(new Date(shift.startTime), 'h:mm a')} -{' '}
+                              {format(new Date(shift.endTime), 'h:mm a')}
                             </span>
                           </div>
 
                           {/* Check-in/Check-out Info */}
-                          {shift.checkedInAt && (
+                          {shift.actualStartTime && (
                             <div className="flex items-center gap-3 mt-2 text-xs text-text-tertiary">
                               <span className="flex items-center gap-1">
                                 <LogIn className="w-3.5 h-3.5 text-success" />
-                                In: {format(new Date(shift.checkedInAt), 'h:mm a')}
+                                In: {format(new Date(shift.actualStartTime), 'h:mm a')}
                               </span>
-                              {shift.checkedOutAt && (
+                              {shift.actualEndTime && (
                                 <span className="flex items-center gap-1">
                                   <LogOut className="w-3.5 h-3.5 text-accent-primary" />
-                                  Out: {format(new Date(shift.checkedOutAt), 'h:mm a')}
+                                  Out: {format(new Date(shift.actualEndTime), 'h:mm a')}
                                 </span>
                               )}
+                            </div>
+                          )}
+
+                          {/* Check-in Notes */}
+                          {shift.checkInNotes && (
+                            <div className="mt-3 p-3 bg-bg-muted rounded-lg">
+                              <p className="text-xs font-medium text-text-tertiary mb-1">
+                                Check-in Notes
+                              </p>
+                              <p className="text-sm text-text-secondary">{shift.checkInNotes}</p>
                             </div>
                           )}
 
@@ -273,21 +476,43 @@ export default function CaregiversPage() {
                           )}
 
                           {/* Actions */}
-                          {shift.status === 'SCHEDULED' && isSameDay(shift.date, new Date()) && (
-                            <div className="flex gap-2 mt-3">
-                              <Button variant="primary" size="sm" leftIcon={<LogIn className="w-4 h-4" />}>
+                          <div className="flex gap-2 mt-3">
+                            {canCheckIn && (
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                leftIcon={<LogIn className="w-4 h-4" />}
+                                onClick={() => setCheckInShiftId(shift.id)}
+                              >
                                 Check In
                               </Button>
-                            </div>
-                          )}
+                            )}
 
-                          {shift.status === 'IN_PROGRESS' && (
-                            <div className="flex gap-2 mt-3">
-                              <Button variant="warm" size="sm" leftIcon={<LogOut className="w-4 h-4" />}>
+                            {canCheckOut && (
+                              <Button
+                                variant="warm"
+                                size="sm"
+                                leftIcon={<LogOut className="w-4 h-4" />}
+                                onClick={() => setCheckOutShiftId(shift.id)}
+                              >
                                 Check Out
                               </Button>
-                            </div>
-                          )}
+                            )}
+
+                            {shift.status === 'SCHEDULED' && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => {
+                                  if (confirm('Are you sure you want to cancel this shift?')) {
+                                    cancelShiftMutation.mutate(shift.id);
+                                  }
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </Card>
@@ -298,7 +523,197 @@ export default function CaregiversPage() {
           )}
         </div>
       </div>
+
+      {/* Create Shift Dialog */}
+      <Dialog open={createShiftOpen} onOpenChange={setCreateShiftOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Shift</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-text-primary mb-2 block">
+                Caregiver *
+              </label>
+              <Select
+                value={shiftForm.caregiverId}
+                onValueChange={(value) =>
+                  setShiftForm((prev) => ({ ...prev, caregiverId: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select caregiver" />
+                </SelectTrigger>
+                <SelectContent>
+                  {familyMembers.map((member) => (
+                    <SelectItem key={member.userId} value={member.userId}>
+                      {member.user.fullName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-text-primary mb-2 block">
+                Start Time *
+              </label>
+              <Input
+                type="datetime-local"
+                value={shiftForm.startTime}
+                onChange={(e) =>
+                  setShiftForm((prev) => ({ ...prev, startTime: e.target.value }))
+                }
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-text-primary mb-2 block">
+                End Time *
+              </label>
+              <Input
+                type="datetime-local"
+                value={shiftForm.endTime}
+                onChange={(e) =>
+                  setShiftForm((prev) => ({ ...prev, endTime: e.target.value }))
+                }
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-text-primary mb-2 block">Notes</label>
+              <Textarea
+                value={shiftForm.notes}
+                onChange={(e) =>
+                  setShiftForm((prev) => ({ ...prev, notes: e.target.value }))
+                }
+                placeholder="Any additional notes..."
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setCreateShiftOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleCreateShift}
+              disabled={createShiftMutation.isPending}
+            >
+              {createShiftMutation.isPending ? 'Creating...' : 'Create Shift'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Check-in Dialog */}
+      <Dialog open={!!checkInShiftId} onOpenChange={() => setCheckInShiftId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Check In to Shift</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-text-primary mb-2 block">
+                Check-in Notes
+              </label>
+              <Textarea
+                value={checkInForm.notes}
+                onChange={(e) =>
+                  setCheckInForm((prev) => ({ ...prev, notes: e.target.value }))
+                }
+                placeholder="How is the care recipient today?"
+                rows={3}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-text-primary mb-2 block">Location</label>
+              <Input
+                value={checkInForm.location}
+                onChange={(e) =>
+                  setCheckInForm((prev) => ({ ...prev, location: e.target.value }))
+                }
+                placeholder="e.g., Home, Hospital"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setCheckInShiftId(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => handleCheckIn(checkInShiftId!)}
+              disabled={checkInMutation.isPending}
+            >
+              {checkInMutation.isPending ? 'Checking In...' : 'Check In'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Check-out Dialog */}
+      <Dialog open={!!checkOutShiftId} onOpenChange={() => setCheckOutShiftId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Check Out from Shift</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-text-primary mb-2 block">
+                Handoff Notes *
+              </label>
+              <Textarea
+                value={checkOutForm.handoffNotes}
+                onChange={(e) =>
+                  setCheckOutForm((prev) => ({ ...prev, handoffNotes: e.target.value }))
+                }
+                placeholder="Important information for the next caregiver..."
+                rows={4}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-text-primary mb-2 block">
+                Check-out Notes
+              </label>
+              <Textarea
+                value={checkOutForm.notes}
+                onChange={(e) =>
+                  setCheckOutForm((prev) => ({ ...prev, notes: e.target.value }))
+                }
+                placeholder="Summary of the shift..."
+                rows={3}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-text-primary mb-2 block">Location</label>
+              <Input
+                value={checkOutForm.location}
+                onChange={(e) =>
+                  setCheckOutForm((prev) => ({ ...prev, location: e.target.value }))
+                }
+                placeholder="e.g., Home, Hospital"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setCheckOutShiftId(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => handleCheckOut(checkOutShiftId!)}
+              disabled={checkOutMutation.isPending}
+            >
+              {checkOutMutation.isPending ? 'Checking Out...' : 'Check Out'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-

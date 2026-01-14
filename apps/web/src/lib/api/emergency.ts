@@ -58,20 +58,57 @@ export interface CreateEmergencyAlertInput {
 }
 
 export const emergencyApi = {
-  getEmergencyInfo: async (careRecipientId: string): Promise<EmergencyInfo> => {
-    return api.get<EmergencyInfo>(`/care-recipients/${careRecipientId}/emergency`);
+  // Get complete emergency info for offline caching
+  getEmergencyInfo: async (familyId: string, careRecipientId: string): Promise<EmergencyInfo> => {
+    return api.get<EmergencyInfo>(`/families/${familyId}/emergency/${careRecipientId}/info`);
   },
 
-  triggerAlert: async (careRecipientId: string, data: CreateEmergencyAlertInput): Promise<EmergencyAlert> => {
-    return api.post<EmergencyAlert>(`/care-recipients/${careRecipientId}/emergency/alert`, data);
+  // Create an emergency alert
+  triggerAlert: async (
+    familyId: string,
+    careRecipientId: string,
+    data: CreateEmergencyAlertInput
+  ): Promise<EmergencyAlert> => {
+    return api.post<EmergencyAlert>(`/families/${familyId}/emergency/alert`, {
+      ...data,
+      careRecipientId,
+    });
   },
 
-  getActiveAlerts: async (careRecipientId: string): Promise<EmergencyAlert[]> => {
-    return api.get<EmergencyAlert[]>(`/care-recipients/${careRecipientId}/emergency/alerts`);
+  // Get all alerts for a family
+  getAlerts: async (familyId: string, limit: number = 20): Promise<EmergencyAlert[]> => {
+    return api.get<EmergencyAlert[]>(`/families/${familyId}/emergency/alerts?limit=${limit}`);
   },
 
-  resolveAlert: async (alertId: string, notes?: string): Promise<void> => {
-    await api.patch(`/emergency/alerts/${alertId}/resolve`, { notes });
+  // Get active alerts for a family
+  getActiveAlerts: async (familyId: string): Promise<EmergencyAlert[]> => {
+    return api.get<EmergencyAlert[]>(`/families/${familyId}/emergency/alerts/active`);
+  },
+
+  // Get a specific alert
+  getAlert: async (familyId: string, alertId: string): Promise<EmergencyAlert> => {
+    return api.get<EmergencyAlert>(`/families/${familyId}/emergency/alerts/${alertId}`);
+  },
+
+  // Acknowledge an alert
+  acknowledgeAlert: async (familyId: string, alertId: string): Promise<EmergencyAlert> => {
+    return api.post<EmergencyAlert>(`/families/${familyId}/emergency/alerts/${alertId}/acknowledge`);
+  },
+
+  // Resolve an alert
+  resolveAlert: async (
+    familyId: string,
+    alertId: string,
+    resolutionNotes?: string
+  ): Promise<EmergencyAlert> => {
+    return api.post<EmergencyAlert>(`/families/${familyId}/emergency/alerts/${alertId}/resolve`, {
+      resolutionNotes,
+    });
+  },
+
+  // Cancel an alert (only by the person who triggered it)
+  cancelAlert: async (familyId: string, alertId: string): Promise<EmergencyAlert> => {
+    return api.patch<EmergencyAlert>(`/families/${familyId}/emergency/alerts/${alertId}/cancel`);
   },
 };
 

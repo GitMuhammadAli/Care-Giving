@@ -18,6 +18,28 @@ export class CaregiverShiftsService {
   async create(careRecipientId: string, dto: CreateShiftDto): Promise<CaregiverShift> {
     const user = ContextHelper.getUser();
 
+    // Validate time period
+    const startTime = new Date(dto.startTime);
+    const endTime = new Date(dto.endTime);
+
+    if (endTime <= startTime) {
+      throw new BadRequestException('End time must be after start time');
+    }
+
+    // Check for overlapping shifts for this caregiver
+    const overlappingShifts = await this.shiftRepository.findOverlappingShifts(
+      dto.caregiverId,
+      startTime,
+      endTime,
+    );
+
+    if (overlappingShifts.length > 0) {
+      const overlap = overlappingShifts[0];
+      throw new BadRequestException(
+        `Caregiver already has a shift from ${overlap.startTime.toISOString()} to ${overlap.endTime.toISOString()}`,
+      );
+    }
+
     const shift = this.shiftRepository.create({
       ...dto,
       careRecipientId,

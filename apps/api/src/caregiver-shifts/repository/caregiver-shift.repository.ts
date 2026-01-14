@@ -70,5 +70,26 @@ export class CaregiverShiftRepository extends Repository<CaregiverShift> {
       take: limit,
     });
   }
+
+  async findOverlappingShifts(
+    caregiverId: string,
+    startTime: Date,
+    endTime: Date,
+    excludeId?: string,
+  ): Promise<CaregiverShift[]> {
+    const query = this.createQueryBuilder('shift')
+      .where('shift.caregiverId = :caregiverId', { caregiverId })
+      .andWhere('shift.status NOT IN (:...excludedStatuses)', {
+        excludedStatuses: [ShiftStatus.CANCELLED, ShiftStatus.NO_SHOW],
+      })
+      .andWhere('shift.startTime < :endTime', { endTime })
+      .andWhere('shift.endTime > :startTime', { startTime });
+
+    if (excludeId) {
+      query.andWhere('shift.id != :excludeId', { excludeId });
+    }
+
+    return query.getMany();
+  }
 }
 

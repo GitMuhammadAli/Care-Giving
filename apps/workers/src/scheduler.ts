@@ -1,6 +1,6 @@
 import { prisma } from '@carecircle/database';
-import { addMinutes, startOfMinute, endOfMinute, isWithinInterval } from 'date-fns';
-import { medicationQueue, appointmentQueue, shiftQueue } from './queues';
+import { addMinutes, startOfMinute, endOfMinute, isWithinInterval, startOfDay } from 'date-fns';
+import { medicationQueue, appointmentQueue, shiftQueue, refillAlertQueue } from './queues';
 import { config } from './config';
 
 class ReminderScheduler {
@@ -33,6 +33,7 @@ class ReminderScheduler {
       this.queueMedicationReminders(now),
       this.queueAppointmentReminders(now),
       this.queueShiftReminders(now),
+      this.checkRefillAlerts(now),
     ]);
   }
 
@@ -178,6 +179,76 @@ class ReminderScheduler {
       }
     } catch (error) {
       console.error('Error queueing shift reminders:', error);
+    }
+  }
+
+  private async checkRefillAlerts(now: Date) {
+    try {
+      // Only check once per day (at the start of the day's first minute)
+      const isStartOfDay = now.getHours() === 0 && now.getMinutes() === 0;
+      
+      // Check every hour for low supply meds (or always in dev for testing)
+      const shouldCheck = isStartOfDay || now.getMinutes() === 0;
+      if (!shouldCheck) return;
+
+      // Get medications where currentSupply <= refillAt
+      const lowSupplyMeds = await prisma.medication.findMany({
+        where: {
+          isActive: true,
+          refillAt: { not: null },
+          currentSupply: { not: null },
+        },
+        include: {
+          careRecipient: {
+            include: {
+              family: {
+                include: {
+                  members: {
+                    select: { userId: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      for (const med of lowSupplyMeds) {
+        // Check if supply is at or below refill threshold
+        if (med.currentSupply !== null && med.refillAt !== null && 
+            med.currentSupply <= med.refillAt) {
+          
+          // Use date-based job ID to only send one alert per day per medication
+          const today = startOfDay(now).toISOString().split('T')[0];
+          const jobId = `refill-${med.id}-${today}`;
+          
+          const careRecipientName = `${med.careRecipient.firstName} ${med.careRecipient.lastName}`;
+          const familyMemberUserIds = med.careRecipient.family.members.map(m => m.userId);
+
+          await refillAlertQueue.add(
+            'refill-alert',
+            {
+              medicationId: med.id,
+              medicationName: med.name,
+              currentSupply: med.currentSupply,
+              refillAt: med.refillAt,
+              careRecipientId: med.careRecipientId,
+              careRecipientName,
+              familyMemberUserIds,
+            },
+            { 
+              jobId, 
+              removeOnComplete: true,
+              // Don't retry if already processed today
+              attempts: 1,
+            }
+          );
+
+          console.log(`💊 Queued refill alert for ${med.name} (supply: ${med.currentSupply}/${med.refillAt})`);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking refill alerts:', error);
     }
   }
 }

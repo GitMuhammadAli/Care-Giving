@@ -23,10 +23,12 @@ class WebSocketClient {
 
       this.isConnecting = true;
 
-      const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
+      // Connect to the /carecircle namespace
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+      const wsUrl = apiUrl.replace('/api/v1', '');
 
-      this.socket = io(wsUrl, {
-        auth: { token },
+      this.socket = io(`${wsUrl}/carecircle`, {
+        withCredentials: true, // Send cookies with connection
         transports: ['websocket', 'polling'],
         reconnection: true,
         reconnectionAttempts: this.maxReconnectAttempts,
@@ -35,7 +37,7 @@ class WebSocketClient {
       });
 
       this.socket.on('connect', () => {
-        console.log('🔌 WebSocket connected');
+        console.log('🔌 WebSocket connected to /carecircle');
         this.isConnecting = false;
         this.reconnectAttempts = 0;
         resolve();
@@ -49,13 +51,13 @@ class WebSocketClient {
         console.error('🔌 WebSocket connection error:', error.message);
         this.isConnecting = false;
         this.reconnectAttempts++;
-        
+
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
           reject(new Error('Max reconnection attempts reached'));
         }
       });
 
-      // Re-register all listeners
+      // Re-register all listeners on reconnect
       this.listeners.forEach((callbacks, event) => {
         callbacks.forEach((callback) => {
           this.socket?.on(event, callback);
@@ -72,12 +74,14 @@ class WebSocketClient {
     this.listeners.clear();
   }
 
-  joinFamily(familyId: string): void {
-    this.socket?.emit('join_family', { familyId });
+  joinFamily(familyId: string, userId: string): void {
+    this.socket?.emit('join_family', { familyId, userId });
+    console.log(`👨‍👩‍👧 Joining family room: ${familyId}`);
   }
 
   leaveFamily(familyId: string): void {
     this.socket?.emit('leave_family', { familyId });
+    console.log(`👋 Leaving family room: ${familyId}`);
   }
 
   on(event: string, callback: EventCallback): void {
@@ -105,20 +109,28 @@ class WebSocketClient {
 // Singleton instance
 export const wsClient = new WebSocketClient();
 
-// Event types
+// Event types matching backend
 export const WS_EVENTS = {
-  // Incoming events
+  // Incoming events from backend
   EMERGENCY_ALERT: 'emergency_alert',
-  MEDICATION_LOGGED: 'medication_logged',
-  MEDICATION_REMINDER: 'medication_reminder',
-  APPOINTMENT_REMINDER: 'appointment_reminder',
-  TIMELINE_ENTRY: 'timeline_entry',
+  EMERGENCY_RESOLVED: 'emergency_resolved',
+  MEDICATION_LOGGED: 'medication.logged',
+  MEDICATION_REMINDER: 'medication.reminder',
+  APPOINTMENT_CREATED: 'appointment.created',
+  APPOINTMENT_UPDATED: 'appointment.updated',
+  APPOINTMENT_REMINDER: 'appointment.reminder',
+  TIMELINE_ENTRY: 'timeline.entry.created',
   SHIFT_UPDATE: 'shift_update',
+  SHIFT_CHECKED_IN: 'shift.checkedIn',
+  SHIFT_CHECKED_OUT: 'shift.checkedOut',
   FAMILY_MEMBER_JOINED: 'family_member_joined',
   NOTIFICATION: 'notification',
+
+  // Broadcast events
+  WS_BROADCAST: 'ws.broadcast',
+  EMERGENCY_NOTIFICATION: 'emergency_notification',
 
   // Outgoing events
   JOIN_FAMILY: 'join_family',
   LEAVE_FAMILY: 'leave_family',
 } as const;
-

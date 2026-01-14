@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
   postgres:
@@ -9,19 +7,68 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-carecircle}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-carecircle}
+      # Performance tuning for high load
+      POSTGRES_MAX_CONNECTIONS: 200
+      POSTGRES_SHARED_BUFFERS: 2GB
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 6GB
+      POSTGRES_WORK_MEM: 16MB
+      POSTGRES_MAINTENANCE_WORK_MEM: 512MB
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=200"
+      - "-c"
+      - "shared_buffers=2GB"
+      - "-c"
+      - "effective_cache_size=6GB"
+      - "-c"
+      - "maintenance_work_mem=512MB"
+      - "-c"
+      - "checkpoint_completion_target=0.9"
+      - "-c"
+      - "wal_buffers=16MB"
+      - "-c"
+      - "default_statistics_target=100"
+      - "-c"
+      - "random_page_cost=1.1"
+      - "-c"
+      - "effective_io_concurrency=200"
+      - "-c"
+      - "work_mem=16MB"
+      - "-c"
+      - "min_wal_size=1GB"
+      - "-c"
+      - "max_wal_size=4GB"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-carecircle}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
 
   # Redis
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: redis-server --requirepass ${REDIS_PASSWORD}
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory 2gb
+      --maxmemory-policy allkeys-lru
+      --save 60 1000
+      --appendonly yes
+      --appendfsync everysec
+      --maxclients 10000
+      --tcp-backlog 511
+      --timeout 0
+      --tcp-keepalive 300
     volumes:
       - redis_data:/data
     healthcheck:
@@ -29,6 +76,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
 
   # MinIO (S3-compatible storage)
   minio:
@@ -38,6 +91,7 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BROWSER_REDIRECT_URL: ${MINIO_BROWSER_REDIRECT_URL:-http://localhost:9001}
     volumes:
       - minio_data:/data
     healthcheck:
@@ -45,6 +99,10 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 1G
 
   # API Service
   api:
@@ -56,6 +114,7 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-carecircle}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-carecircle}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-carecircle}:${RABBITMQ_PASSWORD}@rabbitmq:5672/${RABBITMQ_VHOST:-carecircle}
       JWT_SECRET: ${JWT_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
@@ -64,18 +123,31 @@ services:
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       S3_BUCKET: ${S3_BUCKET:-carecircle-documents}
       FIREBASE_SERVICE_ACCOUNT: ${FIREBASE_SERVICE_ACCOUNT}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
+      VAPID_SUBJECT: ${VAPID_SUBJECT}
+      # Performance tuning for high load
+      UV_THREADPOOL_SIZE: 128
+      NODE_OPTIONS: "--max-old-space-size=2048"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    ports:
-      - "3001:3001"
+      rabbitmq:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+    deploy:
+      replicas: 4
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
 
   # Web Service
   web:
@@ -83,20 +155,49 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://api:3001/api/v1}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost/api/v1}
+        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-ws://localhost}
     restart: unless-stopped
     environment:
       NODE_ENV: production
+      # Performance tuning
+      NODE_OPTIONS: "--max-old-space-size=1024"
     depends_on:
       api:
         condition: service_healthy
-    ports:
-      - "3000:3000"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
       interval: 30s
       timeout: 10s
       retries: 3
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  # RabbitMQ Message Broker
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-carecircle}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-carecircle}
+      RABBITMQ_VM_MEMORY_HIGH_WATERMARK: 1GB
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 2G
 
   # Workers Service
   workers:
@@ -108,16 +209,25 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-carecircle}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-carecircle}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-carecircle}:${RABBITMQ_PASSWORD}@rabbitmq:5672/${RABBITMQ_VHOST:-carecircle}
       FIREBASE_SERVICE_ACCOUNT: ${FIREBASE_SERVICE_ACCOUNT}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
+      VAPID_SUBJECT: ${VAPID_SUBJECT}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     deploy:
-      replicas: 2
+      replicas: 3
+      resources:
+        limits:
+          memory: 512M
 
-  # Nginx Reverse Proxy (optional, for production)
+  # Nginx Reverse Proxy
   nginx:
     image: nginx:alpine
     restart: unless-stopped
@@ -130,11 +240,14 @@ services:
     depends_on:
       - api
       - web
-    profiles:
-      - production
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
 volumes:
   postgres_data:
   redis_data:
   minio_data:
+  rabbitmq_data:
 

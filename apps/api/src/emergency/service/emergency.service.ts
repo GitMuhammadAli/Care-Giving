@@ -139,12 +139,55 @@ export class EmergencyService {
     return updated;
   }
 
-  async getEmergencyInfo(careRecipientId: string): Promise<any> {
-    // This returns all critical info for emergency situations
-    // Would be cached in frontend for offline access
+  async getEmergencyInfo(careRecipientId: string, familyId: string): Promise<any> {
+    // Verify user has access to this family
+    const user = ContextHelper.getUser();
+    const member = await this.familyMemberRepository.findByFamilyAndUser(familyId, user.id);
+    if (!member) {
+      throw new NotFoundException('Care recipient not found');
+    }
+
+    // Get care recipient with all critical emergency info
+    const careRecipient = await this.alertRepository.manager.findOne('CareRecipient', {
+      where: { id: careRecipientId, familyId },
+      relations: ['doctors', 'emergencyContacts'],
+    });
+
+    if (!careRecipient) {
+      throw new NotFoundException('Care recipient not found');
+    }
+
+    // Get active medications for allergy/drug interaction info
+    const medications = await this.alertRepository.manager.find('Medication', {
+      where: { careRecipientId, isActive: true },
+      select: ['id', 'name', 'genericName', 'dosage', 'form', 'instructions'],
+    });
+
+    // Get active emergency alerts
+    const activeAlerts = await this.findActive(familyId);
+
     return {
-      // Would fetch from care recipient service
-      careRecipientId,
+      careRecipient: {
+        id: careRecipient.id,
+        firstName: careRecipient.firstName,
+        lastName: careRecipient.lastName,
+        preferredName: careRecipient.preferredName,
+        dateOfBirth: careRecipient.dateOfBirth,
+        photoUrl: careRecipient.photoUrl,
+        bloodType: careRecipient.bloodType,
+        allergies: careRecipient.allergies,
+        conditions: careRecipient.conditions,
+        notes: careRecipient.notes,
+        primaryHospital: careRecipient.primaryHospital,
+        hospitalAddress: careRecipient.hospitalAddress,
+        insuranceProvider: careRecipient.insuranceProvider,
+        insurancePolicyNo: careRecipient.insurancePolicyNo,
+      },
+      doctors: careRecipient.doctors || [],
+      emergencyContacts: careRecipient.emergencyContacts || [],
+      medications,
+      activeAlerts,
+      generatedAt: new Date().toISOString(),
     };
   }
 }

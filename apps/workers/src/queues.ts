@@ -36,6 +36,16 @@ export interface NotificationJob {
   priority?: 'normal' | 'high';
 }
 
+export interface RefillAlertJob {
+  medicationId: string;
+  medicationName: string;
+  currentSupply: number;
+  refillAt: number;
+  careRecipientId: string;
+  careRecipientName: string;
+  familyMemberUserIds: string[];
+}
+
 export const medicationQueue = new Queue<MedicationReminderJob>(
   QUEUE_NAMES.MEDICATION_REMINDERS,
   { connection: redisConnection }
@@ -53,6 +63,11 @@ export const shiftQueue = new Queue<ShiftReminderJob>(
 
 export const notificationQueue = new Queue<NotificationJob>(
   QUEUE_NAMES.NOTIFICATIONS,
+  { connection: redisConnection }
+);
+
+export const refillAlertQueue = new Queue<RefillAlertJob>(
+  QUEUE_NAMES.REFILL_ALERTS,
   { connection: redisConnection }
 );
 

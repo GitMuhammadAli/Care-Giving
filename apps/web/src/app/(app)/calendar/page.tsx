@@ -2,11 +2,15 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
 import { cn, formatDate } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/hooks/use-auth';
+import { appointmentsApi, Appointment } from '@/lib/api';
 import {
   Plus,
   ChevronLeft,
@@ -16,6 +20,7 @@ import {
   User,
   Bell,
   Repeat,
+  AlertTriangle,
 } from 'lucide-react';
 import { 
   format, 
@@ -29,46 +34,8 @@ import {
   isToday,
   addMonths,
   subMonths,
+  parseISO,
 } from 'date-fns';
-
-// Mock appointments
-const mockAppointments = [
-  {
-    id: 'apt-1',
-    title: 'Dr. Smith - Cardiology',
-    type: 'DOCTOR_VISIT',
-    date: new Date(),
-    startTime: '2:30 PM',
-    endTime: '3:30 PM',
-    location: 'Main Street Medical Center',
-    address: '123 Main St, Springfield',
-    transport: 'Sarah',
-    reminders: ['1 day', '1 hour'],
-  },
-  {
-    id: 'apt-2',
-    title: 'Physical Therapy',
-    type: 'PHYSICAL_THERAPY',
-    date: new Date(),
-    startTime: '4:00 PM',
-    endTime: '5:00 PM',
-    location: 'PT Plus',
-    address: '456 Oak Ave, Springfield',
-    transport: 'Mike',
-    recurring: 'Weekly on Wednesdays',
-  },
-  {
-    id: 'apt-3',
-    title: 'Lab Work',
-    type: 'LAB_WORK',
-    date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-    startTime: '9:00 AM',
-    endTime: '9:30 AM',
-    location: 'Quest Diagnostics',
-    address: '789 Health Blvd',
-    transport: 'Sarah',
-  },
-];
 
 const appointmentColors: Record<string, { bg: string; text: string }> = {
   DOCTOR_VISIT: { bg: 'bg-info-light', text: 'text-info' },
@@ -81,8 +48,18 @@ const appointmentColors: Record<string, { bg: string; text: string }> = {
 };
 
 export default function CalendarPage() {
+  const { user } = useAuth();
+  const careRecipientId = user?.families?.[0]?.careRecipients?.[0]?.id;
+  
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
+
+  // Fetch all appointments for the care recipient
+  const { data: appointments = [], isLoading, error } = useQuery({
+    queryKey: ['appointments', careRecipientId],
+    queryFn: () => appointmentsApi.list(careRecipientId!),
+    enabled: !!careRecipientId,
+  });
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -90,12 +67,34 @@ export default function CalendarPage() {
   const calendarEnd = endOfWeek(monthEnd);
   const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
-  const selectedAppointments = mockAppointments.filter((apt) =>
-    isSameDay(apt.date, selectedDate)
+  const selectedAppointments = appointments.filter((apt) =>
+    isSameDay(parseISO(apt.startTime), selectedDate)
   );
 
   const getDayAppointments = (day: Date) =>
-    mockAppointments.filter((apt) => isSameDay(apt.date, day));
+    appointments.filter((apt) => isSameDay(parseISO(apt.startTime), day));
+
+  if (!careRecipientId) {
+    return (
+      <div className="text-center py-12">
+        <AlertTriangle className="w-12 h-12 text-warning mx-auto mb-4" />
+        <h2 className="text-xl font-semibold text-text-primary mb-2">No Care Recipient Selected</h2>
+        <p className="text-text-secondary">Please select a care recipient to view appointments.</p>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="pb-6">
+        <PageHeader title="Calendar" subtitle="Appointments and schedules" />
+        <div className="px-4 sm:px-6 py-6 space-y-6">
+          <Skeleton className="h-80 w-full" />
+          <Skeleton className="h-40 w-full" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pb-6">
@@ -212,6 +211,8 @@ export default function CalendarPage() {
             <div className="space-y-4">
               {selectedAppointments.map((apt, index) => {
                 const colors = appointmentColors[apt.type] || appointmentColors.OTHER;
+                const startTime = parseISO(apt.startTime);
+                const endTime = apt.endTime ? parseISO(apt.endTime) : null;
                 
                 return (
                   <motion.div
@@ -230,37 +231,48 @@ export default function CalendarPage() {
                             <div>
                               <h4 className="font-semibold text-text-primary">{apt.title}</h4>
                               <p className="text-sm text-text-secondary mt-0.5">
-                                {apt.startTime} - {apt.endTime}
+                                {format(startTime, 'h:mm a')}
+                                {endTime && ` - ${format(endTime, 'h:mm a')}`}
                               </p>
                             </div>
-                            {apt.recurring && (
+                            {apt.recurrence && (
                               <Badge size="sm" variant="default">
                                 <Repeat className="w-3 h-3 mr-1" />
-                                Weekly
+                                {apt.recurrence}
                               </Badge>
                             )}
                           </div>
 
                           <div className="mt-3 space-y-2 text-sm">
-                            <div className="flex items-center gap-2 text-text-secondary">
-                              <MapPin className="w-4 h-4 text-text-tertiary" />
-                              <span>{apt.location}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-text-secondary">
-                              <User className="w-4 h-4 text-text-tertiary" />
-                              <span>Transport: {apt.transport}</span>
-                            </div>
-                            {apt.reminders && (
+                            {apt.location && (
+                              <div className="flex items-center gap-2 text-text-secondary">
+                                <MapPin className="w-4 h-4 text-text-tertiary" />
+                                <span>{apt.location}</span>
+                              </div>
+                            )}
+                            {apt.transportAssignment && (
+                              <div className="flex items-center gap-2 text-text-secondary">
+                                <User className="w-4 h-4 text-text-tertiary" />
+                                <span>Transport: {apt.transportAssignment.assignedTo.fullName}</span>
+                              </div>
+                            )}
+                            {apt.reminderMinutes && apt.reminderMinutes.length > 0 && (
                               <div className="flex items-center gap-2 text-text-secondary">
                                 <Bell className="w-4 h-4 text-text-tertiary" />
-                                <span>Reminder: {apt.reminders.join(', ')}</span>
+                                <span>
+                                  Reminders: {apt.reminderMinutes.map(m => 
+                                    m >= 60 ? `${m / 60}h` : `${m}m`
+                                  ).join(', ')} before
+                                </span>
                               </div>
                             )}
                           </div>
 
                           <div className="flex gap-2 mt-4">
                             <Button variant="secondary" size="sm">Edit</Button>
-                            <Button variant="ghost" size="sm">Cancel</Button>
+                            {apt.status !== 'CANCELLED' && (
+                              <Button variant="ghost" size="sm">Cancel</Button>
+                            )}
                           </div>
                         </div>
                       </div>

@@ -73,4 +73,13 @@ export class EmergencyController {
   cancel(@Param('id', ParseUUIDPipe) id: string) {
     return this.emergencyService.cancel(id);
   }
+
+  @Get(':careRecipientId/info')
+  @ApiOperation({ summary: 'Get complete emergency info for care recipient (for offline caching)' })
+  getEmergencyInfo(
+    @Param('familyId', ParseUUIDPipe) familyId: string,
+    @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
+  ) {
+    return this.emergencyService.getEmergencyInfo(careRecipientId, familyId);
+  }
 }

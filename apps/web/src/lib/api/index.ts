@@ -6,4 +6,6 @@ export * from './appointments';
 export * from './timeline';
 export * from './family';
 export * from './emergency';
+export * from './documents';
+export * from './shifts';
 

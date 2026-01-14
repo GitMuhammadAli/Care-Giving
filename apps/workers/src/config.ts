@@ -9,6 +9,7 @@ export const QUEUE_NAMES = {
   APPOINTMENT_REMINDERS: 'appointment-reminders',
   SHIFT_REMINDERS: 'shift-reminders',
   NOTIFICATIONS: 'notifications',
+  REFILL_ALERTS: 'refill-alerts',
 } as const;
 
 export const config = {

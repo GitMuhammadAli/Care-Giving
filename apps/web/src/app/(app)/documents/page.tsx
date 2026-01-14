@@ -1,13 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
+import { useAuth } from '@/hooks/use-auth';
+import { documentsApi, Document } from '@/lib/api';
 import {
   Plus,
   FileText,
@@ -23,97 +27,121 @@ import {
   AlertCircle,
   FolderOpen,
 } from 'lucide-react';
+import { differenceInDays, parseISO } from 'date-fns';
 
 const documentCategories = [
   { value: 'all', label: 'All Documents', icon: FolderOpen },
-  { value: 'INSURANCE', label: 'Insurance', icon: CreditCard },
+  { value: 'INSURANCE_CARD', label: 'Insurance', icon: CreditCard },
   { value: 'MEDICAL_RECORD', label: 'Medical Records', icon: FileText },
-  { value: 'LEGAL', label: 'Legal', icon: Scale },
-  { value: 'ID', label: 'ID Documents', icon: Shield },
+  { value: 'POWER_OF_ATTORNEY', label: 'Legal', icon: Scale },
+  { value: 'PHOTO_ID', label: 'ID Documents', icon: Shield },
   { value: 'PRESCRIPTION', label: 'Prescriptions', icon: Stethoscope },
 ];
 
-const mockDocuments = [
-  {
-    id: 'doc-1',
-    name: 'BlueCross Insurance Card',
-    type: 'INSURANCE',
-    mimeType: 'image/jpeg',
-    size: '245 KB',
-    uploadedAt: new Date(Date.now() - 30 * 24 * 60 * 60000).toISOString(),
-    uploadedBy: 'Sarah Thompson',
-    expiresAt: new Date(Date.now() + 180 * 24 * 60 * 60000).toISOString(),
-  },
-  {
-    id: 'doc-2',
-    name: 'Medicare Card',
-    type: 'INSURANCE',
-    mimeType: 'image/jpeg',
-    size: '198 KB',
-    uploadedAt: new Date(Date.now() - 45 * 24 * 60 * 60000).toISOString(),
-    uploadedBy: 'Mike Thompson',
-    expiresAt: null,
-  },
-  {
-    id: 'doc-3',
-    name: 'Last Cardiology Visit Summary',
-    type: 'MEDICAL_RECORD',
-    mimeType: 'application/pdf',
-    size: '1.2 MB',
-    uploadedAt: new Date(Date.now() - 7 * 24 * 60 * 60000).toISOString(),
-    uploadedBy: 'Sarah Thompson',
-    expiresAt: null,
-  },
-  {
-    id: 'doc-4',
-    name: 'Power of Attorney',
-    type: 'LEGAL',
-    mimeType: 'application/pdf',
-    size: '2.8 MB',
-    uploadedAt: new Date(Date.now() - 90 * 24 * 60 * 60000).toISOString(),
-    uploadedBy: 'Sarah Thompson',
-    expiresAt: null,
-  },
-  {
-    id: 'doc-5',
-    name: 'Driver License',
-    type: 'ID',
-    mimeType: 'image/jpeg',
-    size: '156 KB',
-    uploadedAt: new Date(Date.now() - 60 * 24 * 60 * 60000).toISOString(),
-    uploadedBy: 'Mike Thompson',
-    expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60000).toISOString(),
-    expiringSoon: true,
-  },
-  {
-    id: 'doc-6',
-    name: 'Metformin Prescription',
-    type: 'PRESCRIPTION',
-    mimeType: 'application/pdf',
-    size: '89 KB',
-    uploadedAt: new Date(Date.now() - 14 * 24 * 60 * 60000).toISOString(),
-    uploadedBy: 'Sarah Thompson',
-    expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60000).toISOString(),
-  },
-];
-
 const categoryConfig: Record<string, { icon: typeof FileText; color: string; bgColor: string }> = {
-  INSURANCE: { icon: CreditCard, color: 'text-info', bgColor: 'bg-info-light' },
+  INSURANCE_CARD: { icon: CreditCard, color: 'text-info', bgColor: 'bg-info-light' },
   MEDICAL_RECORD: { icon: FileText, color: 'text-accent-primary', bgColor: 'bg-accent-primary-light' },
-  LEGAL: { icon: Scale, color: 'text-chart-purple', bgColor: 'bg-chart-purple/10' },
-  ID: { icon: Shield, color: 'text-success', bgColor: 'bg-success-light' },
+  LAB_RESULT: { icon: FileText, color: 'text-accent-primary', bgColor: 'bg-accent-primary-light' },
+  POWER_OF_ATTORNEY: { icon: Scale, color: 'text-chart-purple', bgColor: 'bg-chart-purple/10' },
+  LIVING_WILL: { icon: Scale, color: 'text-chart-purple', bgColor: 'bg-chart-purple/10' },
+  DNR: { icon: Scale, color: 'text-chart-purple', bgColor: 'bg-chart-purple/10' },
+  PHOTO_ID: { icon: Shield, color: 'text-success', bgColor: 'bg-success-light' },
   PRESCRIPTION: { icon: Stethoscope, color: 'text-accent-warm', bgColor: 'bg-accent-warm-light' },
   OTHER: { icon: FileText, color: 'text-text-secondary', bgColor: 'bg-bg-muted' },
 };
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export default function DocumentsPage() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const careRecipientId = user?.families?.[0]?.careRecipients?.[0]?.id;
+
   const [category, setCategory] = useState('all');
 
-  const filteredDocuments = mockDocuments.filter((doc) =>
-    category === 'all' ? true : doc.type === category
+  // Fetch all documents
+  const { data: documents = [], isLoading } = useQuery({
+    queryKey: ['documents', careRecipientId],
+    queryFn: () => documentsApi.list(careRecipientId!),
+    enabled: !!careRecipientId,
+  });
+
+  // Filter documents by category
+  const filteredDocuments = useMemo(() => 
+    documents.filter((doc) => category === 'all' ? true : doc.type === category),
+    [documents, category]
   );
 
-  const expiringDocuments = mockDocuments.filter((doc) => doc.expiringSoon);
+  // Find documents expiring within 60 days
+  const expiringDocuments = useMemo(() => 
+    documents.filter((doc) => {
+      if (!doc.expiresAt) return false;
+      const daysUntilExpiry = differenceInDays(parseISO(doc.expiresAt), new Date());
+      return daysUntilExpiry > 0 && daysUntilExpiry <= 60;
+    }),
+    [documents]
+  );
+
+  // Get total storage used
+  const totalSize = useMemo(() => 
+    documents.reduce((sum, doc) => sum + doc.sizeBytes, 0),
+    [documents]
+  );
+
+  const handleViewDocument = async (docId: string) => {
+    try {
+      const { url } = await documentsApi.getSignedUrl(careRecipientId!, docId);
+      window.open(url, '_blank');
+    } catch (error) {
+      console.error('Failed to get document URL:', error);
+    }
+  };
+
+  const handleDownloadDocument = async (docId: string, docName: string) => {
+    try {
+      const { url } = await documentsApi.getSignedUrl(careRecipientId!, docId);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = docName;
+      link.click();
+    } catch (error) {
+      console.error('Failed to download document:', error);
+    }
+  };
+
+  if (!careRecipientId) {
+    return (
+      <div className="text-center py-12">
+        <AlertCircle className="w-12 h-12 text-warning mx-auto mb-4" />
+        <h2 className="text-xl font-semibold text-text-primary mb-2">No Care Recipient Selected</h2>
+        <p className="text-text-secondary">Please select a care recipient to view documents.</p>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="pb-6">
+        <PageHeader title="Documents" subtitle="Secure document vault" />
+        <div className="px-4 sm:px-6 py-6 space-y-6">
+          <div className="flex gap-2 overflow-x-auto">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} className="h-10 w-32 rounded-full flex-shrink-0" />
+            ))}
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Skeleton key={i} className="h-40 w-full" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pb-6">
@@ -154,8 +182,8 @@ export default function DocumentsPage() {
             const Icon = cat.icon;
             const isActive = category === cat.value;
             const count = cat.value === 'all'
-              ? mockDocuments.length
-              : mockDocuments.filter((d) => d.type === cat.value).length;
+              ? documents.length
+              : documents.filter((d) => d.type === cat.value).length;
 
             return (
               <button
@@ -196,6 +224,10 @@ export default function DocumentsPage() {
             {filteredDocuments.map((doc, index) => {
               const config = categoryConfig[doc.type] || categoryConfig.OTHER;
               const Icon = config.icon;
+              const daysUntilExpiry = doc.expiresAt 
+                ? differenceInDays(parseISO(doc.expiresAt), new Date())
+                : null;
+              const expiringSoon = daysUntilExpiry !== null && daysUntilExpiry > 0 && daysUntilExpiry <= 60;
 
               return (
                 <motion.div
@@ -212,26 +244,38 @@ export default function DocumentsPage() {
                       <div className="flex-1 min-w-0">
                         <h4 className="font-medium text-text-primary truncate">{doc.name}</h4>
                         <p className="text-sm text-text-secondary mt-0.5">
-                          {doc.size} • {doc.mimeType.split('/')[1].toUpperCase()}
+                          {formatFileSize(doc.sizeBytes)} • {doc.mimeType.split('/')[1]?.toUpperCase() || 'FILE'}
                         </p>
                         <p className="text-xs text-text-tertiary mt-1">
-                          Uploaded {formatRelativeTime(doc.uploadedAt)}
+                          Uploaded {formatRelativeTime(doc.createdAt)}
                         </p>
                       </div>
                     </div>
 
-                    {doc.expiringSoon && (
+                    {expiringSoon && daysUntilExpiry && (
                       <div className="mt-3 flex items-center gap-1.5 text-xs text-warning">
                         <Clock className="w-3.5 h-3.5" />
-                        <span>Expires in 60 days</span>
+                        <span>Expires in {daysUntilExpiry} days</span>
                       </div>
                     )}
 
                     <div className="flex gap-2 mt-4 pt-4 border-t border-border-subtle">
-                      <Button variant="ghost" size="sm" leftIcon={<Eye className="w-4 h-4" />} className="flex-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        leftIcon={<Eye className="w-4 h-4" />} 
+                        className="flex-1"
+                        onClick={() => handleViewDocument(doc.id)}
+                      >
                         View
                       </Button>
-                      <Button variant="ghost" size="sm" leftIcon={<Download className="w-4 h-4" />} className="flex-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        leftIcon={<Download className="w-4 h-4" />} 
+                        className="flex-1"
+                        onClick={() => handleDownloadDocument(doc.id, doc.name)}
+                      >
                         Download
                       </Button>
                       <button className="p-2 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-bg-muted transition-colors">
@@ -256,7 +300,7 @@ export default function DocumentsPage() {
               </div>
             </div>
             <p className="text-sm text-text-secondary">
-              6 documents • 4.7 MB used
+              {documents.length} document{documents.length !== 1 ? 's' : ''} • {formatFileSize(totalSize)} used
             </p>
           </CardContent>
         </Card>
