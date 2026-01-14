@@ -18,8 +18,23 @@ export default function ForgotPasswordPage() {
     setIsLoading(true);
 
     try {
-      // TODO: Implement actual password reset
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/forgot-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send reset email');
+      }
+
+      // Always show success to prevent email enumeration
+      setIsSubmitted(true);
+    } catch (error) {
+      console.error('Password reset error:', error);
+      // Still show success message for security (prevent email enumeration)
       setIsSubmitted(true);
     } finally {
       setIsLoading(false);

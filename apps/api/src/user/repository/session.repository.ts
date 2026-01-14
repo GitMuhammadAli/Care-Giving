@@ -36,6 +36,13 @@ export class SessionRepository extends Repository<Session> {
     await this.getManager().update(Session, id, { lastUsedAt: new Date() });
   }
 
+  async updateRefreshToken(id: string, newRefreshToken: string): Promise<void> {
+    await this.getManager().update(Session, id, {
+      refreshToken: newRefreshToken,
+      lastUsedAt: new Date(),
+    });
+  }
+
   async invalidateSession(refreshToken: string): Promise<void> {
     await this.getManager().update(
       Session,

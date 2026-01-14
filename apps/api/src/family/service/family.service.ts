@@ -171,6 +171,34 @@ export class FamilyService {
     await this.invitationRepository.updateStatus(invitation.id, InvitationStatus.DECLINED);
   }
 
+  async getInvitationDetails(token: string): Promise<{
+    id: string;
+    familyName: string;
+    inviterName: string;
+    role: string;
+    email: string;
+    expiresAt: Date;
+  }> {
+    const invitation = await this.invitationRepository.findByTokenWithDetails(token);
+
+    if (!invitation) {
+      throw new NotFoundException('Invitation not found');
+    }
+
+    if (!invitation.isPending()) {
+      throw new BadRequestException('Invitation is expired or already used');
+    }
+
+    return {
+      id: invitation.id,
+      familyName: invitation.family?.name || 'Unknown Family',
+      inviterName: invitation.invitedBy?.fullName || 'A family member',
+      role: invitation.role,
+      email: invitation.email,
+      expiresAt: invitation.expiresAt,
+    };
+  }
+
   async cancelInvitation(familyId: string, invitationId: string): Promise<void> {
     await this.ensureAdminAccess(familyId);
 
@@ -327,6 +355,71 @@ export class FamilyService {
     }
 
     return member;
+  }
+
+  /**
+   * Family Admin Password Reset
+   * Allows family admin to reset password for a family member (especially useful for elderly)
+   */
+  async resetMemberPassword(
+    familyId: string,
+    targetUserId: string,
+  ): Promise<{ message: string }> {
+    const adminUserId = ContextHelper.getUserId();
+
+    // 1. Verify admin has permission
+    const adminMember = await this.memberRepository.findOne({
+      where: {
+        userId: adminUserId,
+        familyId,
+        role: FamilyRole.ADMIN,
+      },
+      relations: ['user'],
+    });
+
+    if (!adminMember) {
+      throw new ForbiddenException('Only family admins can reset passwords');
+    }
+
+    // 2. Verify target is in same family
+    const targetMember = await this.memberRepository.findOne({
+      where: {
+        userId: targetUserId,
+        familyId,
+      },
+      relations: ['user'],
+    });
+
+    if (!targetMember) {
+      throw new NotFoundException('Family member not found');
+    }
+
+    // Can't reset own password this way
+    if (targetUserId === adminUserId) {
+      throw new BadRequestException('Use change password feature to change your own password');
+    }
+
+    // 3. Generate temporary password (meets requirements: 8+ chars, uppercase, number)
+    const tempPassword = `Care${crypto.randomBytes(4).toString('hex')}!1`;
+
+    // 4. Update user password
+    const user = targetMember.user;
+    user.password = tempPassword;
+    await user.hashPassword();
+    user.passwordChangedAt = new Date();
+    await this.userRepository.save(user);
+
+    // 5. Send temp password via email
+    await this.mailService.sendPasswordResetByAdmin(
+      user.email,
+      tempPassword,
+      user.fullName,
+      adminMember.user?.fullName || 'A family admin',
+    );
+
+    return {
+      message: 'Password reset successfully. Temporary password sent via email.',
+    };
   }
 }
 

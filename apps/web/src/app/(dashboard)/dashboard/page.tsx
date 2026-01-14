@@ -206,11 +206,18 @@ const Dashboard = () => {
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMember.email) return;
+    
+    // Validate familyId exists before inviting
+    if (!familyId) {
+      toast.error('No family found. Please create a family first.');
+      return;
+    }
 
     try {
       await inviteMember.mutateAsync({
         email: newMember.email,
         role: newMember.role,
+        familyId, // Pass familyId explicitly
       });
       setNewMember({ name: '', email: '', role: 'CAREGIVER' });
       setAddMemberOpen(false);

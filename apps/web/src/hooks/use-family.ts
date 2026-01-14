@@ -50,13 +50,23 @@ export function useCreateFamily() {
   });
 }
 
-export function useInviteMember(familyId: string) {
+export function useInviteMember(familyId?: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: InviteMemberInput) => familyApi.invite(familyId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['families', familyId, 'invitations'] });
+    mutationFn: (data: InviteMemberInput & { familyId?: string }) => {
+      // Use familyId from data if provided, otherwise use the one from hook
+      const targetFamilyId = data.familyId || familyId;
+      if (!targetFamilyId) {
+        throw new Error('Family ID is required');
+      }
+      const { familyId: _, ...inviteData } = data;
+      return familyApi.invite(targetFamilyId, inviteData);
+    },
+    onSuccess: (_, variables) => {
+      const targetFamilyId = variables.familyId || familyId;
+      queryClient.invalidateQueries({ queryKey: ['families', targetFamilyId, 'invitations'] });
+      queryClient.invalidateQueries({ queryKey: ['families', targetFamilyId, 'members'] });
       toast.success('Invitation sent');
     },
     onError: (error: Error) => {

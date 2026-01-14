@@ -157,4 +157,25 @@ export class MailService {
       },
     });
   }
+
+  async sendPasswordResetByAdmin(
+    email: string,
+    tempPassword: string,
+    userName: string,
+    adminName: string,
+  ): Promise<void> {
+    const loginUrl = `${this.configService.get('app.frontendUrl')}/login`;
+
+    await this.send({
+      to: email,
+      subject: 'Your Password Was Reset - CareCircle',
+      template: 'password-reset-by-admin',
+      context: {
+        userName,
+        adminName,
+        tempPassword,
+        loginUrl,
+      },
+    });
+  }
 }

@@ -20,6 +20,13 @@ export class FamilyInvitationRepository extends Repository<FamilyInvitation> {
     });
   }
 
+  async findByTokenWithDetails(token: string): Promise<FamilyInvitation | null> {
+    return this.getManager().findOne(FamilyInvitation, {
+      where: { token },
+      relations: ['family', 'invitedBy'],
+    });
+  }
+
   async findPendingByEmail(email: string): Promise<FamilyInvitation[]> {
     return this.getManager().find(FamilyInvitation, {
       where: {

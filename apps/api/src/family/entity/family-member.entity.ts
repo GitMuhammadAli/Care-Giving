@@ -23,7 +23,7 @@ export class FamilyMember extends BaseEntity {
   @Column({ type: 'uuid' })
   userId: string;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, 'familyMemberships', { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;
 

@@ -33,5 +33,16 @@ export class PushToken extends BaseEntityWithoutSoftDelete {
 
   @Column({ nullable: true, type: 'timestamptz' })
   lastUsedAt?: Date;
+
+  // Web Push Subscription (for Platform.WEB only)
+  @Column({ type: 'jsonb', nullable: true })
+  subscription?: {
+    endpoint: string;
+    expirationTime?: number | null;
+    keys: {
+      p256dh: string;
+      auth: string;
+    };
+  };
 }
 

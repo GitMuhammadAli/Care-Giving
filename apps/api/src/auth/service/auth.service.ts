@@ -184,10 +184,14 @@ export class AuthService {
       throw new UnauthorizedException('User not found or inactive');
     }
 
-    // Update session last used
+    // Generate new tokens (token rotation for security)
+    const newTokens = await this.generateTokens(user);
+
+    // Update session with new refresh token (token rotation)
+    await this.sessionRepository.updateRefreshToken(session.id, newTokens.refreshToken);
     await this.sessionRepository.updateLastUsed(session.id);
 
-    return this.generateTokens(user);
+    return newTokens;
   }
 
   async logout(refreshToken: string): Promise<void> {
@@ -287,13 +291,28 @@ export class AuthService {
   }
 
   async getProfile(userId: string) {
-    const user = await this.userRepository.findById(userId);
+    const user = await this.userRepository.findByIdWithFamilies(userId);
 
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
 
-    return this.sanitizeUser(user);
+    // Transform familyMemberships to families array for frontend
+    const userWithFamilies = this.sanitizeUser(user);
+    
+    // Map familyMemberships to a cleaner families structure
+    if (user.familyMemberships && user.familyMemberships.length > 0) {
+      (userWithFamilies as any).families = user.familyMemberships.map((membership: any) => ({
+        id: membership.family.id,
+        name: membership.family.name,
+        role: membership.role,
+        careRecipients: membership.family.careRecipients || [],
+      }));
+    } else {
+      (userWithFamilies as any).families = [];
+    }
+
+    return userWithFamilies;
   }
 
   private async generateTokens(user: User, rememberMe = false): Promise<TokenPair> {

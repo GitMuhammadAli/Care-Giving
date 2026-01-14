@@ -41,16 +41,13 @@ export function PublicRoute({
     }
   }, [isInitialized, isLoading, isAuthenticated, router, returnUrl, redirectTo]);
 
-  // Show loading while auth is being initialized
-  if (!isInitialized || isLoading) {
+  // Show loading while auth is being initialized OR while authenticated (redirecting)
+  // This prevents any flicker - authenticated users only see loading, never the page content
+  if (!isInitialized || isLoading || isAuthenticated) {
     return loadingComponent || <AuthLoadingSpinner />;
   }
 
-  // Already authenticated - show nothing while redirecting
-  if (isAuthenticated) {
-    return null;
-  }
-
+  // Only render children for unauthenticated users
   return <>{children}</>;
 }
 

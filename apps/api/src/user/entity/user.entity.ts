@@ -13,6 +13,9 @@ import { PushToken } from './push-token.entity';
 import * as argon2 from 'argon2';
 import { randomUUID } from 'crypto';
 
+// Import FamilyMember type for relation (lazy loaded to avoid circular deps)
+import type { FamilyMember } from '../../family/entity/family-member.entity';
+
 export enum UserStatus {
   PENDING = 'PENDING',
   ACTIVE = 'ACTIVE',
@@ -98,6 +101,10 @@ export class User {
 
   @OneToMany(() => PushToken, (token) => token.user)
   pushTokens: PushToken[];
+
+  // Family memberships - loaded lazily to avoid circular dependency
+  @OneToMany('FamilyMember', 'user')
+  familyMemberships?: FamilyMember[];
 
   @Column({ type: 'jsonb', nullable: true })
   preferences?: {

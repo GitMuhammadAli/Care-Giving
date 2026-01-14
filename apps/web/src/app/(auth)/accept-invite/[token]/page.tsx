@@ -43,7 +43,8 @@ export default function AcceptInvitePage() {
 
   const fetchInvitation = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/families/invitations/${token}/details`);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+      const response = await fetch(`${apiUrl}/families/invitations/${token}/details`);
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.message || 'Invalid invitation');
@@ -59,15 +60,16 @@ export default function AcceptInvitePage() {
 
   const handleAccept = async () => {
     if (!isAuthenticated) {
-      // Store token and redirect to login
+      // Store token and redirect to login with returnUrl
       localStorage.setItem('pendingInviteToken', token);
-      router.push(`/login?redirect=/accept-invite/${token}`);
+      const returnUrl = encodeURIComponent(`/accept-invite/${token}`);
+      router.push(`/login?returnUrl=${returnUrl}`);
       return;
     }
 
     setStatus('loading');
     try {
-      await api.post(`/families/invitations/${token}/accept`);
+      await api.post(`/families/invitations/${token}/accept`, {});
       setStatus('accepted');
       setTimeout(() => router.push('/dashboard'), 2000);
     } catch (err: any) {

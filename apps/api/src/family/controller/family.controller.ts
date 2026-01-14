@@ -28,6 +28,7 @@ import { FamilyAccessGuard } from '../../system/guard/family-access.guard';
 import { GetUser } from '../../system/decorator/current-user.decorator';
 import { FamilyAccess } from '../../system/decorator/family-access.decorator';
 import { CurrentUser } from '../../system/helper/context.helper';
+import { Public } from '../../system/decorator/public.decorator';
 
 @ApiTags('families')
 @ApiBearerAuth()
@@ -156,7 +157,17 @@ export class FamilyController {
     await this.familyService.cancelInvitation(familyId, invitationId);
   }
 
-  // Accept/Decline (no family access check needed)
+  // Public invitation details (no auth required - for accept-invite page)
+  @Get('invitations/:token/details')
+  @Public()
+  @ApiOperation({ summary: 'Get invitation details (public)' })
+  @ApiResponse({ status: 200, description: 'Invitation details' })
+  @ApiResponse({ status: 404, description: 'Invitation not found' })
+  async getInvitationDetails(@Param('token') token: string) {
+    return this.familyService.getInvitationDetails(token);
+  }
+
+  // Accept/Decline (requires auth)
   @Post('invitations/:token/accept')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Accept invitation' })
@@ -169,6 +180,21 @@ export class FamilyController {
   @ApiOperation({ summary: 'Decline invitation' })
   async declineInvitation(@Param('token') token: string) {
     await this.familyService.declineInvitation(token);
+  }
+
+  // Admin password reset for family members (e.g., elderly care)
+  @Post(':familyId/members/:userId/reset-password')
+  @FamilyAccess({ roles: ['ADMIN'] })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reset password for family member (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Password reset successfully' })
+  @ApiResponse({ status: 403, description: 'Admin access required' })
+  @ApiResponse({ status: 404, description: 'Family member not found' })
+  async resetMemberPassword(
+    @Param('familyId') familyId: string,
+    @Param('userId') userId: string,
+  ) {
+    return this.familyService.resetMemberPassword(familyId, userId);
   }
 }
 

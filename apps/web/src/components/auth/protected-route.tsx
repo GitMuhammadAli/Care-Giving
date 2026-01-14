@@ -45,14 +45,10 @@ export function ProtectedRoute({
     }
   }, [isInitialized, isLoading, isAuthenticated, router, pathname, redirectTo]);
 
-  // Show loading while auth is being initialized
-  if (!isInitialized || isLoading) {
+  // Show loading while auth is being initialized OR while unauthenticated (redirecting)
+  // This prevents any flicker - unauthenticated users only see loading, never the protected content
+  if (!isInitialized || isLoading || !isAuthenticated || !user) {
     return loadingComponent || <AuthLoadingSpinner />;
-  }
-
-  // Not authenticated - show nothing while redirecting
-  if (!isAuthenticated || !user) {
-    return null;
   }
 
   // Check role-based access if roles are specified

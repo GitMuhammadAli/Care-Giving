@@ -27,6 +27,13 @@ export class UserRepository extends Repository<User> {
     });
   }
 
+  async findByIdWithFamilies(id: string): Promise<User | null> {
+    return this.getManager().findOne(User, {
+      where: { id },
+      relations: ['familyMemberships', 'familyMemberships.family', 'familyMemberships.family.careRecipients'],
+    });
+  }
+
   async findActiveById(id: string): Promise<User | null> {
     return this.getManager().findOne(User, {
       where: { id, status: UserStatus.ACTIVE },
@@ -92,6 +99,62 @@ export class UserRepository extends Repository<User> {
       failedLoginAttempts: 0,
       lockedUntil: null,
     });
+  }
+
+  // Web Push Subscription methods
+  async savePushSubscription(userId: string, subscription: any): Promise<void> {
+    const PushToken = (await import('../entity/push-token.entity')).PushToken;
+    const Platform = (await import('../entity/push-token.entity')).Platform;
+
+    // Check if subscription already exists
+    const existing = await this.getManager().findOne(PushToken, {
+      where: { token: subscription.endpoint },
+    });
+
+    if (existing) {
+      // Update existing subscription
+      await this.getManager().update(PushToken, existing.id, {
+        subscription,
+        isActive: true,
+        lastUsedAt: new Date(),
+      });
+    } else {
+      // Create new subscription
+      const pushToken = this.getManager().create(PushToken, {
+        userId,
+        token: subscription.endpoint,
+        platform: Platform.WEB,
+        subscription,
+        isActive: true,
+        lastUsedAt: new Date(),
+      });
+      await this.getManager().save(PushToken, pushToken);
+    }
+  }
+
+  async getPushSubscriptions(userId: string): Promise<any[]> {
+    const PushToken = (await import('../entity/push-token.entity')).PushToken;
+    const Platform = (await import('../entity/push-token.entity')).Platform;
+
+    const tokens = await this.getManager().find(PushToken, {
+      where: {
+        userId,
+        platform: Platform.WEB,
+        isActive: true,
+      },
+    });
+
+    return tokens.map((token) => token.subscription).filter(Boolean);
+  }
+
+  async removePushSubscription(userId: string, endpoint: string): Promise<void> {
+    const PushToken = (await import('../entity/push-token.entity')).PushToken;
+
+    await this.getManager().update(
+      PushToken,
+      { userId, token: endpoint },
+      { isActive: false }
+    );
   }
 }
 

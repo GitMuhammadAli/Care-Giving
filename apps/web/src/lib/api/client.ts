@@ -38,7 +38,16 @@ class ApiClient {
     return !!this.accessToken;
   }
 
+  private isRefreshing = false; // Prevent recursive refresh loops
+
   private async refreshAccessToken(): Promise<void> {
+    // Prevent infinite loop if refresh itself fails
+    if (this.isRefreshing) {
+      throw new ApiError(401, { message: 'Already refreshing' });
+    }
+
+    this.isRefreshing = true;
+
     try {
       const response = await fetch(`${API_URL}/auth/refresh`, {
         method: 'POST',
@@ -56,6 +65,8 @@ class ApiClient {
     } catch (error) {
       this.clearTokens();
       throw error;
+    } finally {
+      this.isRefreshing = false;
     }
   }
 

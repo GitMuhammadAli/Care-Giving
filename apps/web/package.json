@@ -34,6 +34,8 @@
     "react-hook-form": "^7.49.2",
     "react-hot-toast": "^2.4.1",
     "socket.io-client": "^4.7.2",
+    "stream-chat": "^9.28.0",
+    "stream-chat-react": "^13.13.3",
     "tailwind-merge": "^2.2.0",
     "zod": "^3.22.4",
     "zustand": "^4.4.7"
