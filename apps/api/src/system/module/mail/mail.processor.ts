@@ -289,19 +289,36 @@ export class MailProcessor {
           <html>
           <head><meta charset="utf-8"></head>
           <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
-            <div style="background: #fff; padding: 30px; border: 1px solid #E8E7E3; border-radius: 12px; text-align: center;">
-              <h1 style="color: #1A1A18;">Verify Your Email</h1>
-              <p style="color: #5C5C58;">Hi ${ctx.name},</p>
-              <p style="color: #5C5C58;">Your verification code is:</p>
-              <div style="background: #F5F5F3; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #2D5A4A;">${ctx.otp}</span>
+            <div style="background: linear-gradient(135deg, #2D5A4A 0%, #3D8B6E 100%); padding: 30px; border-radius: 12px 12px 0 0;">
+              <h1 style="color: white; margin: 0;">Verify Your Email ✉️</h1>
+            </div>
+            <div style="background: #fff; padding: 30px; border: 1px solid #E8E7E3; border-top: none; border-radius: 0 0 12px 12px;">
+              <p style="font-size: 16px; color: #1A1A18;">Hi ${ctx.name},</p>
+              <p style="font-size: 16px; color: #5C5C58;">Thank you for registering with CareCircle! To complete your registration, please verify your email address.</p>
+
+              <div style="background: #E8F5EF; padding: 20px; border-radius: 8px; margin: 25px 0; text-align: center;">
+                <p style="color: #5C5C58; margin: 0 0 10px 0; font-size: 14px;">Your verification code:</p>
+                <span style="font-size: 36px; font-weight: bold; letter-spacing: 10px; color: #2D5A4A;">${ctx.otp}</span>
               </div>
-              <p style="color: #8A8A86; font-size: 14px;">This code expires in 5 minutes.</p>
+
+              <p style="font-size: 16px; color: #5C5C58; text-align: center; margin: 20px 0;">— OR —</p>
+
+              <div style="text-align: center; margin: 25px 0;">
+                <a href="${ctx.verificationUrl}" style="display: inline-block; background: #2D5A4A; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 500;">Click to Verify Email</a>
+              </div>
+
+              <div style="background: #F5F5F3; padding: 15px; border-radius: 8px; margin-top: 25px;">
+                <p style="color: #8A8A86; font-size: 13px; margin: 0; line-height: 1.5;">
+                  ⏰ <strong>This code expires in 5 minutes.</strong><br>
+                  🔒 For security, we recommend using the code rather than sharing this email.<br>
+                  ❓ If you didn't create an account, you can safely ignore this email.
+                </p>
+              </div>
             </div>
           </body>
           </html>
         `,
-        text: `Hi ${ctx.name}, Your verification code is: ${ctx.otp}. This code expires in 5 minutes.`,
+        text: `Hi ${ctx.name},\n\nYour verification code is: ${ctx.otp}\n\nOr click this link to verify: ${ctx.verificationUrl}\n\nThis code expires in 5 minutes.\n\nIf you didn't create an account, you can safely ignore this email.`,
       }),
       
       'family-invitation': (ctx) => ({

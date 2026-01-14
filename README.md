@@ -77,6 +77,18 @@ cd apps/api && pnpm run migration:run
 pnpm dev
 ```
 
+
+# Switch to local profile (generates .env files)
+.\scripts\use-local.ps1
+
+# Start Docker services
+docker compose up -d
+
+# Start all apps
+pnpm dev:api      # API on :3001
+pnpm dev:web      # Web on :3000
+pnpm dev:workers  # Background workers
+
 ## Access Points
 
 | Service | URL |

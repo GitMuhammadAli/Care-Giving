@@ -91,11 +91,13 @@ export class MailService {
   }
 
   async sendEmailVerification(email: string, otp: string, name: string): Promise<void> {
+    const verificationUrl = `${this.configService.get('app.frontendUrl')}/verify-email?email=${encodeURIComponent(email)}`;
+
     await this.send({
       to: email,
       subject: 'Verify Your Email - CareCircle',
       template: 'email-verification',
-      context: { name, otp },
+      context: { name, otp, verificationUrl },
     });
   }
 

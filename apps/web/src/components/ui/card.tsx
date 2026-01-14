@@ -18,9 +18,9 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
         active:shadow-sm active:translate-y-0
         cursor-pointer transition-all duration-200
       `,
-      highlighted: 'bg-card border border-border shadow-sm border-l-4 border-l-terracotta',
+      highlighted: 'bg-card border border-border shadow-sm border-l-4 border-l-secondary',
       urgent: 'bg-destructive/10 border border-destructive/20 shadow-sm border-l-4 border-l-destructive',
-      success: 'bg-sage/10 border border-sage/20 shadow-sm border-l-4 border-l-sage',
+      success: 'bg-primary/10 border border-primary/20 shadow-sm border-l-4 border-l-primary',
     };
 
     const paddings = {

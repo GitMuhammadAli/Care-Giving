@@ -18,6 +18,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [unverifiedEmail, setUnverifiedEmail] = useState('');
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -33,6 +34,7 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setUnverifiedEmail('');
     setIsLoading(true);
 
     try {
@@ -40,7 +42,15 @@ export default function LoginPage() {
       router.push('/dashboard');
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(err.message || 'Invalid email or password');
+        const errorMsg = err.message || 'Invalid email or password';
+
+        // Check if error is about unverified email
+        if (errorMsg.toLowerCase().includes('verify') || errorMsg.toLowerCase().includes('verified')) {
+          setUnverifiedEmail(formData.email);
+          setError('Please verify your email address before logging in.');
+        } else {
+          setError(errorMsg);
+        }
       } else {
         setError('Invalid email or password');
       }
@@ -75,6 +85,16 @@ export default function LoginPage() {
               className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20"
             >
               {error}
+              {unverifiedEmail && (
+                <div className="mt-3 pt-3 border-t border-destructive/20">
+                  <Link
+                    href={`/verify-email?email=${encodeURIComponent(unverifiedEmail)}`}
+                    className="inline-flex items-center gap-2 text-sage hover:text-sage/80 font-medium transition-colors"
+                  >
+                    Verify Email Now →
+                  </Link>
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -133,7 +153,7 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <div className="mt-6 text-center">
+        <div className="mt-6 space-y-3 text-center">
           <p className="text-muted-foreground">
             Don&apos;t have an account?{' '}
             <Link
@@ -141,6 +161,15 @@ export default function LoginPage() {
               className="text-sage hover:text-sage/80 font-medium transition-colors"
             >
               Create one
+            </Link>
+          </p>
+          <p className="text-muted-foreground text-sm">
+            Need to verify your email?{' '}
+            <Link
+              href="/verify-email"
+              className="text-sage hover:text-sage/80 font-medium transition-colors"
+            >
+              Click here
             </Link>
           </p>
         </div>

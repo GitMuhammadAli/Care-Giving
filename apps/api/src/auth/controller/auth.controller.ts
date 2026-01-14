@@ -168,6 +168,14 @@ export class AuthController {
     return this.authService.getSessions(user.id);
   }
 
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current user profile' })
+  async getProfile(@GetUser() user: CurrentUser) {
+    return this.authService.getProfile(user.id);
+  }
+
   private setTokenCookies(
     res: Response,
     tokens: { accessToken: string; refreshToken: string },

@@ -3,6 +3,7 @@ import type { CareRecipient } from './care-recipients';
 
 // Simplified family type for User.families - full Family type is in ./family.ts
 export interface UserFamily {
+  [x: string]: any;
   id: string;
   name: string;
   careRecipients?: CareRecipient[];
@@ -23,7 +24,7 @@ export interface User {
 export interface AuthResponse {
   user: User;
   accessToken: string;
-  refreshToken: string;
+  // refreshToken is now in httpOnly cookie, not in response body
 }
 
 export interface RegisterInput {
@@ -38,16 +39,33 @@ export interface LoginInput {
   password: string;
 }
 
+export interface VerifyEmailInput {
+  email: string;
+  otp: string;
+}
+
+export interface ResendVerificationInput {
+  email: string;
+}
+
 export const authApi = {
-  register: async (data: RegisterInput): Promise<AuthResponse> => {
-    const response = await api.post<AuthResponse>('/auth/register', data, { skipAuth: true });
-    api.setTokens(response.accessToken, response.refreshToken);
+  register: async (data: RegisterInput): Promise<{ message: string; user: Pick<User, 'email' | 'fullName'> }> => {
+    return api.post('/auth/register', data, { skipAuth: true });
+  },
+
+  verifyEmail: async (data: VerifyEmailInput): Promise<AuthResponse> => {
+    const response = await api.post<AuthResponse>('/auth/verify-email', data, { skipAuth: true });
+    api.setAccessToken(response.accessToken);
     return response;
+  },
+
+  resendVerification: async (data: ResendVerificationInput): Promise<{ message: string }> => {
+    return api.post('/auth/resend-verification', data, { skipAuth: true });
   },
 
   login: async (data: LoginInput): Promise<AuthResponse> => {
     const response = await api.post<AuthResponse>('/auth/login', data, { skipAuth: true });
-    api.setTokens(response.accessToken, response.refreshToken);
+    api.setAccessToken(response.accessToken);
     return response;
   },
 
@@ -57,6 +75,12 @@ export const authApi = {
     } finally {
       api.clearTokens();
     }
+  },
+
+  refresh: async (): Promise<{ accessToken: string }> => {
+    const response = await api.post<{ accessToken: string }>('/auth/refresh');
+    api.setAccessToken(response.accessToken);
+    return response;
   },
 
   getProfile: async (): Promise<User> => {

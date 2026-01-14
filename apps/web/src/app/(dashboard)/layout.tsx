@@ -2,12 +2,13 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { AppShell } from '@/components/layout/app-shell';
+import { Header } from '@/components/layout/header';
+import { Footer } from '@/components/layout/footer';
 import { RealtimeProvider } from '@/components/providers/realtime-provider';
 import { NotificationProvider } from '@/components/providers/notification-provider';
 import { useAuth } from '@/hooks/use-auth';
 
-export default function AppLayout({
+export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -15,7 +16,7 @@ export default function AppLayout({
   const router = useRouter();
   const { user, isAuthenticated, isLoading, fetchUser } = useAuth();
 
-  // Fetch user on mount - will try to refresh from httpOnly cookie
+  // Fetch user on mount
   useEffect(() => {
     if (!user && !isLoading) {
       fetchUser();
@@ -28,11 +29,11 @@ export default function AppLayout({
     }
   }, [isLoading, isAuthenticated, router]);
 
-  // Show nothing while checking auth
+  // Show loading while checking auth
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-bg-base">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-primary" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
   }
@@ -41,30 +42,19 @@ export default function AppLayout({
     return null;
   }
 
-  // Get family ID from user's families (first one for now)
   const familyId = user.families?.[0]?.id;
-  const careRecipient = user.families?.[0]?.careRecipients?.[0];
 
   return (
     <NotificationProvider>
       <RealtimeProvider familyId={familyId}>
-        <AppShell
-          currentUser={{
-            name: user.fullName || user.email,
-            email: user.email,
-            avatarUrl: user.avatarUrl,
-          }}
-          careRecipient={careRecipient ? {
-            id: careRecipient.id,
-            name: `${careRecipient.firstName} ${careRecipient.lastName}`,
-            preferredName: careRecipient.preferredName,
-            photoUrl: careRecipient.photoUrl,
-          } : undefined}
-        >
-          {children}
-        </AppShell>
+        <div className="min-h-screen bg-background flex flex-col texture-paper">
+          <Header />
+          <main className="flex-1 pt-24 pb-12 md:pb-20">
+            {children}
+          </main>
+          <Footer />
+        </div>
       </RealtimeProvider>
     </NotificationProvider>
   );
 }
-

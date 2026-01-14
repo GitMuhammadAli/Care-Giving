@@ -44,7 +44,7 @@ export default function RegisterPage() {
   const passwordStrength = useMemo(() => {
     const { password } = formData;
     const checks = {
-      length: password.length >= 8,
+      length: password.length >= 12,
       uppercase: /[A-Z]/.test(password),
       lowercase: /[a-z]/.test(password),
       number: /[0-9]/.test(password),
@@ -57,8 +57,8 @@ export default function RegisterPage() {
     e.preventDefault();
     setError('');
 
-    if (passwordStrength.score < 3) {
-      setError('Please create a stronger password');
+    if (passwordStrength.score < 4) {
+      setError('Please meet all password requirements');
       return;
     }
 
@@ -70,12 +70,13 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      await register({
+      const response = await register({
         fullName: `${formData.firstName} ${formData.lastName}`.trim(),
         email: formData.email,
         password: formData.password,
       });
-      router.push('/dashboard');
+      // Redirect to email verification page
+      router.push(`/verify-email?email=${encodeURIComponent(formData.email)}`);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message || 'Failed to create account. Please try again.');
@@ -236,7 +237,7 @@ export default function RegisterPage() {
                         className="mt-3"
                       >
                         {/* Strength Bar */}
-                        <div className="flex gap-1 mb-2">
+                        <div className="flex gap-1 mb-3">
                           {[1, 2, 3, 4].map((level) => (
                             <div
                               key={level}
@@ -254,7 +255,89 @@ export default function RegisterPage() {
                           ))}
                         </div>
 
-                        <p className="text-xs text-muted-foreground">Must be at least 8 characters</p>
+                        {/* Password Requirements Checklist */}
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2">
+                            <Check
+                              className={cn(
+                                'w-4 h-4 transition-colors',
+                                passwordStrength.checks.length
+                                  ? 'text-sage'
+                                  : 'text-muted-foreground/40'
+                              )}
+                            />
+                            <span
+                              className={cn(
+                                'text-xs transition-colors',
+                                passwordStrength.checks.length
+                                  ? 'text-foreground'
+                                  : 'text-muted-foreground'
+                              )}
+                            >
+                              At least 12 characters
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Check
+                              className={cn(
+                                'w-4 h-4 transition-colors',
+                                passwordStrength.checks.lowercase
+                                  ? 'text-sage'
+                                  : 'text-muted-foreground/40'
+                              )}
+                            />
+                            <span
+                              className={cn(
+                                'text-xs transition-colors',
+                                passwordStrength.checks.lowercase
+                                  ? 'text-foreground'
+                                  : 'text-muted-foreground'
+                              )}
+                            >
+                              One lowercase letter
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Check
+                              className={cn(
+                                'w-4 h-4 transition-colors',
+                                passwordStrength.checks.uppercase
+                                  ? 'text-sage'
+                                  : 'text-muted-foreground/40'
+                              )}
+                            />
+                            <span
+                              className={cn(
+                                'text-xs transition-colors',
+                                passwordStrength.checks.uppercase
+                                  ? 'text-foreground'
+                                  : 'text-muted-foreground'
+                              )}
+                            >
+                              One uppercase letter
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Check
+                              className={cn(
+                                'w-4 h-4 transition-colors',
+                                passwordStrength.checks.number
+                                  ? 'text-sage'
+                                  : 'text-muted-foreground/40'
+                              )}
+                            />
+                            <span
+                              className={cn(
+                                'text-xs transition-colors',
+                                passwordStrength.checks.number
+                                  ? 'text-foreground'
+                                  : 'text-muted-foreground'
+                              )}
+                            >
+                              One digit (0-9)
+                            </span>
+                          </div>
+                        </div>
                       </motion.div>
                     )}
                   </div>

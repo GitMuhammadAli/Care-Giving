@@ -16,33 +16,18 @@ interface RequestOptions extends RequestInit {
 
 class ApiClient {
   private accessToken: string | null = null;
-  private refreshToken: string | null = null;
   private refreshPromise: Promise<void> | null = null;
 
   constructor() {
-    // Load tokens from localStorage on init (client-side only)
-    if (typeof window !== 'undefined') {
-      this.accessToken = localStorage.getItem('accessToken');
-      this.refreshToken = localStorage.getItem('refreshToken');
-    }
+    // Access token will be set in memory only after login/refresh
   }
 
-  setTokens(accessToken: string, refreshToken: string) {
+  setAccessToken(accessToken: string) {
     this.accessToken = accessToken;
-    this.refreshToken = refreshToken;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('refreshToken', refreshToken);
-    }
   }
 
   clearTokens() {
     this.accessToken = null;
-    this.refreshToken = null;
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-    }
   }
 
   getAccessToken() {
@@ -54,15 +39,11 @@ class ApiClient {
   }
 
   private async refreshAccessToken(): Promise<void> {
-    if (!this.refreshToken) {
-      throw new ApiError(401, { message: 'No refresh token available' });
-    }
-
     try {
       const response = await fetch(`${API_URL}/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: this.refreshToken }),
+        credentials: 'include', // CRITICAL: Include httpOnly cookies
       });
 
       if (!response.ok) {
@@ -70,7 +51,7 @@ class ApiClient {
       }
 
       const data = await response.json();
-      this.setTokens(data.accessToken, data.refreshToken);
+      this.setAccessToken(data.accessToken);
     } catch (error) {
       this.clearTokens();
       throw error;
@@ -92,10 +73,11 @@ class ApiClient {
     let response = await fetch(`${API_URL}${url}`, {
       ...fetchOptions,
       headers,
+      credentials: 'include', // CRITICAL: Include httpOnly cookies in all requests
     });
 
     // Handle token refresh on 401
-    if (response.status === 401 && !skipAuth && this.refreshToken) {
+    if (response.status === 401 && !skipAuth) {
       // Ensure only one refresh happens at a time
       if (!this.refreshPromise) {
         this.refreshPromise = this.refreshAccessToken().finally(() => {
@@ -105,12 +87,13 @@ class ApiClient {
 
       try {
         await this.refreshPromise;
-        
+
         // Retry with new token
         (headers as Record<string, string>)['Authorization'] = `Bearer ${this.accessToken}`;
         response = await fetch(`${API_URL}${url}`, {
           ...fetchOptions,
           headers,
+          credentials: 'include', // CRITICAL: Include httpOnly cookies
         });
       } catch {
         // Refresh failed, redirect to login
@@ -180,6 +163,7 @@ class ApiClient {
       method: 'POST',
       headers,
       body: formData,
+      credentials: 'include', // CRITICAL: Include httpOnly cookies
     });
 
     if (!response.ok) {

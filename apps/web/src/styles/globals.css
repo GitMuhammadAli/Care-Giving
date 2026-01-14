@@ -292,6 +292,69 @@
     @apply border-primary/40;
   }
 
+  /* Dashboard card with subtle gradient and shadow */
+  .dashboard-card {
+    @apply bg-card border border-border rounded-2xl p-6 transition-all duration-300;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.03);
+    background: linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--card) / 0.97) 100%);
+  }
+
+  .dashboard-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.05);
+    transform: translateY(-1px);
+  }
+
+  /* Status indicator pulse */
+  .status-pulse {
+    animation: pulse-soft 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-soft {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+
+  /* Loved one card with special gradient */
+  .loved-one-card {
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.08) 0%, hsl(var(--card)) 50%, hsl(var(--secondary) / 0.05) 100%);
+    border: 1px solid hsl(var(--primary) / 0.15);
+  }
+
+  /* Quick action button refined */
+  .quick-action-btn {
+    @apply relative overflow-hidden transition-all duration-200;
+  }
+
+  .quick-action-btn::before {
+    content: '';
+    @apply absolute inset-0 opacity-0 transition-opacity duration-200;
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.1) 0%, transparent 100%);
+  }
+
+  .quick-action-btn:hover::before {
+    @apply opacity-100;
+  }
+
+  /* Task item styling */
+  .task-item {
+    @apply transition-all duration-200;
+  }
+
+  .task-item:hover {
+    @apply bg-accent/80;
+  }
+
+  /* Notification badge animation */
+  .notification-badge {
+    animation: badge-pop 0.3s ease-out;
+  }
+
+  @keyframes badge-pop {
+    0% { transform: scale(0); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+  }
+
   /* Organic shapes for backgrounds */
   .organic-blob {
     border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;

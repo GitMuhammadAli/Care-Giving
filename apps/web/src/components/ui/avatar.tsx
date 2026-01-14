@@ -4,7 +4,7 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 
 export interface AvatarProps extends React.HTMLAttributes<HTMLDivElement> {
-  name: string;
+  name?: string | null;
   src?: string | null;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   showStatus?: boolean;
@@ -31,8 +31,12 @@ const statusColors = {
   away: 'bg-terracotta',
 };
 
-function getInitials(name: string): string {
+function getInitials(name?: string | null): string {
+  if (!name || name.trim() === '') {
+    return '?';
+  }
   return name
+    .trim()
     .split(' ')
     .map((part) => part[0])
     .join('')
@@ -40,13 +44,16 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-function getAvatarColor(name: string): string {
+function getAvatarColor(name?: string | null): string {
   const colors = [
     'bg-sage/30 text-sage',
     'bg-terracotta/30 text-terracotta',
     'bg-slate/30 text-slate',
     'bg-muted text-muted-foreground',
   ];
+  if (!name || name.trim() === '') {
+    return colors[0]; // Default to first color
+  }
   const index = name.charCodeAt(0) % colors.length;
   return colors[index];
 }
@@ -54,6 +61,7 @@ function getAvatarColor(name: string): string {
 const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
   ({ className, name, src, size = 'md', showStatus, status = 'offline', ...props }, ref) => {
     const [imageError, setImageError] = React.useState(false);
+    const displayName = name || 'User';
     const initials = getInitials(name);
     const avatarColor = getAvatarColor(name);
 
@@ -62,7 +70,7 @@ const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
         {src && !imageError ? (
           <img
             src={src}
-            alt={name}
+            alt={displayName}
             className={cn(
               'rounded-full object-cover',
               sizeClasses[size]

@@ -286,6 +286,16 @@ export class AuthService {
     return this.sessionRepository.findActiveByUserId(userId);
   }
 
+  async getProfile(userId: string) {
+    const user = await this.userRepository.findById(userId);
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    return this.sanitizeUser(user);
+  }
+
   private async generateTokens(user: User, rememberMe = false): Promise<TokenPair> {
     const payload = {
       sub: user.id,
