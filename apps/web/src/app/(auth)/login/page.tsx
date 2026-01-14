@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,8 @@ import { ApiError } from '@/lib/api/client';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
+  const searchParams = useSearchParams();
+  const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -24,12 +25,8 @@ export default function LoginPage() {
     password: '',
   });
 
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (!authLoading && isAuthenticated) {
-      router.push('/dashboard');
-    }
-  }, [authLoading, isAuthenticated, router]);
+  // Get return URL from query params for redirect after login
+  const returnUrl = searchParams.get('returnUrl');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +36,9 @@ export default function LoginPage() {
 
     try {
       await login(formData);
-      router.push('/dashboard');
+      // Redirect to returnUrl if provided, otherwise dashboard
+      const destination = returnUrl ? decodeURIComponent(returnUrl) : '/dashboard';
+      router.replace(destination);
     } catch (err) {
       if (err instanceof ApiError) {
         const errorMsg = err.message || 'Invalid email or password';
@@ -54,9 +53,9 @@ export default function LoginPage() {
       } else {
         setError('Invalid email or password');
       }
-    } finally {
       setIsLoading(false);
     }
+    // Don't set isLoading to false on success - keep showing loading until redirect
   };
 
   return (

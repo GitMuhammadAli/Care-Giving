@@ -3,9 +3,10 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useAuthContext } from '@/components/providers/auth-provider';
 
 const navLinks = [
   { label: 'About', href: '/about' },
@@ -19,12 +20,13 @@ const navLinks = [
 export function Header() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const { isAuthenticated, isInitialized, user } = useAuthContext();
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border/50">
       <div className="container mx-auto">
         <div className="flex items-center justify-between h-16 px-6">
-          <Link href="/" className="font-editorial text-xl tracking-editorial text-foreground">
+          <Link href="/" className="font-serif text-xl tracking-tight text-foreground">
             CareCircle
           </Link>
 
@@ -46,16 +48,30 @@ export function Header() {
           </nav>
 
           <div className="flex items-center gap-3">
-            <Link href="/login">
-              <Button variant="ghost" size="sm" className="hidden sm:inline-flex label-caps">
-                Sign In
-              </Button>
-            </Link>
-            <Link href="/register">
-              <Button variant="editorial" size="sm" className="hidden sm:inline-flex">
-                Get Started
-              </Button>
-            </Link>
+            {/* Show different buttons based on auth state */}
+            {isInitialized && isAuthenticated && user ? (
+              // Authenticated user - show dashboard link
+              <Link href="/dashboard">
+                <Button variant="editorial" size="sm" className="hidden sm:inline-flex gap-2">
+                  <LayoutDashboard className="w-4 h-4" />
+                  Dashboard
+                </Button>
+              </Link>
+            ) : (
+              // Not authenticated - show sign in and get started
+              <>
+                <Link href="/login">
+                  <Button variant="ghost" size="sm" className="hidden sm:inline-flex label-caps">
+                    Sign In
+                  </Button>
+                </Link>
+                <Link href="/register">
+                  <Button variant="editorial" size="sm" className="hidden sm:inline-flex">
+                    Get Started
+                  </Button>
+                </Link>
+              </>
+            )}
             <button
               className="md:hidden p-2"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -86,16 +102,29 @@ export function Header() {
                 </Link>
               ))}
               <div className="flex gap-3 pt-4 border-t border-border mt-2">
-                <Link href="/login" className="flex-1" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="ghost" size="sm" className="label-caps w-full">
-                    Sign In
-                  </Button>
-                </Link>
-                <Link href="/register" className="flex-1" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="editorial" size="sm" className="w-full">
-                    Get Started
-                  </Button>
-                </Link>
+                {isInitialized && isAuthenticated && user ? (
+                  // Authenticated user - show dashboard link
+                  <Link href="/dashboard" className="flex-1" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="editorial" size="sm" className="w-full gap-2">
+                      <LayoutDashboard className="w-4 h-4" />
+                      Dashboard
+                    </Button>
+                  </Link>
+                ) : (
+                  // Not authenticated - show sign in and get started
+                  <>
+                    <Link href="/login" className="flex-1" onClick={() => setMobileMenuOpen(false)}>
+                      <Button variant="ghost" size="sm" className="label-caps w-full">
+                        Sign In
+                      </Button>
+                    </Link>
+                    <Link href="/register" className="flex-1" onClick={() => setMobileMenuOpen(false)}>
+                      <Button variant="editorial" size="sm" className="w-full">
+                        Get Started
+                      </Button>
+                    </Link>
+                  </>
+                )}
               </div>
             </nav>
           </div>

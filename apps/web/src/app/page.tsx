@@ -5,7 +5,8 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, LayoutDashboard } from 'lucide-react';
+import { useAuthContext } from '@/components/providers/auth-provider';
 
 // Static data matching pixel-perfect exactly
 const stats = [
@@ -95,6 +96,7 @@ const testimonials = [
 export default function LandingPage() {
   const featured = testimonials.find((t) => t.featured);
   const secondary = testimonials.filter((t) => !t.featured).slice(0, 2);
+  const { isAuthenticated, isInitialized, user } = useAuthContext();
 
   return (
     <div className="min-h-screen bg-background">
@@ -140,11 +142,20 @@ export default function LandingPage() {
                 </p>
 
                 <div className="flex flex-wrap items-center gap-3">
-                  <Link href="/register">
-                    <Button variant="editorial" size="lg">
-                      Create your circle
-                    </Button>
-                  </Link>
+                  {isInitialized && isAuthenticated && user ? (
+                    <Link href="/dashboard">
+                      <Button variant="editorial" size="lg" className="gap-2">
+                        <LayoutDashboard className="w-4 h-4" />
+                        Go to Dashboard
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Link href="/register">
+                      <Button variant="editorial" size="lg">
+                        Create your circle
+                      </Button>
+                    </Link>
+                  )}
                   <Link href="/how-it-works">
                     <Button variant="editorial-outline" size="lg" className="group">
                       Learn more
@@ -276,11 +287,20 @@ export default function LandingPage() {
                     No complicated setup. No learning curve. Just a simple way to bring your family
                     together around the care that matters.
                   </p>
-                  <Link href="/how-it-works">
-                    <Button variant="editorial-outline" size="lg">
-                      See full guide
-                    </Button>
-                  </Link>
+                  {isInitialized && isAuthenticated && user ? (
+                    <Link href="/dashboard">
+                      <Button variant="editorial" size="lg" className="gap-2">
+                        <LayoutDashboard className="w-4 h-4" />
+                        Dashboard
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Link href="/how-it-works">
+                      <Button variant="editorial-outline" size="lg">
+                        See full guide
+                      </Button>
+                    </Link>
+                  )}
                 </div>
               </div>
 
@@ -397,15 +417,28 @@ export default function LandingPage() {
                 </p>
 
                 <div className="flex flex-wrap gap-4">
-                  <Link href="/register">
-                    <Button
-                      variant="outline"
-                      size="xl"
-                      className="border-background/30 text-background hover:bg-background/10 hover:border-background/50 tracking-caps uppercase text-xs font-semibold"
-                    >
-                      Create your circle
-                    </Button>
-                  </Link>
+                  {isInitialized && isAuthenticated && user ? (
+                    <Link href="/dashboard">
+                      <Button
+                        variant="outline"
+                        size="xl"
+                        className="border-background/30 text-background hover:bg-background/10 hover:border-background/50 tracking-caps uppercase text-xs font-semibold gap-2"
+                      >
+                        <LayoutDashboard className="w-4 h-4" />
+                        Go to Dashboard
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Link href="/register">
+                      <Button
+                        variant="outline"
+                        size="xl"
+                        className="border-background/30 text-background hover:bg-background/10 hover:border-background/50 tracking-caps uppercase text-xs font-semibold"
+                      >
+                        Create your circle
+                      </Button>
+                    </Link>
+                  )}
                   <Link href="/how-it-works">
                     <Button
                       variant="ghost"

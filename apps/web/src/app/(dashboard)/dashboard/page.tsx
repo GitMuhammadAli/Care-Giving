@@ -99,7 +99,7 @@ const Dashboard = () => {
 
   // Form states
   const [newTask, setNewTask] = useState({ title: '', time: '', type: 'appointment' });
-  const [newMember, setNewMember] = useState({ name: '', email: '', role: 'VIEWER' as 'ADMIN' | 'CAREGIVER' | 'VIEWER' });
+  const [newMember, setNewMember] = useState({ name: '', email: '', role: 'CAREGIVER' as 'ADMIN' | 'CAREGIVER' | 'VIEWER' });
   const [newUpdate, setNewUpdate] = useState('');
 
   // Tab state
@@ -212,7 +212,7 @@ const Dashboard = () => {
         email: newMember.email,
         role: newMember.role,
       });
-      setNewMember({ name: '', email: '', role: 'VIEWER' });
+      setNewMember({ name: '', email: '', role: 'CAREGIVER' });
       setAddMemberOpen(false);
     } catch (error) {
       // Error handled by mutation
@@ -728,9 +728,9 @@ const Dashboard = () => {
                           onChange={(e) => setNewMember({ ...newMember, role: e.target.value as 'ADMIN' | 'CAREGIVER' | 'VIEWER' })}
                           className="w-full h-10 px-3 rounded-xl border border-border bg-background text-foreground"
                         >
-                          <option value="VIEWER">Family Member</option>
                           <option value="CAREGIVER">Caregiver</option>
-                          <option value="ADMIN">Admin</option>
+                          <option value="VIEWER">Family Member (View Only)</option>
+                          <option value="ADMIN">Admin (Full Access)</option>
                         </select>
                       </div>
                       <Button type="submit" className="w-full rounded-xl" disabled={inviteMember.isPending}>

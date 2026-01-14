@@ -71,14 +71,16 @@ export const authApi = {
 
   logout: async (): Promise<void> => {
     try {
-      await api.post('/auth/logout');
+      // Send empty body - refresh token comes from httpOnly cookie
+      await api.post('/auth/logout', {});
     } finally {
       api.clearTokens();
     }
   },
 
   refresh: async (): Promise<{ accessToken: string }> => {
-    const response = await api.post<{ accessToken: string }>('/auth/refresh');
+    // Send empty body - refresh token comes from httpOnly cookie
+    const response = await api.post<{ accessToken: string }>('/auth/refresh', {});
     api.setAccessToken(response.accessToken);
     return response;
   },
