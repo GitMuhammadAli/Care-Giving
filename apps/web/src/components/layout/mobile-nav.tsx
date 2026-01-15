@@ -3,14 +3,14 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Home, Calendar, Pill, Users, Settings } from 'lucide-react';
+import { Home, Calendar, Pill, MessageCircle, Users } from 'lucide-react';
 
 const navItems = [
   { href: '/dashboard', icon: Home, label: 'Home' },
-  { href: '/calendar', icon: Calendar, label: 'Calendar' },
   { href: '/medications', icon: Pill, label: 'Meds' },
-  { href: '/family', icon: Users, label: 'Family' },
-  { href: '/settings', icon: Settings, label: 'Settings' },
+  { href: '/chat', icon: MessageCircle, label: 'Chat' },
+  { href: '/calendar', icon: Calendar, label: 'Calendar' },
+  { href: '/caregivers', icon: Users, label: 'Care' },
 ];
 
 export function MobileNav() {
@@ -20,13 +20,13 @@ export function MobileNav() {
     <nav
       className={cn(
         'fixed bottom-0 left-0 right-0 z-40',
-        'bg-card border-t border-border',
+        'bg-card/95 backdrop-blur-sm border-t border-border',
         'pb-safe sm:hidden'
       )}
     >
       <div className="flex items-center justify-around h-16">
         {navItems.map((item) => {
-          const isActive = pathname.startsWith(item.href);
+          const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
           const Icon = item.icon;
 
           return (

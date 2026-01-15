@@ -75,7 +75,7 @@ export async function getFamilyChannel(familyId: string, familyName: string): Pr
   const channel = chatClient.channel('messaging', `family-${familyId}`, {
     name: `${familyName} Chat`,
     image: '/icons/family-chat.png',
-  });
+  } as any);
 
   await channel.watch();
   return channel;
@@ -119,7 +119,7 @@ export async function getCareTopicChannel(
   const channel = chatClient.channel('messaging', `${familyId}-${topic}`, {
     name: topicName,
     image: '/icons/care-topic.png',
-  });
+  } as any);
 
   await channel.watch();
   return channel;

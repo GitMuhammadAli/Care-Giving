@@ -136,3 +136,18 @@ export function useAcceptInvitation() {
   });
 }
 
+export function useResetMemberPassword(familyId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (userId: string) => familyApi.resetMemberPassword(familyId, userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['families', familyId, 'members'] });
+      toast.success('Password reset successfully. Temporary password sent via email.');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to reset password');
+    },
+  });
+}
+

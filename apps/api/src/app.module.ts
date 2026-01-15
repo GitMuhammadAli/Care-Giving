@@ -22,6 +22,7 @@ import { SystemModule } from './system/system.module';
 import { JwtAuthGuard } from './system/guard/jwt-auth.guard';
 import { IpGuard } from './system/guard/ip.guard';
 import { LanguageGuard } from './system/guard/language.guard';
+import { CustomThrottlerGuard } from './system/guard/throttle.guard';
 import { LoggingInterceptor } from './system/interceptor/logging.interceptor';
 import { GlobalExceptionFilter } from './system/filter/http-exception.filter';
 import { ValidationExceptionFilter } from './system/filter/validation-exception.filter';
@@ -38,6 +39,7 @@ import { EmergencyModule } from './emergency/emergency.module';
 import { CaregiverShiftsModule } from './caregiver-shifts/caregiver-shifts.module';
 import { TimelineModule } from './timeline/timeline.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { ChatModule } from './chat/chat.module';
 import { GatewayModule } from './gateway/gateway.module';
 // TODO: Re-enable RabbitMQ events module later
 // import { EventsModule } from './events/events.module';
@@ -138,10 +140,15 @@ import { GatewayModule } from './gateway/gateway.module';
     CaregiverShiftsModule,
     TimelineModule,
     NotificationsModule,
+    ChatModule,
     GatewayModule,
   ],
   providers: [
     // Global Guards
+    {
+      provide: APP_GUARD,
+      useClass: CustomThrottlerGuard,
+    },
     {
       provide: APP_GUARD,
       useClass: IpGuard,

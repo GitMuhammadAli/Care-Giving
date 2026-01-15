@@ -1,7 +1,7 @@
 'use client';
 
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,59 +17,119 @@ import {
   FileText,
   CreditCard,
   Wifi,
-  WifiOff,
   Download,
   Share2,
   Droplet,
   Shield,
 } from 'lucide-react';
-
-// Mock emergency data
-const mockCareRecipient = {
-  firstName: 'Margaret',
-  lastName: 'Thompson',
-  preferredName: 'Grandma Maggie',
-  dateOfBirth: '1946-03-15',
-  bloodType: 'A+',
-  allergies: ['Penicillin', 'Sulfa drugs'],
-  conditions: ['Type 2 Diabetes', 'Hypertension', 'Atrial Fibrillation'],
-};
-
-const mockMedications = [
-  { name: 'Metformin', dosage: '500mg', frequency: '3x daily' },
-  { name: 'Lisinopril', dosage: '10mg', frequency: '1x daily' },
-  { name: 'Aspirin', dosage: '81mg', frequency: '1x daily' },
-  { name: 'Eliquis', dosage: '5mg', frequency: '2x daily' },
-];
-
-const mockEmergencyContacts = [
-  { name: 'Sarah Thompson', relationship: 'Daughter', phone: '(555) 123-4567', isPrimary: true },
-  { name: 'Mike Thompson', relationship: 'Son', phone: '(555) 987-6543' },
-  { name: 'Jennifer Thompson', relationship: 'Daughter', phone: '(555) 456-7890' },
-];
-
-const mockDoctors = [
-  { name: 'Dr. Jennifer Smith', specialty: 'Primary Care', phone: '(555) 111-2222' },
-  { name: 'Dr. Robert Chen', specialty: 'Cardiology', phone: '(555) 333-4444' },
-  { name: 'Dr. Lisa Park', specialty: 'Endocrinology', phone: '(555) 555-6666' },
-];
-
-const mockInsurance = {
-  provider: 'BlueCross BlueShield',
-  policyNumber: 'BCB123456789',
-  groupNumber: 'GRP987654',
-};
-
-const mockHospital = {
-  name: 'Memorial Hospital',
-  address: '123 Hospital Drive, Springfield, IL 62701',
-  phone: '(555) 999-0000',
-};
+import { useAuth } from '@/hooks/use-auth';
+import { useQuery } from '@tanstack/react-query';
+import { careRecipientsApi } from '@/lib/api';
+import { useMedications } from '@/hooks/use-medications';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function EmergencyPage() {
-  const age = Math.floor(
-    (new Date().getTime() - new Date(mockCareRecipient.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000)
-  );
+  const { user } = useAuth();
+
+  // Get care recipient from user's family
+  const careRecipientFromUser = user?.families?.[0]?.careRecipients?.[0];
+  const careRecipientId = careRecipientFromUser?.id;
+
+  // Fetch full care recipient details
+  const { data: careRecipient, isLoading } = useQuery({
+    queryKey: ['careRecipient', careRecipientId],
+    queryFn: () => careRecipientsApi.get(careRecipientId!),
+    enabled: !!careRecipientId,
+  });
+
+  // Fetch active medications
+  const { data: medications } = useMedications(careRecipientId || '');
+
+  // Calculate age
+  const age = useMemo(() => {
+    if (!careRecipient?.dateOfBirth) return null;
+    return Math.floor(
+      (new Date().getTime() - new Date(careRecipient.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000)
+    );
+  }, [careRecipient]);
+
+  // Extract doctors from care recipient data
+  const doctors = useMemo(() => {
+    const data = careRecipient as any;
+    if (!data?.doctors) return [];
+    return data.doctors.map((doc: any) => ({
+      name: doc.name,
+      specialty: doc.specialty || 'Doctor',
+      phone: doc.phone || '',
+    }));
+  }, [careRecipient]);
+
+  // Extract emergency contacts
+  const emergencyContacts = useMemo(() => {
+    const data = careRecipient as any;
+    if (!data?.emergencyContacts) return [];
+    return data.emergencyContacts.map((contact: any, index: number) => ({
+      name: contact.name,
+      relationship: contact.relationship || 'Contact',
+      phone: contact.phone,
+      isPrimary: index === 0,
+    }));
+  }, [careRecipient]);
+
+  // Get active medications
+  const activeMedications = useMemo(() => {
+    if (!medications) return [];
+    return medications
+      .filter((med: any) => med.isActive)
+      .map((med: any) => ({
+        name: med.name,
+        dosage: med.dosage || '',
+        frequency: med.frequency || med.schedules?.[0]?.frequency || 'As needed',
+      }));
+  }, [medications]);
+
+  if (isLoading) {
+    return (
+      <div className="pb-6">
+        <PageHeader
+          title="Emergency Info"
+          subtitle="Critical information for emergencies"
+          showNotifications={false}
+        />
+        <div className="px-4 sm:px-6 py-6 space-y-6 max-w-2xl mx-auto">
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-48 w-full" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!careRecipient) {
+    return (
+      <div className="pb-6">
+        <PageHeader
+          title="Emergency Info"
+          subtitle="Critical information for emergencies"
+          showNotifications={false}
+        />
+        <div className="px-4 sm:px-6 py-6 max-w-2xl mx-auto">
+          <Card>
+            <CardContent className="p-8 text-center">
+              <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-semibold mb-2">No Care Recipient Found</h3>
+              <p className="text-muted-foreground mb-4">
+                Please add a care recipient to view emergency information.
+              </p>
+              <Button onClick={() => window.location.href = '/onboarding'}>
+                Get Started
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pb-6">
@@ -90,11 +150,11 @@ export default function EmergencyPage() {
             size="xl"
             fullWidth
             leftIcon={<AlertTriangle className="w-6 h-6" />}
-            className="h-16 text-lg animate-pulse-emergency"
+            className="h-16 text-lg"
           >
             EMERGENCY ALERT
           </Button>
-          <p className="text-center text-xs text-text-tertiary mt-2">
+          <p className="text-center text-xs text-muted-foreground mt-2">
             Tap to alert all family members immediately
           </p>
         </motion.div>
@@ -103,65 +163,62 @@ export default function EmergencyPage() {
         <div className="flex items-center justify-center gap-2 text-sm">
           <Wifi className="w-4 h-4 text-success" />
           <span className="text-success">Works Offline</span>
-          <span className="text-text-tertiary">• Last synced: Just now</span>
+          <span className="text-muted-foreground">• Last synced: Just now</span>
         </div>
 
         {/* Critical Information */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="w-5 h-5 text-accent-primary" />
-                Patient Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-4">
-                <Avatar name={mockCareRecipient.preferredName || mockCareRecipient.firstName} size="xl" />
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="w-5 h-5 text-primary" />
+              Patient Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-4">
+              <Avatar
+                name={careRecipient.preferredName || careRecipient.firstName}
+                src={careRecipient.photoUrl}
+                size="xl"
+              />
+              <div>
+                <h3 className="text-xl font-semibold">
+                  {careRecipient.firstName} {careRecipient.lastName}
+                </h3>
+                {careRecipient.preferredName && (
+                  <p className="text-sm text-muted-foreground">"{careRecipient.preferredName}"</p>
+                )}
+                <p className="text-sm text-muted-foreground mt-1">
+                  DOB: {new Date(careRecipient.dateOfBirth).toLocaleDateString()}
+                  {age && ` (Age ${age})`}
+                </p>
+              </div>
+            </div>
+
+            {careRecipient.bloodType && (
+              <div className="flex items-center gap-4 p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+                <Droplet className="w-6 h-6 text-destructive" />
                 <div>
-                  <h3 className="text-xl font-semibold text-text-primary">
-                    {mockCareRecipient.firstName} {mockCareRecipient.lastName}
-                  </h3>
-                  {mockCareRecipient.preferredName && (
-                    <p className="text-sm text-text-secondary">"{mockCareRecipient.preferredName}"</p>
-                  )}
-                  <p className="text-sm text-text-tertiary mt-1">
-                    DOB: {new Date(mockCareRecipient.dateOfBirth).toLocaleDateString()} (Age {age})
-                  </p>
+                  <p className="text-sm font-medium">Blood Type</p>
+                  <p className="text-2xl font-bold text-destructive">{careRecipient.bloodType}</p>
                 </div>
               </div>
+            )}
+          </CardContent>
+        </Card>
 
-              <div className="flex items-center gap-4 p-3 bg-emergency-light rounded-lg border border-emergency/20">
-                <Droplet className="w-6 h-6 text-emergency" />
-                <div>
-                  <p className="text-sm font-medium text-text-primary">Blood Type</p>
-                  <p className="text-2xl font-bold text-emergency">{mockCareRecipient.bloodType}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Allergies - High Visibility */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-        >
-          <Card variant="urgent">
+        {/* Allergies */}
+        {careRecipient.allergies && careRecipient.allergies.length > 0 && (
+          <Card className="border-destructive/50 bg-destructive/5">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-emergency">
+              <CardTitle className="flex items-center gap-2 text-destructive">
                 <AlertTriangle className="w-5 h-5" />
                 ALLERGIES
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
-                {mockCareRecipient.allergies.map((allergy) => (
+                {careRecipient.allergies.map((allergy: string) => (
                   <Badge key={allergy} variant="destructive" size="lg" className="text-base font-semibold">
                     {allergy}
                   </Badge>
@@ -169,68 +226,58 @@ export default function EmergencyPage() {
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+        )}
 
-        {/* Conditions */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
+        {/* Medical Conditions */}
+        {careRecipient.medicalConditions && careRecipient.medicalConditions.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Heart className="w-5 h-5 text-accent-warm" />
+                <Heart className="w-5 h-5 text-primary" />
                 Medical Conditions
               </CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-2">
-                {mockCareRecipient.conditions.map((condition) => (
+                {careRecipient.medicalConditions.map((condition: string) => (
                   <li key={condition} className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-accent-warm" />
-                    <span className="text-text-primary">{condition}</span>
+                    <div className="w-2 h-2 rounded-full bg-primary" />
+                    <span>{condition}</span>
                   </li>
                 ))}
               </ul>
             </CardContent>
           </Card>
-        </motion.div>
+        )}
 
         {/* Current Medications */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-        >
+        {activeMedications.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Pill className="w-5 h-5 text-accent-primary" />
+                <Pill className="w-5 h-5 text-primary" />
                 Current Medications
               </CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-3">
-                {mockMedications.map((med) => (
+                {activeMedications.map((med) => (
                   <li key={med.name} className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium text-text-primary">{med.name} {med.dosage}</p>
-                      <p className="text-sm text-text-secondary">{med.frequency}</p>
+                      <p className="font-medium">
+                        {med.name} {med.dosage}
+                      </p>
+                      <p className="text-sm text-muted-foreground">{med.frequency}</p>
                     </div>
                   </li>
                 ))}
               </ul>
             </CardContent>
           </Card>
-        </motion.div>
+        )}
 
         {/* Emergency Contacts */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
+        {emergencyContacts.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -239,18 +286,18 @@ export default function EmergencyPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {mockEmergencyContacts.map((contact) => (
-                <div key={contact.name} className="flex items-center justify-between p-3 bg-bg-muted rounded-lg">
+              {emergencyContacts.map((contact) => (
+                <div key={contact.name} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="font-medium text-text-primary">{contact.name}</p>
+                      <p className="font-medium">{contact.name}</p>
                       {contact.isPrimary && <Badge size="sm" variant="success">Primary</Badge>}
                     </div>
-                    <p className="text-sm text-text-secondary">{contact.relationship}</p>
+                    <p className="text-sm text-muted-foreground">{contact.relationship}</p>
                   </div>
                   <a
                     href={`tel:${contact.phone.replace(/\D/g, '')}`}
-                    className="flex items-center gap-2 px-4 py-2 bg-success text-text-inverse rounded-lg font-medium hover:bg-success/90 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-success text-white rounded-lg font-medium hover:bg-success/90 transition-colors"
                   >
                     <Phone className="w-4 h-4" />
                     Call
@@ -259,14 +306,10 @@ export default function EmergencyPage() {
               ))}
             </CardContent>
           </Card>
-        </motion.div>
+        )}
 
         {/* Doctors */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-        >
+        {doctors.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -275,110 +318,39 @@ export default function EmergencyPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {mockDoctors.map((doctor) => (
-                <div key={doctor.name} className="flex items-center justify-between p-3 bg-bg-muted rounded-lg">
+              {doctors.map((doctor) => (
+                <div key={doctor.name} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                   <div>
-                    <p className="font-medium text-text-primary">{doctor.name}</p>
-                    <p className="text-sm text-text-secondary">{doctor.specialty}</p>
+                    <p className="font-medium">{doctor.name}</p>
+                    <p className="text-sm text-muted-foreground">{doctor.specialty}</p>
                   </div>
-                  <a
-                    href={`tel:${doctor.phone.replace(/\D/g, '')}`}
-                    className="flex items-center gap-2 px-4 py-2 bg-info text-text-inverse rounded-lg font-medium hover:bg-info/90 transition-colors"
-                  >
-                    <Phone className="w-4 h-4" />
-                    Call
-                  </a>
+                  {doctor.phone && (
+                    <a
+                      href={`tel:${doctor.phone.replace(/\D/g, '')}`}
+                      className="flex items-center gap-2 px-4 py-2 bg-info text-white rounded-lg font-medium hover:bg-info/90 transition-colors"
+                    >
+                      <Phone className="w-4 h-4" />
+                      Call
+                    </a>
+                  )}
                 </div>
               ))}
             </CardContent>
           </Card>
-        </motion.div>
-
-        {/* Insurance */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-chart-purple" />
-                Insurance
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <p className="font-medium text-text-primary">{mockInsurance.provider}</p>
-                <p className="text-sm text-text-secondary">
-                  Policy: <span className="font-mono">{mockInsurance.policyNumber}</span>
-                </p>
-                <p className="text-sm text-text-secondary">
-                  Group: <span className="font-mono">{mockInsurance.groupNumber}</span>
-                </p>
-              </div>
-              <Button variant="secondary" size="sm" className="mt-4" leftIcon={<FileText className="w-4 h-4" />}>
-                View Insurance Card
-              </Button>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Preferred Hospital */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.45 }}
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-accent-warm" />
-                Preferred Hospital
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="font-medium text-text-primary">{mockHospital.name}</p>
-              <p className="text-sm text-text-secondary mt-1">{mockHospital.address}</p>
-              <div className="flex gap-2 mt-4">
-                <a
-                  href={`tel:${mockHospital.phone.replace(/\D/g, '')}`}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-bg-muted text-text-primary rounded-lg font-medium hover:bg-bg-subtle transition-colors"
-                >
-                  <Phone className="w-4 h-4" />
-                  Call
-                </a>
-                <a
-                  href={`https://maps.google.com/?q=${encodeURIComponent(mockHospital.address)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-bg-muted text-text-primary rounded-lg font-medium hover:bg-bg-subtle transition-colors"
-                >
-                  <MapPin className="w-4 h-4" />
-                  Directions
-                </a>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+        )}
 
         {/* Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="flex gap-3"
-        >
+        <div className="flex gap-3">
           <Button variant="secondary" size="lg" fullWidth leftIcon={<Share2 className="w-5 h-5" />}>
             Share as PDF
           </Button>
           <Button variant="secondary" size="lg" fullWidth leftIcon={<Download className="w-5 h-5" />}>
             Download
           </Button>
-        </motion.div>
+        </div>
 
         {/* Offline Indicator */}
-        <div className="flex items-center justify-center gap-2 p-4 bg-success-light rounded-xl">
+        <div className="flex items-center justify-center gap-2 p-4 bg-success/10 rounded-xl">
           <Shield className="w-5 h-5 text-success" />
           <p className="text-sm text-success font-medium">
             This page is saved for offline access
@@ -388,4 +360,3 @@ export default function EmergencyPage() {
     </div>
   );
 }
-

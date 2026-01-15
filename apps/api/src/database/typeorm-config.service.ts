@@ -15,15 +15,22 @@ export class TypeOrmConfigService implements TypeOrmOptionsFactory {
     const options: TypeOrmModuleOptions = {
       type: 'postgres',
       entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-      // Disable migrations - database schema is managed by Prisma
-      migrations: [],
+      // Enable migrations
+      migrations: [__dirname + '/migrations/*{.ts,.js}'],
       migrationsRun: false,
       synchronize: false,
-      logging: !isProduction,
+      // Enable query logging in development, log only errors in production
+      logging: isProduction ? ['error'] : ['query', 'error', 'warn', 'schema'],
+      // Log slow queries (>1000ms)
+      maxQueryExecutionTime: 1000,
       ssl: dbConfig?.ssl || false,
       extra: {
         max: 100,
         connectionTimeoutMillis: 10000,
+        // Additional optimizations
+        idleTimeoutMillis: 30000,
+        // Enable statement timeout (30s)
+        statement_timeout: 30000,
       },
     };
 

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -55,12 +56,20 @@ const quickActions = [
 ];
 
 const Dashboard = () => {
+  const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
 
   // Get family and care recipient info from user
   const familyId = user?.families?.[0]?.id;
   const careRecipientFromUser = user?.families?.[0]?.careRecipients?.[0];
   const careRecipientId = careRecipientFromUser?.id;
+
+  // Redirect to onboarding if no family exists
+  useEffect(() => {
+    if (!authLoading && user && !familyId) {
+      router.push('/onboarding');
+    }
+  }, [authLoading, user, familyId, router]);
 
   // Fetch care recipient details
   const { data: careRecipient, isLoading: careRecipientLoading } = useQuery({

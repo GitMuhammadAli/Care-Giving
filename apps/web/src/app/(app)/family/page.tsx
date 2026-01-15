@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,7 +13,6 @@ import { Input } from '@/components/ui/input';
 import {
   Plus,
   Mail,
-  Users,
   Crown,
   UserCheck,
   Eye,
@@ -22,46 +21,13 @@ import {
   RefreshCw,
   X,
   Send,
+  KeyRound,
+  AlertCircle,
+  Trash2,
+  Shield,
 } from 'lucide-react';
-
-const mockFamilyMembers = [
-  {
-    id: 'u-1',
-    name: 'Sarah Thompson',
-    email: 'sarah@example.com',
-    role: 'ADMIN',
-    isCurrentUser: true,
-    status: 'online',
-    lastSeen: null,
-  },
-  {
-    id: 'u-2',
-    name: 'Mike Thompson',
-    email: 'mike@example.com',
-    role: 'CAREGIVER',
-    isCurrentUser: false,
-    status: 'offline',
-    lastSeen: '2 hours ago',
-  },
-  {
-    id: 'u-3',
-    name: 'Jennifer Thompson',
-    email: 'jennifer@example.com',
-    role: 'VIEWER',
-    isCurrentUser: false,
-    status: 'offline',
-    lastSeen: 'Yesterday',
-  },
-];
-
-const mockPendingInvites = [
-  {
-    id: 'inv-1',
-    email: 'david@example.com',
-    role: 'CAREGIVER',
-    invitedAt: '2 days ago',
-  },
-];
+import { useFamilyMembers, usePendingInvitations, useInviteMember, useResetMemberPassword, useRemoveMember, useCancelInvitation } from '@/hooks/use-family';
+import { toast } from 'react-hot-toast';
 
 const roleConfig = {
   ADMIN: {
@@ -89,12 +55,81 @@ export default function FamilyPage() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'ADMIN' | 'CAREGIVER' | 'VIEWER'>('CAREGIVER');
 
+  // Password reset modal state
+  const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
+  const [selectedMemberForReset, setSelectedMemberForReset] = useState<{ id: string; name: string; email: string } | null>(null);
+
+  // Menu dropdown state
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Mock familyId for now - in real app, get from context or URL
+  const familyId = 'family-123';
+  const currentUserRole = 'ADMIN'; // Get from auth context
+  const currentUserId = 'u-1'; // Get from auth context
+
+  // Hooks
+  const { data: members = [], isLoading: membersLoading } = useFamilyMembers(familyId);
+  const { data: invitations = [], isLoading: invitationsLoading } = usePendingInvitations(familyId);
+  const inviteMember = useInviteMember(familyId);
+  const resetPassword = useResetMemberPassword(familyId);
+  const removeMember = useRemoveMember(familyId);
+  const cancelInvitation = useCancelInvitation(familyId);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const handleInvite = async () => {
-    console.log('Inviting:', { email: inviteEmail, role: inviteRole });
-    // TODO: Call API
+    if (!inviteEmail) return;
+
+    await inviteMember.mutateAsync({
+      email: inviteEmail,
+      role: inviteRole,
+    });
+
     setIsInviteModalOpen(false);
     setInviteEmail('');
     setInviteRole('CAREGIVER');
+  };
+
+  const handleResetPassword = async () => {
+    if (!selectedMemberForReset) return;
+
+    await resetPassword.mutateAsync(selectedMemberForReset.id);
+
+    setIsResetPasswordModalOpen(false);
+    setSelectedMemberForReset(null);
+  };
+
+  const handleRemoveMember = async (memberId: string) => {
+    if (confirm('Are you sure you want to remove this member?')) {
+      await removeMember.mutateAsync(memberId);
+      setOpenMenuId(null);
+    }
+  };
+
+  const handleCancelInvitation = async (invitationId: string) => {
+    await cancelInvitation.mutateAsync(invitationId);
+  };
+
+  const handleResendInvitation = async (invitationId: string) => {
+    // TODO: Implement resend
+    toast.success('Invitation resent');
+  };
+
+  const openResetPasswordModal = (member: { id: string; name: string; email: string }) => {
+    setSelectedMemberForReset(member);
+    setIsResetPasswordModalOpen(true);
+    setOpenMenuId(null);
   };
 
   return (
@@ -118,72 +153,128 @@ export default function FamilyPage() {
         {/* Family Members */}
         <div>
           <h3 className="text-sm font-semibold text-text-tertiary uppercase tracking-wide mb-4">
-            Family Members ({mockFamilyMembers.length})
+            Family Members ({members.length})
           </h3>
-          <div className="space-y-3">
-            {mockFamilyMembers.map((member, index) => {
-              const role = roleConfig[member.role as keyof typeof roleConfig];
-              const RoleIcon = role.icon;
+          {membersLoading ? (
+            <div className="text-center py-8 text-text-secondary">Loading members...</div>
+          ) : members.length === 0 ? (
+            <Card>
+              <div className="text-center py-8 text-text-secondary">
+                No family members yet. Invite someone to get started!
+              </div>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {members.map((member, index) => {
+                const role = roleConfig[member.role as keyof typeof roleConfig];
+                const RoleIcon = role.icon;
+                const isCurrentUser = member.userId === currentUserId;
+                const isMenuOpen = openMenuId === member.id;
 
-              return (
-                <motion.div
-                  key={member.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                >
-                  <Card variant="interactive">
-                    <div className="flex items-center gap-4">
-                      <Avatar
-                        name={member.name}
-                        size="lg"
-                        showStatus={member.status === 'online'} status="online"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-semibold text-text-primary truncate">
-                            {member.name}
-                          </h4>
-                          {member.isCurrentUser && (
-                            <span className="text-xs text-text-tertiary">(You)</span>
+                return (
+                  <motion.div
+                    key={member.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <Card variant="interactive">
+                      <div className="flex items-center gap-4">
+                        <Avatar
+                          name={member.user.fullName}
+                          size="lg"
+                          showStatus={false}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-semibold text-text-primary truncate">
+                              {member.user.fullName}
+                            </h4>
+                            {isCurrentUser && (
+                              <span className="text-xs text-text-tertiary">(You)</span>
+                            )}
+                          </div>
+                          <p className="text-sm text-text-secondary truncate">{member.user.email}</p>
+                          <p className="text-xs text-text-tertiary mt-0.5">
+                            Joined {new Date(member.joinedAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Badge className={role.color}>
+                            <RoleIcon className="w-3.5 h-3.5 mr-1" />
+                            {role.label}
+                          </Badge>
+                          {!isCurrentUser && currentUserRole === 'ADMIN' && (
+                            <div className="relative" ref={isMenuOpen ? menuRef : null}>
+                              <button
+                                onClick={() => setOpenMenuId(isMenuOpen ? null : member.id)}
+                                className="p-2 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-bg-muted transition-colors"
+                              >
+                                <MoreVertical className="w-5 h-5" />
+                              </button>
+
+                              <AnimatePresence>
+                                {isMenuOpen && (
+                                  <motion.div
+                                    initial={{ opacity: 0, y: -10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
+                                    transition={{ duration: 0.15 }}
+                                    className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-border-default z-50 overflow-hidden"
+                                  >
+                                    <div className="py-1">
+                                      <button
+                                        onClick={() => openResetPasswordModal({
+                                          id: member.userId,
+                                          name: member.user.fullName,
+                                          email: member.user.email,
+                                        })}
+                                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-bg-subtle transition-colors"
+                                      >
+                                        <div className="w-8 h-8 rounded-lg bg-accent-primary-light flex items-center justify-center">
+                                          <KeyRound className="w-4 h-4 text-accent-primary" />
+                                        </div>
+                                        <div>
+                                          <p className="text-sm font-medium text-text-primary">Reset Password</p>
+                                          <p className="text-xs text-text-secondary">Send temporary password</p>
+                                        </div>
+                                      </button>
+                                      <button
+                                        onClick={() => handleRemoveMember(member.id)}
+                                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-error-light transition-colors"
+                                      >
+                                        <div className="w-8 h-8 rounded-lg bg-error-light flex items-center justify-center">
+                                          <Trash2 className="w-4 h-4 text-error" />
+                                        </div>
+                                        <div>
+                                          <p className="text-sm font-medium text-error">Remove Member</p>
+                                          <p className="text-xs text-text-secondary">Remove from family</p>
+                                        </div>
+                                      </button>
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
                           )}
                         </div>
-                        <p className="text-sm text-text-secondary truncate">{member.email}</p>
-                        <p className="text-xs text-text-tertiary mt-0.5">
-                          {member.status === 'online' ? (
-                            <span className="text-success">Active now</span>
-                          ) : (
-                            `Last seen ${member.lastSeen}`
-                          )}
-                        </p>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <Badge className={role.color}>
-                          <RoleIcon className="w-3.5 h-3.5 mr-1" />
-                          {role.label}
-                        </Badge>
-                        {!member.isCurrentUser && (
-                          <button className="p-2 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-bg-muted transition-colors">
-                            <MoreVertical className="w-5 h-5" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </Card>
-                </motion.div>
-              );
-            })}
-          </div>
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Pending Invitations */}
-        {mockPendingInvites.length > 0 && (
+        {invitations.length > 0 && (
           <div>
             <h3 className="text-sm font-semibold text-text-tertiary uppercase tracking-wide mb-4">
-              Pending Invitations ({mockPendingInvites.length})
+              Pending Invitations ({invitations.length})
             </h3>
             <div className="space-y-3">
-              {mockPendingInvites.map((invite) => (
+              {invitations.map((invite) => (
                 <Card key={invite.id} variant="highlighted">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-full bg-accent-warm-light flex items-center justify-center">
@@ -196,14 +287,24 @@ export default function FamilyPage() {
                       </p>
                       <p className="text-xs text-text-tertiary mt-0.5">
                         <Clock className="w-3 h-3 inline mr-1" />
-                        Sent {invite.invitedAt}
+                        Sent {new Date(invite.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                     <div className="flex gap-2">
-                      <Button variant="ghost" size="sm" leftIcon={<RefreshCw className="w-4 h-4" />}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        leftIcon={<RefreshCw className="w-4 h-4" />}
+                        onClick={() => handleResendInvitation(invite.id)}
+                      >
                         Resend
                       </Button>
-                      <Button variant="ghost" size="sm" leftIcon={<X className="w-4 h-4" />}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        leftIcon={<X className="w-4 h-4" />}
+                        onClick={() => handleCancelInvitation(invite.id)}
+                      >
                         Cancel
                       </Button>
                     </div>
@@ -284,15 +385,78 @@ export default function FamilyPage() {
               size="lg"
               fullWidth
               onClick={handleInvite}
-              disabled={!inviteEmail}
+              disabled={!inviteEmail || inviteMember.isPending}
               leftIcon={<Send className="w-5 h-5" />}
             >
-              Send Invitation
+              {inviteMember.isPending ? 'Sending...' : 'Send Invitation'}
             </Button>
           </div>
         </div>
       </Modal>
+
+      {/* Reset Password Confirmation Modal */}
+      <Modal
+        isOpen={isResetPasswordModalOpen}
+        onClose={() => setIsResetPasswordModalOpen(false)}
+        title="Reset Member Password"
+        description="This will send a temporary password to the member's email"
+        size="md"
+      >
+        {selectedMemberForReset && (
+          <div className="space-y-5">
+            <div className="rounded-xl bg-accent-warm-light p-4 border border-accent-warm/20">
+              <div className="flex gap-3">
+                <div className="flex-shrink-0">
+                  <AlertCircle className="w-5 h-5 text-accent-warm" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-medium text-text-primary mb-1">
+                    About Password Reset
+                  </h4>
+                  <ul className="text-sm text-text-secondary space-y-1">
+                    <li>• A secure temporary password will be generated</li>
+                    <li>• Password will be sent to: <strong>{selectedMemberForReset.email}</strong></li>
+                    <li>• Member will be required to change it on next login</li>
+                    <li>• This action cannot be undone</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-bg-subtle p-4">
+              <div className="flex items-center gap-3">
+                <Avatar name={selectedMemberForReset.name} size="md" />
+                <div>
+                  <p className="font-medium text-text-primary">{selectedMemberForReset.name}</p>
+                  <p className="text-sm text-text-secondary">{selectedMemberForReset.email}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="secondary"
+                size="lg"
+                fullWidth
+                onClick={() => setIsResetPasswordModalOpen(false)}
+                disabled={resetPassword.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="lg"
+                fullWidth
+                onClick={handleResetPassword}
+                disabled={resetPassword.isPending}
+                leftIcon={<KeyRound className="w-5 h-5" />}
+              >
+                {resetPassword.isPending ? 'Resetting...' : 'Reset Password'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
-

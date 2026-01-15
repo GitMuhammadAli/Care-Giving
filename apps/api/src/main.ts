@@ -5,6 +5,7 @@ import { I18nValidationPipe, I18nValidationExceptionFilter } from 'nestjs-i18n';
 import { ClsService } from 'nestjs-cls';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
+import compression from 'compression';
 
 import { AppModule } from './app.module';
 import { setupSwagger } from './swagger';
@@ -29,6 +30,25 @@ async function bootstrap() {
   // Security
   app.use(helmet());
   app.use(cookieParser());
+
+  // Compression (GZIP)
+  app.use(
+    compression({
+      // Only compress responses larger than 1KB
+      threshold: 1024,
+      // Compression level (0-9, where 9 is maximum compression)
+      level: isProduction ? 6 : 1, // Higher compression in production
+      // Filter function to determine what to compress
+      filter: (req, res) => {
+        // Don't compress if explicitly disabled
+        if (req.headers['x-no-compression']) {
+          return false;
+        }
+        // Use compression filter
+        return compression.filter(req, res);
+      },
+    }),
+  );
 
   // CORS
   app.enableCors({

@@ -17,6 +17,7 @@ import {
   ChevronDown,
   LogOut,
   Heart,
+  MessageCircle,
 } from 'lucide-react';
 
 const mainNavItems = [
@@ -25,6 +26,7 @@ const mainNavItems = [
   { href: '/medications', icon: Pill, label: 'Medications' },
   { href: '/documents', icon: FileText, label: 'Documents' },
   { href: '/timeline', icon: Activity, label: 'Timeline' },
+  { href: '/chat', icon: MessageCircle, label: 'Family Chat' },
   { href: '/caregivers', icon: Users, label: 'Caregivers' },
 ];
 

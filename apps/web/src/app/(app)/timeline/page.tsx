@@ -2,7 +2,11 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/use-auth';
+import { timelineApi, type CreateTimelineEntryInput } from '@/lib/api';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Modal, ModalFooter } from '@/components/ui/modal';
 import { TimelineEntry, TimelineEntryData } from '@/components/care/timeline-entry';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Plus,
   Filter,
@@ -22,74 +27,6 @@ import {
   Activity,
   Search,
 } from 'lucide-react';
-
-const mockTimeline: TimelineEntryData[] = [
-  {
-    id: 't-1',
-    type: 'VITALS',
-    title: 'Vitals Recorded',
-    vitals: { bloodPressure: '128/82', heartRate: 72, oxygenLevel: 97 },
-    occurredAt: new Date(Date.now() - 1 * 60 * 60000).toISOString(),
-    createdBy: { id: 'u-1', fullName: 'Sarah Thompson' },
-  },
-  {
-    id: 't-2',
-    type: 'MEDICATION_CHANGE',
-    title: 'Medication Logged',
-    description: 'Took with breakfast, no issues',
-    occurredAt: new Date(Date.now() - 2 * 60 * 60000).toISOString(),
-    createdBy: { id: 'u-1', fullName: 'Sarah Thompson' },
-  },
-  {
-    id: 't-3',
-    type: 'NOTE',
-    title: 'Morning Check-in',
-    description: 'Slept well, good appetite this morning. Seemed in good spirits.',
-    occurredAt: new Date(Date.now() - 3 * 60 * 60000).toISOString(),
-    createdBy: { id: 'u-2', fullName: 'Mike Thompson' },
-  },
-  {
-    id: 't-4',
-    type: 'MEAL',
-    title: 'Breakfast',
-    description: 'Oatmeal with berries, tea',
-    occurredAt: new Date(Date.now() - 4 * 60 * 60000).toISOString(),
-    createdBy: { id: 'u-1', fullName: 'Sarah Thompson' },
-  },
-  {
-    id: 't-5',
-    type: 'SLEEP',
-    title: 'Sleep Logged',
-    description: '7 hours, woke up once around 3 AM',
-    occurredAt: new Date(Date.now() - 8 * 60 * 60000).toISOString(),
-    createdBy: { id: 'u-2', fullName: 'Mike Thompson' },
-  },
-  {
-    id: 't-6',
-    type: 'INCIDENT',
-    title: 'Minor Incident',
-    description: 'Tripped on rug but caught herself. No injury.',
-    severity: 'MEDIUM',
-    occurredAt: new Date(Date.now() - 24 * 60 * 60000).toISOString(),
-    createdBy: { id: 'u-1', fullName: 'Sarah Thompson' },
-  },
-  {
-    id: 't-7',
-    type: 'MOOD',
-    title: 'Mood Check',
-    description: 'Feeling a bit tired today, but happy to see grandkids on video call',
-    occurredAt: new Date(Date.now() - 26 * 60 * 60000).toISOString(),
-    createdBy: { id: 'u-3', fullName: 'Jennifer Thompson' },
-  },
-  {
-    id: 't-8',
-    type: 'APPOINTMENT_SUMMARY',
-    title: 'Dr. Johnson - Follow-up',
-    description: 'Blood pressure looking good. Continue current medications. Next visit in 3 months.',
-    occurredAt: new Date(Date.now() - 48 * 60 * 60000).toISOString(),
-    createdBy: { id: 'u-1', fullName: 'Sarah Thompson' },
-  },
-];
 
 const filterOptions = [
   { value: 'all', label: 'All', icon: Activity },
@@ -110,13 +47,55 @@ const entryTypes = [
 ];
 
 export default function TimelinePage() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const careRecipientId = user?.families?.[0]?.careRecipients?.[0]?.id;
+
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedEntryType, setSelectedEntryType] = useState<string | null>(null);
 
-  const filteredTimeline = mockTimeline.filter((entry) => {
-    if (filter !== 'all' && entry.type !== filter) return false;
+  // Form state
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    bloodPressure: '',
+    heartRate: '',
+    temperature: '',
+    oxygenLevel: '',
+  });
+
+  // Fetch timeline entries
+  const { data: timeline = [], isLoading } = useQuery({
+    queryKey: ['timeline', careRecipientId, filter !== 'all' ? filter : undefined],
+    queryFn: () => timelineApi.list(careRecipientId!, { type: filter !== 'all' ? filter : undefined }),
+    enabled: !!careRecipientId,
+  });
+
+  // Create entry mutation
+  const createEntryMutation = useMutation({
+    mutationFn: (data: CreateTimelineEntryInput) => timelineApi.create(careRecipientId!, data),
+    onSuccess: () => {
+      toast.success('Entry added successfully');
+      queryClient.invalidateQueries({ queryKey: ['timeline'] });
+      setIsAddModalOpen(false);
+      setSelectedEntryType(null);
+      setFormData({
+        title: '',
+        description: '',
+        bloodPressure: '',
+        heartRate: '',
+        temperature: '',
+        oxygenLevel: '',
+      });
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || 'Failed to add entry');
+    },
+  });
+
+  const filteredTimeline = timeline.filter((entry) => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       return (
@@ -127,6 +106,49 @@ export default function TimelinePage() {
     }
     return true;
   });
+
+  const handleSaveEntry = () => {
+    if (!selectedEntryType || !formData.title) {
+      toast.error('Please fill in required fields');
+      return;
+    }
+
+    const entryData: CreateTimelineEntryInput = {
+      type: selectedEntryType,
+      title: formData.title,
+      description: formData.description || undefined,
+    };
+
+    if (selectedEntryType === 'VITALS') {
+      entryData.vitals = {
+        bloodPressure: formData.bloodPressure || undefined,
+        heartRate: formData.heartRate ? Number(formData.heartRate) : undefined,
+        temperature: formData.temperature ? Number(formData.temperature) : undefined,
+        oxygenLevel: formData.oxygenLevel ? Number(formData.oxygenLevel) : undefined,
+      };
+    }
+
+    createEntryMutation.mutate(entryData);
+  };
+
+  if (!careRecipientId) {
+    return (
+      <div className="pb-6">
+        <PageHeader title="Timeline" subtitle="Health log and activity history" />
+        <div className="px-4 sm:px-6 py-6">
+          <Card>
+            <CardContent className="py-12 text-center">
+              <AlertTriangle className="w-12 h-12 mx-auto text-text-tertiary mb-4" />
+              <p className="text-text-secondary">No care recipient found</p>
+              <p className="text-sm text-text-tertiary mt-2">
+                Please add a care recipient to view timeline
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pb-6">
@@ -182,34 +204,60 @@ export default function TimelinePage() {
           })}
         </div>
 
-        {/* Timeline */}
-        <div className="relative">
-          {/* Timeline Line */}
-          <div className="absolute left-5 top-0 bottom-0 w-px bg-border-subtle" />
-
+        {/* Loading State */}
+        {isLoading ? (
           <div className="space-y-6">
-            {filteredTimeline.map((entry, index) => (
-              <motion.div
-                key={entry.id}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="relative pl-12"
-              >
-                <TimelineEntry entry={entry} />
-              </motion.div>
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="relative pl-12">
+                <Card>
+                  <div className="space-y-3">
+                    <Skeleton className="h-5 w-32" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-2/3" />
+                  </div>
+                </Card>
+              </div>
             ))}
           </div>
+        ) : (
+          /* Timeline */
+          <div className="relative">
+            {/* Timeline Line */}
+            <div className="absolute left-5 top-0 bottom-0 w-px bg-border-subtle" />
 
-          {filteredTimeline.length === 0 && (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Activity className="w-12 h-12 mx-auto text-text-tertiary mb-4" />
-                <p className="text-text-secondary">No entries found</p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+            <div className="space-y-6">
+              {filteredTimeline.map((entry, index) => (
+                <motion.div
+                  key={entry.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="relative pl-12"
+                >
+                  <TimelineEntry entry={entry} />
+                </motion.div>
+              ))}
+            </div>
+
+            {filteredTimeline.length === 0 && (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Activity className="w-12 h-12 mx-auto text-text-tertiary mb-4" />
+                  <p className="text-text-secondary">No entries found</p>
+                  <Button
+                    variant="secondary"
+                    size="default"
+                    className="mt-4"
+                    leftIcon={<Plus className="w-4 h-4" />}
+                    onClick={() => setIsAddModalOpen(true)}
+                  >
+                    Add Entry
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Add Entry Modal */}
@@ -264,14 +312,41 @@ export default function TimelinePage() {
               animate={{ opacity: 1, height: 'auto' }}
               className="space-y-4 pt-4 border-t border-border-subtle"
             >
-              <Input label="Title" placeholder="Brief description" />
-              
+              <Input
+                label="Title *"
+                placeholder="Brief description"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              />
+
               {selectedEntryType === 'VITALS' && (
                 <div className="grid grid-cols-2 gap-4">
-                  <Input label="Blood Pressure" placeholder="120/80" />
-                  <Input label="Heart Rate" placeholder="72 bpm" type="number" />
-                  <Input label="Temperature" placeholder="98.6°F" />
-                  <Input label="Oxygen Level" placeholder="98%" type="number" />
+                  <Input
+                    label="Blood Pressure"
+                    placeholder="120/80"
+                    value={formData.bloodPressure}
+                    onChange={(e) => setFormData({ ...formData, bloodPressure: e.target.value })}
+                  />
+                  <Input
+                    label="Heart Rate"
+                    placeholder="72 bpm"
+                    type="number"
+                    value={formData.heartRate}
+                    onChange={(e) => setFormData({ ...formData, heartRate: e.target.value })}
+                  />
+                  <Input
+                    label="Temperature"
+                    placeholder="98.6°F"
+                    value={formData.temperature}
+                    onChange={(e) => setFormData({ ...formData, temperature: e.target.value })}
+                  />
+                  <Input
+                    label="Oxygen Level"
+                    placeholder="98%"
+                    type="number"
+                    value={formData.oxygenLevel}
+                    onChange={(e) => setFormData({ ...formData, oxygenLevel: e.target.value })}
+                  />
                 </div>
               )}
 
@@ -282,6 +357,8 @@ export default function TimelinePage() {
                 <textarea
                   placeholder="Additional details..."
                   rows={3}
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className={cn(
                     'w-full rounded-lg border border-border-default bg-bg-surface',
                     'px-3.5 py-3 text-base text-text-primary placeholder:text-text-tertiary',
@@ -303,8 +380,14 @@ export default function TimelinePage() {
                 >
                   Cancel
                 </Button>
-                <Button variant="primary" size="lg" fullWidth>
-                  Save Entry
+                <Button
+                  variant="primary"
+                  size="lg"
+                  fullWidth
+                  onClick={handleSaveEntry}
+                  disabled={createEntryMutation.isPending}
+                >
+                  {createEntryMutation.isPending ? 'Saving...' : 'Save Entry'}
                 </Button>
               </div>
             </motion.div>

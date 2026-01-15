@@ -8,4 +8,5 @@ export * from './family';
 export * from './emergency';
 export * from './documents';
 export * from './shifts';
+export * from './notifications';
 

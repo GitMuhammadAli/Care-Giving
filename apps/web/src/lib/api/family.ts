@@ -92,5 +92,10 @@ export const familyApi = {
   acceptInvitation: async (token: string): Promise<Family> => {
     return api.post<Family>(`/families/accept-invite/${token}`);
   },
+
+  // Password Reset (Admin only)
+  resetMemberPassword: async (familyId: string, userId: string): Promise<{ message: string }> => {
+    return api.post<{ message: string }>(`/families/${familyId}/members/${userId}/reset-password`);
+  },
 };
 

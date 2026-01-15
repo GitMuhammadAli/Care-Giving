@@ -1,9 +1,8 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { DashboardHeader } from './dashboard-header';
 import { MobileNav } from './mobile-nav';
-import { Sidebar } from './sidebar';
-import { EmergencyButton } from '@/components/care/emergency-button';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -23,15 +22,15 @@ interface AppShellProps {
 export function AppShell({ children, currentUser, careRecipient }: AppShellProps) {
   return (
     <div className="min-h-screen bg-background">
-      {/* Desktop Sidebar */}
-      <Sidebar currentUser={currentUser} careRecipient={careRecipient} />
+      {/* Header */}
+      <DashboardHeader currentUser={currentUser} careRecipient={careRecipient} />
 
       {/* Main Content */}
       <main
         className={cn(
           'min-h-screen',
-          'pb-20 sm:pb-0', // Account for mobile nav
-          'sm:ml-[260px]' // Account for sidebar
+          'pt-16', // Account for fixed header
+          'pb-20 sm:pb-4' // Account for mobile nav
         )}
       >
         {children}
@@ -39,9 +38,6 @@ export function AppShell({ children, currentUser, careRecipient }: AppShellProps
 
       {/* Mobile Bottom Navigation */}
       <MobileNav />
-
-      {/* Floating Emergency Button (Mobile) */}
-      <EmergencyButton careRecipientId={careRecipient?.id} />
     </div>
   );
 }

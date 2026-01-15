@@ -8,12 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Lock, CheckCircle2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import toast from 'react-hot-toast';
 
 function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { toast } = useToast();
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -87,11 +86,7 @@ function ResetPasswordContent() {
       }
 
       setIsSuccess(true);
-      toast({
-        title: 'Success',
-        description: 'Your password has been reset successfully',
-        variant: 'success',
-      });
+      toast.success('Your password has been reset successfully');
 
       // Redirect to login after 2 seconds
       setTimeout(() => {
@@ -99,11 +94,7 @@ function ResetPasswordContent() {
       }, 2000);
     } catch (err: any) {
       setError(err.message || 'Failed to reset password. The link may have expired.');
-      toast({
-        title: 'Error',
-        description: err.message || 'Failed to reset password',
-        variant: 'destructive',
-      });
+      toast.error(err.message || 'Failed to reset password');
     } finally {
       setIsLoading(false);
     }
