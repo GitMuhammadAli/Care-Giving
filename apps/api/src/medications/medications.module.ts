@@ -6,9 +6,13 @@ import { MedicationRepository } from './repository/medication.repository';
 import { MedicationLogRepository } from './repository/medication-log.repository';
 import { MedicationsService } from './service/medications.service';
 import { MedicationsController, MedicationLogsController } from './medications.controller';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Medication, MedicationLog])],
+  imports: [
+    TypeOrmModule.forFeature([Medication, MedicationLog]),
+    NotificationsModule,
+  ],
   controllers: [MedicationsController, MedicationLogsController],
   providers: [MedicationsService, MedicationRepository, MedicationLogRepository],
   exports: [MedicationsService],

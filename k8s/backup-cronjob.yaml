@@ -1,0 +1,146 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: database-backup
+  namespace: carecircle
+spec:
+  # Run daily at 2 AM UTC
+  schedule: "0 2 * * *"
+  successfulJobsHistoryLimit: 7
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: database-backup
+        spec:
+          restartPolicy: OnFailure
+
+          # Use service account with cloud storage permissions
+          serviceAccountName: backup-service-account
+
+          containers:
+          - name: backup
+            image: postgres:16-alpine
+            imagePullPolicy: IfNotPresent
+
+            command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+
+              # Install dependencies
+              apk add --no-cache aws-cli curl
+
+              # Run backup script
+              /scripts/backup-database.sh production
+
+            env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: database-credentials
+                  key: connection-url
+
+            - name: BACKUP_BUCKET
+              value: "s3://carecircle-backups"
+
+            - name: BACKUP_RETENTION
+              value: "30"
+
+            - name: SLACK_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: slack-webhooks
+                  key: backup-alerts
+                  optional: true
+
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: aws-credentials
+                  key: access-key-id
+                  optional: true
+
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aws-credentials
+                  key: secret-access-key
+                  optional: true
+
+            - name: AWS_REGION
+              value: "us-east-1"
+
+            volumeMounts:
+            - name: backup-scripts
+              mountPath: /scripts
+              readOnly: true
+
+            resources:
+              requests:
+                memory: "256Mi"
+                cpu: "100m"
+              limits:
+                memory: "1Gi"
+                cpu: "500m"
+
+          volumes:
+          - name: backup-scripts
+            configMap:
+              name: backup-scripts
+              defaultMode: 0755
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-scripts
+  namespace: carecircle
+data:
+  backup-database.sh: |
+    #!/bin/sh
+    # Inline the backup script here or use an init container
+    # to download from your repo
+
+    echo "Running database backup..."
+    # ... (backup script content)
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: backup-service-account
+  namespace: carecircle
+  annotations:
+    # For AWS IRSA (IAM Roles for Service Accounts)
+    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/carecircle-backup-role
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: backup-role
+  namespace: carecircle
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: backup-role-binding
+  namespace: carecircle
+subjects:
+- kind: ServiceAccount
+  name: backup-service-account
+  namespace: carecircle
+roleRef:
+  kind: Role
+  name: backup-role
+  apiGroup: rbac.authorization.k8s.io

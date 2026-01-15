@@ -16,6 +16,7 @@ import { SessionRepository } from '../../user/repository/session.repository';
 import { OtpHelper } from '../../system/helper/otp.helper';
 import { ContextHelper } from '../../system/helper/context.helper';
 import { MailService } from '../../system/module/mail/mail.service';
+import { PrismaService } from '../../prisma/prisma.service';
 
 import { RegisterDto } from '../dto/register.dto';
 import { LoginDto } from '../dto/login.dto';
@@ -52,6 +53,7 @@ export class AuthService {
     private sessionRepository: SessionRepository,
     private otpHelper: OtpHelper,
     private mailService: MailService,
+    private prisma: PrismaService,
   ) {
     this.maxLoginAttempts = this.configService.get('security.maxLoginAttempts') || 5;
     this.lockoutDuration = this.configService.get('security.lockoutDuration') || 1800;
@@ -382,9 +384,28 @@ export class AuthService {
     entityId?: string,
     metadata?: Record<string, any>,
   ): Promise<void> {
-    // TODO: Re-enable audit logging when audit_logs table is added to Prisma schema
-    // For now, just log to console
-    console.log(`[Audit] ${action} on ${entityType}${entityId ? ` (${entityId})` : ''}`);
+    try {
+      // Get request context if available
+      const request = ContextHelper.getRequest();
+      const ipAddress = request?.ip || request?.headers?.['x-forwarded-for'] || request?.connection?.remoteAddress;
+      const userAgent = request?.headers?.['user-agent'];
+
+      await this.prisma.auditLog.create({
+        data: {
+          userId: entityId,
+          action,
+          resource: entityType,
+          resourceId: entityId,
+          ipAddress: ipAddress as string | undefined,
+          userAgent: userAgent as string | undefined,
+          metadata: metadata ? (metadata as any) : undefined,
+        },
+      });
+    } catch (error) {
+      // Log to console if audit logging fails to avoid breaking the flow
+      console.error(`[Audit Error] Failed to log audit: ${error.message}`);
+      console.log(`[Audit Fallback] ${action} on ${entityType}${entityId ? ` (${entityId})` : ''}`);
+    }
   }
 }
 

@@ -52,8 +52,22 @@ export class NotificationsService {
       })),
     });
 
-    // TODO: Send push notifications via Firebase
-    // TODO: Send SMS via Twilio for critical emergencies
+    // Optional: Add push notifications and SMS for critical emergencies
+    //
+    // Web Push Notifications (Native API):
+    //   - Use WebPushService from ./web-push.service.ts (already implemented)
+    //   - Set VAPID keys in environment variables
+    //   - Call: await this.webPushService.sendEmergencyAlert(...)
+    //
+    // Firebase Cloud Messaging (Alternative):
+    //   - Install: npm install firebase-admin
+    //   - Initialize Firebase SDK with service account
+    //   - Send to device tokens
+    //
+    // SMS via Twilio:
+    //   - Install: npm install twilio
+    //   - Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER
+    //   - Send SMS: await twilioClient.messages.create({ to, from, body })
   }
 
   async notifyHighSeverityEntry(familyId: string, careRecipient: any, entry: any) {
@@ -177,6 +191,39 @@ export class NotificationsService {
       data: members.map((m) => ({
         userId: m.userId,
         type: 'APPOINTMENT_REMINDER',
+        title: notification.title,
+        body: notification.body,
+        data: notification.data,
+      })),
+    });
+  }
+
+  async notifyMedicationRefillNeeded(medication: any, careRecipient: any, familyId: string) {
+    const notification = {
+      type: 'REFILL_NEEDED',
+      title: '⚠️ Medication Refill Needed',
+      body: `${careRecipient.preferredName || careRecipient.firstName}: ${medication.name} is running low (${medication.currentSupply} remaining)`,
+      data: {
+        type: 'REFILL',
+        medicationId: medication.id,
+        careRecipientId: careRecipient.id,
+        currentSupply: medication.currentSupply,
+      },
+    };
+
+    this.gateway.emitToFamily(familyId, 'medication_refill_needed', {
+      medication,
+      careRecipient,
+    });
+
+    const members = await this.prisma.familyMember.findMany({
+      where: { familyId },
+    });
+
+    await this.prisma.notification.createMany({
+      data: members.map((m) => ({
+        userId: m.userId,
+        type: 'REFILL_NEEDED',
         title: notification.title,
         body: notification.body,
         data: notification.data,

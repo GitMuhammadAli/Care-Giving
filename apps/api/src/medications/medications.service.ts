@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateMedicationDto } from './dto/create-medication.dto';
 import { UpdateMedicationDto } from './dto/update-medication.dto';
 import { LogMedicationDto } from './dto/log-medication.dto';
@@ -7,7 +8,10 @@ import { startOfDay, endOfDay, format, parse } from 'date-fns';
 
 @Injectable()
 export class MedicationsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+  ) {}
 
   private async verifyAccess(careRecipientId: string, userId: string) {
     const careRecipient = await this.prisma.careRecipient.findUnique({
@@ -231,14 +235,26 @@ export class MedicationsService {
     if (dto.status === 'GIVEN' && medication.currentSupply !== null) {
       const newSupply = medication.currentSupply - 1;
 
-      await this.prisma.medication.update({
+      const updatedMedication = await this.prisma.medication.update({
         where: { id: medicationId },
         data: { currentSupply: newSupply },
+        include: {
+          careRecipient: {
+            include: {
+              family: true,
+            },
+          },
+        },
       });
 
       // Check if refill needed
       if (newSupply <= (medication.refillAt || 5)) {
-        // TODO: Trigger refill notification via NotificationsService
+        // Trigger refill notification to all family members
+        await this.notificationsService.notifyMedicationRefillNeeded(
+          { ...updatedMedication, currentSupply: newSupply },
+          updatedMedication.careRecipient,
+          updatedMedication.careRecipient.familyId,
+        );
       }
     }
 

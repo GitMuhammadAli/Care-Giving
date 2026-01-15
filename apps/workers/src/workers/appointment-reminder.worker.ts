@@ -1,151 +1,270 @@
+/**
+ * Appointment Reminder Worker
+ * 
+ * Features:
+ * - Zod validation of job payload
+ * - Timezone-aware time formatting
+ * - Idempotent notifications
+ * - Structured logging
+ * - DLQ support
+ */
+
 import { Worker, Job } from 'bullmq';
 import { prisma } from '@carecircle/database';
-import { redisConnection, QUEUE_NAMES } from '../config';
-import { AppointmentReminderJob, notificationQueue } from '../queues';
+import { 
+  AppointmentReminderJobSchema, 
+  validateJobPayload,
+  type AppointmentReminderJob 
+} from '@carecircle/config';
+import { formatInTimeZone } from 'date-fns-tz';
+import { 
+  getRedisConnection, 
+  QUEUE_NAMES, 
+  getDefaultWorkerOptions,
+  logger 
+} from '../config';
+import { notificationQueue, moveToDeadLetter } from '../queues';
+import { createJobLogger } from '@carecircle/logger';
+
+// ============================================================================
+// ERROR CLASSIFICATION
+// ============================================================================
+
+type ErrorType = 'transient' | 'permanent' | 'validation';
+
+function classifyError(error: unknown): ErrorType {
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    
+    if (message.includes('invalid') || message.includes('validation')) {
+      return 'validation';
+    }
+    
+    if (
+      message.includes('connection') ||
+      message.includes('timeout') ||
+      message.includes('econnrefused')
+    ) {
+      return 'transient';
+    }
+    
+    if (message.includes('not found')) {
+      return 'permanent';
+    }
+  }
+  
+  return 'transient';
+}
+
+// ============================================================================
+// WORKER PROCESSOR
+// ============================================================================
 
 async function processAppointmentReminder(job: Job<AppointmentReminderJob>) {
-  const { appointmentId, careRecipientId, appointmentTime, title, location, minutesBefore } = job.data;
+  const jobLogger = createJobLogger(logger, job.id || 'unknown', 'appointment-reminder');
+  
+  // Step 1: Validate job payload
+  const validatedData = validateJobPayload(
+    AppointmentReminderJobSchema,
+    job.data,
+    'AppointmentReminderJob'
+  );
 
-  console.log(`📅 Processing appointment reminder: ${title} (${minutesBefore} min before)`);
+  const { appointmentId, minutesBefore } = validatedData;
 
-  try {
-    // Get all family members who should receive the reminder
-    const familyMembers = await prisma.familyMember.findMany({
-      where: {
-        family: {
-          careRecipients: {
-            some: { id: careRecipientId },
+  jobLogger.info({ appointmentId, minutesBefore }, 'Processing appointment reminder');
+
+  // Step 2: Fetch appointment from DB (source of truth)
+  const appointment = await prisma.appointment.findUnique({
+    where: { id: appointmentId },
+    include: {
+      careRecipient: {
+        include: {
+          family: {
+            include: {
+              members: {
+                where: { status: 'ACCEPTED' },
+                select: { userId: true, role: true },
+              },
+            },
           },
         },
       },
-      include: {
-        user: {
-          include: {
-            pushTokens: true,
-          },
-        },
-      },
-    });
+    },
+  });
 
-    // Get transport assignment if any
-    const appointment = await prisma.appointment.findUnique({
-      where: { id: appointmentId },
-      include: {
-        careRecipient: true,
-        transportAssignment: true,
-      },
-    });
-
-    const careRecipient = appointment?.careRecipient;
-
-    // Fetch transport person separately if there's an assignment
-    let transportPerson: { id: string; fullName: string } | null = null;
-    if (appointment?.transportAssignment?.assignedToId) {
-      const user = await prisma.user.findUnique({
-        where: { id: appointment.transportAssignment.assignedToId },
-        select: { id: true, fullName: true },
-      });
-      transportPerson = user;
-    }
-
-    // Create notification content
-    let notifTitle: string;
-    let body: string;
-
-    if (minutesBefore >= 1440) {
-      // 1 day before
-      notifTitle = `📅 Appointment Tomorrow`;
-      body = `${title} for ${careRecipient?.preferredName || careRecipient?.firstName} is tomorrow.`;
-    } else if (minutesBefore >= 60) {
-      // 1 hour before
-      notifTitle = `📅 Appointment in 1 Hour`;
-      body = `${title} for ${careRecipient?.preferredName || careRecipient?.firstName}`;
-      if (location) body += ` at ${location}`;
-    } else {
-      // 30 min before
-      notifTitle = `📅 Appointment Soon`;
-      body = `${title} starts in ${minutesBefore} minutes`;
-      if (location) body += ` at ${location}`;
-    }
-
-    if (transportPerson && minutesBefore <= 60) {
-      body += `. Transport: ${transportPerson.fullName}`;
-    }
-
-    // Queue notifications for each family member
-    for (const member of familyMembers) {
-      // In-app notification
-      await prisma.notification.create({
-        data: {
-          userId: member.userId,
-          type: 'APPOINTMENT_REMINDER',
-          title: notifTitle,
-          body,
-          data: {
-            appointmentId,
-            careRecipientId,
-            appointmentTime,
-          },
-        },
-      });
-
-      // Push notifications
-      for (const token of member.user.pushTokens) {
-        await notificationQueue.add('send-push', {
-          type: 'PUSH',
-          userId: member.userId,
-          title: notifTitle,
-          body,
-          data: {
-            type: 'APPOINTMENT_REMINDER',
-            appointmentId,
-            careRecipientId,
-          },
-          priority: minutesBefore <= 60 ? 'high' : 'normal',
-        });
-      }
-    }
-
-    // Special notification for transport person
-    if (transportPerson && minutesBefore === 60) {
-      await prisma.notification.create({
-        data: {
-          userId: transportPerson.id,
-          type: 'APPOINTMENT_REMINDER',
-          title: `🚗 Transport Reminder`,
-          body: `You're providing transport for ${careRecipient?.preferredName || careRecipient?.firstName}'s appointment in 1 hour.`,
-          data: {
-            appointmentId,
-            careRecipientId,
-            appointmentTime,
-            location: location || '',
-            isTransportReminder: true,
-          },
-        },
-      });
-    }
-
-    console.log(`✅ Appointment reminder sent to ${familyMembers.length} family members`);
-  } catch (error) {
-    console.error('Error processing appointment reminder:', error);
-    throw error;
+  if (!appointment) {
+    jobLogger.warn({ appointmentId }, 'Appointment not found, skipping');
+    return { skipped: true, reason: 'appointment_not_found' };
   }
+
+  // Check if appointment is still scheduled
+  if (!['SCHEDULED', 'CONFIRMED'].includes(appointment.status)) {
+    jobLogger.info({ appointmentId, status: appointment.status }, 'Appointment no longer active, skipping');
+    return { skipped: true, reason: 'appointment_not_active' };
+  }
+
+  const careRecipient = appointment.careRecipient;
+  const familyMembers = careRecipient.family.members;
+
+  // Step 3: Format time with timezone
+  const timezone = careRecipient.timezone || 'America/New_York';
+  const formattedTime = formatInTimeZone(
+    appointment.startTime, // Use DB source of truth
+    timezone,
+    'EEEE, MMM d \'at\' h:mm a'
+  );
+
+  // Step 4: Build notification content
+  let title: string;
+  let body: string;
+  const careRecipientName = careRecipient.preferredName || careRecipient.firstName;
+
+  if (minutesBefore === 1440) {
+    // 24 hour reminder
+    title = `📅 Appointment Tomorrow`;
+    body = `${careRecipientName} has "${appointment.title}" ${formattedTime}${appointment.location ? ` at ${appointment.location}` : ''}.`;
+  } else if (minutesBefore === 60) {
+    title = `📅 Appointment in 1 Hour`;
+    body = `${careRecipientName}'s "${appointment.title}" starts at ${formatInTimeZone(appointment.startTime, timezone, 'h:mm a')}${appointment.location ? ` at ${appointment.location}` : ''}.`;
+  } else if (minutesBefore === 30) {
+    title = `📅 Appointment in 30 Minutes`;
+    body = `${careRecipientName}'s "${appointment.title}" is coming up soon${appointment.location ? ` at ${appointment.location}` : ''}. Time to prepare!`;
+  } else {
+    title = `📅 Appointment Reminder`;
+    body = `${careRecipientName}'s "${appointment.title}" is in ${minutesBefore} minutes.`;
+  }
+
+  // Step 5: Idempotency key
+  const idempotencyKey = `apt-${appointmentId}-${minutesBefore}`;
+
+  // Step 6: Notify all family members
+  const notifications = [];
+  
+  for (const member of familyMembers) {
+    // Check for existing notification (idempotency)
+    const existing = await prisma.notification.findFirst({
+      where: {
+        userId: member.userId,
+        type: 'APPOINTMENT_REMINDER',
+        data: {
+          path: ['idempotencyKey'],
+          equals: idempotencyKey,
+        },
+      },
+    });
+
+    if (existing) {
+      jobLogger.debug({ userId: member.userId, idempotencyKey }, 'Notification already sent');
+      continue;
+    }
+
+    // Create notification
+    const notification = await prisma.notification.create({
+      data: {
+        userId: member.userId,
+        type: 'APPOINTMENT_REMINDER',
+        title,
+        body,
+        data: {
+          appointmentId,
+          careRecipientId: careRecipient.id,
+          appointmentTime: appointment.startTime.toISOString(),
+          minutesBefore,
+          idempotencyKey,
+        },
+      },
+    });
+
+    notifications.push(notification);
+
+    // Queue push notification
+    await notificationQueue.add(
+      'send-push',
+      {
+        type: 'PUSH',
+        userId: member.userId,
+        title,
+        body,
+        data: {
+          type: 'APPOINTMENT_REMINDER',
+          appointmentId,
+          careRecipientId: careRecipient.id,
+          notificationId: notification.id,
+        },
+        priority: minutesBefore <= 60 ? 'high' : 'normal',
+      },
+      {
+        jobId: `push-${idempotencyKey}-${member.userId}`,
+      }
+    );
+  }
+
+  jobLogger.info(
+    { appointmentId, notificationCount: notifications.length },
+    `Appointment reminder sent to ${notifications.length} family members`
+  );
+
+  return { 
+    success: true, 
+    appointmentId,
+    notificationCount: notifications.length,
+  };
 }
+
+// ============================================================================
+// WORKER INSTANCE
+// ============================================================================
+
+const workerOptions = getDefaultWorkerOptions();
 
 export const appointmentReminderWorker = new Worker<AppointmentReminderJob>(
   QUEUE_NAMES.APPOINTMENT_REMINDERS,
-  processAppointmentReminder,
+  async (job) => {
+    try {
+      return await processAppointmentReminder(job);
+    } catch (error) {
+      const errorType = classifyError(error);
+      const jobLogger = createJobLogger(logger, job.id || 'unknown', 'appointment-reminder');
+      
+      if (errorType === 'permanent' || errorType === 'validation') {
+        await moveToDeadLetter(
+          QUEUE_NAMES.APPOINTMENT_REMINDERS,
+          job.id || 'unknown',
+          'appointment-reminder',
+          job.data,
+          error instanceof Error ? error.message : String(error),
+          job.attemptsMade
+        );
+        
+        jobLogger.error({ err: error, errorType }, 'Permanent failure, moved to DLQ');
+        return { failed: true, movedToDLQ: true };
+      }
+      
+      throw error;
+    }
+  },
   {
-    connection: redisConnection,
+    connection: getRedisConnection(),
+    ...workerOptions,
     concurrency: 10,
   }
 );
 
-appointmentReminderWorker.on('completed', (job) => {
-  console.log(`📅 Appointment reminder job ${job.id} completed`);
+// ============================================================================
+// WORKER EVENTS
+// ============================================================================
+
+appointmentReminderWorker.on('completed', (job, result) => {
+  const jobLogger = createJobLogger(logger, job.id || 'unknown', 'appointment-reminder');
+  jobLogger.debug({ result }, 'Job completed');
 });
 
 appointmentReminderWorker.on('failed', (job, err) => {
-  console.error(`📅 Appointment reminder job ${job?.id} failed:`, err);
+  const jobLogger = createJobLogger(logger, job?.id || 'unknown', 'appointment-reminder');
+  jobLogger.error({ err, attemptsMade: job?.attemptsMade }, 'Job failed');
 });
 
+appointmentReminderWorker.on('error', (err) => {
+  logger.error({ err }, 'Worker error');
+});

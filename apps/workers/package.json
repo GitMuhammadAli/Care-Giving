@@ -5,20 +5,33 @@
   "scripts": {
     "dev": "ts-node-dev --respawn src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage"
   },
   "dependencies": {
     "@carecircle/database": "workspace:*",
+    "@carecircle/logger": "workspace:*",
+    "@carecircle/config": "workspace:*",
     "bullmq": "^5.1.0",
     "ioredis": "^5.3.2",
-    "firebase-admin": "^12.0.0",
+    "web-push": "^3.6.0",
     "date-fns": "^3.3.0",
-    "dotenv": "^16.4.0"
+    "date-fns-tz": "^3.1.0",
+    "dotenv": "^16.4.0",
+    "nodemailer": "^6.9.0",
+    "twilio": "^5.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
+    "@types/nodemailer": "^6.4.0",
+    "@types/web-push": "^3.6.0",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.0",
+    "@types/jest": "^29.5.0",
+    "jest-mock-extended": "^3.0.0"
   }
 }
-

@@ -41,7 +41,15 @@ import { TimelineModule } from './timeline/timeline.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ChatModule } from './chat/chat.module';
 import { GatewayModule } from './gateway/gateway.module';
-// TODO: Re-enable RabbitMQ events module later
+import { HealthModule } from './health/health.module';
+import { MetricsModule } from './metrics/metrics.module';
+
+// Optional: RabbitMQ Events Module (event-driven architecture)
+// The app works fine without this using direct service calls and Socket.io for real-time features
+// To enable:
+//   1. Uncomment the import below and add to imports array
+//   2. Set RABBITMQ_URL in environment variables
+//   3. Run RabbitMQ server (docker-compose or cloud service like CloudAMQP)
 // import { EventsModule } from './events/events.module';
 
 @Module({
@@ -127,8 +135,9 @@ import { GatewayModule } from './gateway/gateway.module';
 
     // Core modules
     SystemModule,
-    // TODO: Re-enable RabbitMQ events module later
-    // EventsModule, // Event-driven architecture with RabbitMQ
+    HealthModule,
+    MetricsModule,
+    // EventsModule, // Optional: Uncomment to enable RabbitMQ event-driven architecture
     AuthModule,
     UserModule,
     FamilyModule,

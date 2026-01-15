@@ -78,5 +78,13 @@ export class FamilyController {
   ) {
     return this.familyService.cancelInvitation(invitationId, user.id);
   }
+
+  @Post('invitations/:invitationId/resend')
+  resendInvitation(
+    @Param('invitationId') invitationId: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.familyService.resendInvitation(invitationId, user.id);
+  }
 }
 

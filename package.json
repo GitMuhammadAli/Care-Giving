@@ -8,11 +8,15 @@
     "dev:api": "pnpm --filter @carecircle/api dev",
     "dev:workers": "pnpm --filter @carecircle/workers dev",
     "build": "turbo build",
+    "test": "turbo test",
+    "test:workers": "pnpm --filter @carecircle/workers test",
     "db:migrate": "pnpm --filter @carecircle/api migration:run",
     "db:seed": "pnpm --filter @carecircle/api seed:run",
     "db:generate": "pnpm --filter @carecircle/api migration:generate",
+    "db:studio": "pnpm --filter @carecircle/database studio",
     "lint": "turbo lint",
-    "clean": "turbo clean && rm -rf node_modules"
+    "clean": "turbo clean && rm -rf node_modules",
+    "postinstall": "pnpm --filter @carecircle/database generate"
   },
   "devDependencies": {
     "turbo": "^2.0.0",

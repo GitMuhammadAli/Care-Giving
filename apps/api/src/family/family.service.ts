@@ -1,12 +1,16 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { MailService } from '../system/module/mail/mail.service';
 import { CreateFamilyDto } from './dto/create-family.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { randomBytes } from 'crypto';
 
 @Injectable()
 export class FamilyService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private mailService: MailService,
+  ) {}
 
   async createFamily(userId: string, dto: CreateFamilyDto) {
     const family = await this.prisma.family.create({
@@ -88,7 +92,18 @@ export class FamilyService {
       },
     });
 
-    // TODO: Send invitation email via queue
+    // Send invitation email
+    const inviterUser = await this.prisma.user.findUnique({
+      where: { id: invitedById },
+      select: { fullName: true },
+    });
+
+    await this.mailService.sendFamilyInvitation(
+      dto.email,
+      inviterUser?.fullName || 'A family member',
+      invitation.family.name,
+      token,
+    );
 
     return {
       id: invitation.id,
@@ -296,6 +311,49 @@ export class FamilyService {
       where: { id: invitationId },
       data: { status: 'CANCELLED' },
     });
+
+    return { success: true };
+  }
+
+  async resendInvitation(invitationId: string, adminId: string) {
+    const invitation = await this.prisma.familyInvitation.findUnique({
+      where: { id: invitationId },
+      include: { family: true },
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Invitation not found');
+    }
+
+    const admin = await this.prisma.familyMember.findUnique({
+      where: { familyId_userId: { familyId: invitation.familyId, userId: adminId } },
+    });
+
+    if (!admin || admin.role !== 'ADMIN') {
+      throw new ForbiddenException('Only admins can resend invitations');
+    }
+
+    if (invitation.status !== 'PENDING') {
+      throw new ForbiddenException('Can only resend pending invitations');
+    }
+
+    if (invitation.expiresAt < new Date()) {
+      throw new ForbiddenException('Invitation has expired. Please create a new one.');
+    }
+
+    // Get inviter name
+    const inviterUser = await this.prisma.user.findUnique({
+      where: { id: adminId },
+      select: { fullName: true },
+    });
+
+    // Resend the email
+    await this.mailService.sendFamilyInvitation(
+      invitation.email,
+      inviterUser?.fullName || 'A family member',
+      invitation.family.name,
+      invitation.token,
+    );
 
     return { success: true };
   }
