@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -90,6 +91,7 @@ export default function VerifyEmailPage() {
     try {
       await verifyEmail({ email, otp: otpCode });
       setSuccess(true);
+      toast.success('Email verified successfully! Redirecting...');
 
       // Redirect to dashboard after success
       setTimeout(() => {
@@ -97,9 +99,13 @@ export default function VerifyEmailPage() {
       }, 1500);
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(err.message || 'Invalid verification code. Please try again.');
+        const errorMsg = err.message || 'Invalid verification code. Please try again.';
+        setError(errorMsg);
+        toast.error(errorMsg);
       } else {
-        setError('Failed to verify email. Please try again.');
+        const errorMsg = 'Failed to verify email. Please try again.';
+        setError(errorMsg);
+        toast.error(errorMsg);
       }
       // Clear OTP on error
       setOtp(['', '', '', '', '', '']);
@@ -117,14 +123,19 @@ export default function VerifyEmailPage() {
 
     try {
       await resendVerification({ email });
+      toast.success('Verification code sent! Check your email.');
       setResendCooldown(60); // 60 second cooldown
       setOtp(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(err.message || 'Failed to resend code. Please try again.');
+        const errorMsg = err.message || 'Failed to resend code. Please try again.';
+        setError(errorMsg);
+        toast.error(errorMsg);
       } else {
-        setError('Failed to resend code. Please try again.');
+        const errorMsg = 'Failed to resend code. Please try again.';
+        setError(errorMsg);
+        toast.error(errorMsg);
       }
     } finally {
       setIsResending(false);
@@ -308,13 +319,18 @@ export default function VerifyEmailPage() {
                         setOtp(['', '', '', '', '', '']);
                         try {
                           await resendVerification({ email });
+                          toast.success('Verification code sent! Check your email.');
                           setResendCooldown(60);
                           setTimeout(() => inputRefs.current[0]?.focus(), 100);
                         } catch (err) {
                           if (err instanceof ApiError) {
-                            setError(err.message || 'Failed to send code. Please try again.');
+                            const errorMsg = err.message || 'Failed to send code. Please try again.';
+                            setError(errorMsg);
+                            toast.error(errorMsg);
                           } else {
-                            setError('Failed to send code. Please try again.');
+                            const errorMsg = 'Failed to send code. Please try again.';
+                            setError(errorMsg);
+                            toast.error(errorMsg);
                           }
                         } finally {
                           setIsResending(false);

@@ -27,10 +27,12 @@ model User {
   lastLoginAt            DateTime?
   failedLoginAttempts    Int          @default(0)
   lockedUntil            DateTime?
-  passwordResetToken     String?
-  passwordResetExpiresAt DateTime?
-  passwordChangedAt      DateTime?
-  preferences            Json?
+  passwordResetToken         String?
+  passwordResetExpiresAt     DateTime?
+  passwordChangedAt          DateTime?
+  emailVerificationCode      String?
+  emailVerificationExpiresAt DateTime?
+  preferences                Json?
   createdAt              DateTime     @default(now())
   updatedAt              DateTime     @updatedAt
 

@@ -10,6 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MailService } from '../../system/module/mail/mail.service';
 import { RegisterDto } from '../dto/register.dto';
 import { LoginDto } from '../dto/login.dto';
 
@@ -19,6 +20,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private mailService: MailService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -32,26 +34,39 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
 
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
     const user = await this.prisma.user.create({
       data: {
         email: dto.email.toLowerCase(),
         passwordHash,
         fullName: dto.fullName,
         phone: dto.phone,
-        status: 'ACTIVE', // For simplicity, auto-activate. Implement email verification separately.
-        emailVerified: true,
-        emailVerifiedAt: new Date(),
+        status: 'PENDING', // User must verify email first
+        emailVerified: false,
+        emailVerificationCode: otp,
+        emailVerificationExpiresAt: otpExpiresAt,
       },
     });
 
-    // Generate tokens immediately (no email verification in this simple flow)
-    const tokens = await this.generateTokens(user.id, user.email);
-    await this.createSession(user.id, tokens.refreshToken);
+    // Send verification email
+    await this.mailService.sendEmailVerification(
+      user.email,
+      otp,
+      user.fullName,
+    );
+
+    // Log audit
+    await this.logAudit(user.id, 'REGISTER', 'user', user.id);
 
     return {
-      message: 'Registration successful',
-      tokens,
-      user: this.sanitizeUser(user),
+      message: 'Registration successful. Please check your email to verify your account.',
+      user: {
+        email: user.email,
+        fullName: user.fullName,
+      },
     };
   }
 
@@ -61,16 +76,23 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      // Security: Don't reveal if email exists, but provide helpful guidance
+      throw new UnauthorizedException(
+        'Invalid email or password. If you don\'t have an account, please register first.'
+      );
     }
 
     if (user.status !== 'ACTIVE') {
-      throw new UnauthorizedException('Account is not active');
+      throw new UnauthorizedException(
+        'Account is not active. Please check your email to verify your account.'
+      );
     }
 
     const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException(
+        'Invalid email or password. Please check your credentials and try again.'
+      );
     }
 
     const tokens = await this.generateTokens(user.id, user.email);
@@ -282,13 +304,95 @@ export class AuthService {
     }
   }
 
-  // Stub methods for email verification (to be implemented)
   async verifyEmail(email: string, otp: string) {
-    throw new BadRequestException('Email verification not implemented');
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.emailVerified) {
+      throw new BadRequestException('Email already verified');
+    }
+
+    if (!user.emailVerificationCode || !user.emailVerificationExpiresAt) {
+      throw new BadRequestException('No verification code found. Please request a new one.');
+    }
+
+    if (user.emailVerificationExpiresAt < new Date()) {
+      throw new BadRequestException('Verification code has expired. Please request a new one.');
+    }
+
+    if (user.emailVerificationCode !== otp) {
+      throw new BadRequestException('Invalid verification code');
+    }
+
+    // Verify the email and activate the user
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerified: true,
+        emailVerifiedAt: new Date(),
+        status: 'ACTIVE',
+        emailVerificationCode: null,
+        emailVerificationExpiresAt: null,
+      },
+    });
+
+    // Generate tokens for automatic login
+    const tokens = await this.generateTokens(user.id, user.email);
+    await this.createSession(user.id, tokens.refreshToken);
+
+    // Log audit
+    await this.logAudit(user.id, 'EMAIL_VERIFIED', 'user', user.id);
+
+    return {
+      message: 'Email verified successfully',
+      tokens,
+      user: this.sanitizeUser({
+        ...user,
+        emailVerified: true,
+        status: 'ACTIVE',
+      }),
+    };
   }
 
   async resendVerification(email: string) {
-    throw new BadRequestException('Email verification not implemented');
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+    });
+
+    if (!user) {
+      // Don't reveal if email exists
+      return { message: 'If the email exists, a verification code has been sent' };
+    }
+
+    if (user.emailVerified) {
+      throw new BadRequestException('Email already verified');
+    }
+
+    // Generate new 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerificationCode: otp,
+        emailVerificationExpiresAt: otpExpiresAt,
+      },
+    });
+
+    // Send verification email
+    await this.mailService.sendEmailVerification(
+      user.email,
+      otp,
+      user.fullName,
+    );
+
+    return { message: 'Verification code sent successfully' };
   }
 
   private async generateTokens(userId: string, email: string) {

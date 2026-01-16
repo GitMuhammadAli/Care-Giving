@@ -48,18 +48,19 @@ export class ChatService {
     }
 
     const channelId = `family-${familyId}`;
+    const members = memberIds || [];
 
     const channel = this.streamClient.channel('messaging', channelId, {
-      name: `${familyName} Chat`,
+      name: `${familyName || 'Family'} Chat`,
       image: '/icons/family-chat.png',
       created_by_id: createdBy,
-      members: memberIds,
+      members: members,
       family_id: familyId,
     } as any);
 
     await channel.create();
 
-    this.logger.log(`Created family channel: ${channelId} with ${memberIds.length} members`);
+    this.logger.log(`Created family channel: ${channelId} with ${members.length} members`);
 
     return channel;
   }

@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,7 +14,6 @@ import { useAuth } from '@/hooks/use-auth';
 import { ApiError } from '@/lib/api/client';
 
 export default function LoginPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
@@ -25,9 +25,6 @@ export default function LoginPage() {
     password: '',
   });
 
-  // Get return URL from query params for redirect after login
-  const returnUrl = searchParams.get('returnUrl');
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -36,9 +33,10 @@ export default function LoginPage() {
 
     try {
       await login(formData);
-      // Redirect to returnUrl if provided, otherwise dashboard
-      const destination = returnUrl ? decodeURIComponent(returnUrl) : '/dashboard';
-      router.replace(destination);
+      // Show success toast
+      toast.success('Welcome back! Redirecting...');
+      // Don't set isLoading to false - PublicRoute wrapper will handle redirect
+      // and keep showing loading state until redirect completes
     } catch (err) {
       if (err instanceof ApiError) {
         const errorMsg = err.message || 'Invalid email or password';
@@ -46,12 +44,17 @@ export default function LoginPage() {
         // Check if error is about unverified email
         if (errorMsg.toLowerCase().includes('verify') || errorMsg.toLowerCase().includes('verified')) {
           setUnverifiedEmail(formData.email);
-          setError('Please verify your email address before logging in.');
+          const verifyMsg = 'Please verify your email address before logging in.';
+          setError(verifyMsg);
+          toast.error(verifyMsg);
         } else {
           setError(errorMsg);
+          toast.error(errorMsg);
         }
       } else {
-        setError('Invalid email or password');
+        const genericError = 'Invalid email or password';
+        setError(genericError);
+        toast.error(genericError);
       }
       setIsLoading(false);
     }

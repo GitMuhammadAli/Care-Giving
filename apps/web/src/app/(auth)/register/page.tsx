@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,7 +23,7 @@ const benefits = [
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { register } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -33,13 +34,6 @@ export default function RegisterPage() {
     email: '',
     password: '',
   });
-
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (!authLoading && isAuthenticated) {
-      router.push('/dashboard');
-    }
-  }, [authLoading, isAuthenticated, router]);
 
   const passwordStrength = useMemo(() => {
     const { password } = formData;
@@ -58,12 +52,16 @@ export default function RegisterPage() {
     setError('');
 
     if (passwordStrength.score < 4) {
-      setError('Please meet all password requirements');
+      const passwordError = 'Please meet all password requirements';
+      setError(passwordError);
+      toast.error(passwordError);
       return;
     }
 
     if (!agreed) {
-      setError('Please agree to the Terms of Service and Privacy Policy');
+      const termsError = 'Please agree to the Terms of Service and Privacy Policy';
+      setError(termsError);
+      toast.error(termsError);
       return;
     }
 
@@ -75,13 +73,19 @@ export default function RegisterPage() {
         email: formData.email,
         password: formData.password,
       });
+      // Show success toast
+      toast.success('Account created! Please check your email to verify your account.');
       // Redirect to email verification page
       router.push(`/verify-email?email=${encodeURIComponent(formData.email)}`);
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(err.message || 'Failed to create account. Please try again.');
+        const errorMsg = err.message || 'Failed to create account. Please try again.';
+        setError(errorMsg);
+        toast.error(errorMsg);
       } else {
-        setError('Failed to create account. Please try again.');
+        const genericError = 'Failed to create account. Please try again.';
+        setError(genericError);
+        toast.error(genericError);
       }
     } finally {
       setIsLoading(false);
