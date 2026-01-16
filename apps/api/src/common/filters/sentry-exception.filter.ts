@@ -33,7 +33,7 @@ export class SentryExceptionFilter implements ExceptionFilter {
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
-    const response = response<Response>();
+    const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
     const status =

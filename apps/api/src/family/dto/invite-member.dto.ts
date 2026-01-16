@@ -1,7 +1,7 @@
 import { IsEmail, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { FamilyRole } from '../entity/family-member.entity';
+import { FamilyRole } from '@prisma/client';
 
 export class InviteMemberDto {
   @ApiProperty({ example: 'sibling@example.com' })

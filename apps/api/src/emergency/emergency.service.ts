@@ -32,7 +32,7 @@ export class EmergencyService {
   }
 
   async getEmergencyInfo(careRecipientId: string, userId: string) {
-    const { careRecipient } = await this.verifyAccess(careRecipientId, userId);
+    await this.verifyAccess(careRecipientId, userId);
 
     const fullInfo = await this.prisma.careRecipient.findUnique({
       where: { id: careRecipientId },
@@ -65,7 +65,7 @@ export class EmergencyService {
 
     return {
       // Basic Info
-      name: `${fullInfo.firstName} ${fullInfo.lastName}`,
+      name: fullInfo.fullName,
       preferredName: fullInfo.preferredName,
       dateOfBirth: fullInfo.dateOfBirth,
       bloodType: fullInfo.bloodType,

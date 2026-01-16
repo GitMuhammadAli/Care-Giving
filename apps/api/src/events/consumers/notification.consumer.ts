@@ -7,22 +7,25 @@ import {
   PushNotificationPayload,
   EmailNotificationPayload,
 } from '../dto/events.dto';
-import { NotificationsService } from '../../notifications/service/notifications.service';
+import { PrismaService } from '../../prisma/prisma.service';
 
 /**
  * Notification Consumer
  *
  * Consumes notification events from RabbitMQ and dispatches them
  * to the appropriate notification services (Push, Email, SMS).
+ * 
+ * Note: Push notifications are handled by the workers package.
+ * This consumer creates in-app notifications in the database.
  */
 @Injectable()
 export class NotificationConsumer {
   private readonly logger = new Logger(NotificationConsumer.name);
 
-  constructor(private readonly notificationsService: NotificationsService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Handle push notification requests
+   * Handle push notification requests - creates in-app notification
    */
   @RabbitSubscribe({
     exchange: EXCHANGES.NOTIFICATIONS,
@@ -38,26 +41,27 @@ export class NotificationConsumer {
     try {
       this.logger.debug(`Processing push notification for user: ${event.data.userId}`);
 
-      // Send push notification using NotificationsService
-      await this.notificationsService.sendPushNotification(
-        [event.data.userId],
-        event.data.title,
-        event.data.body,
-        event.data.data,
-      );
+      // Create in-app notification
+      await this.prisma.notification.create({
+        data: {
+          userId: event.data.userId,
+          type: 'GENERAL',
+          title: event.data.title,
+          body: event.data.body,
+          data: (event.data.data || {}) as any,
+        },
+      });
 
       this.logger.log(
-        `Push notification sent: "${event.data.title}" to user ${event.data.userId}`,
+        `Notification created: "${event.data.title}" for user ${event.data.userId}`,
       );
     } catch (error) {
-      this.logger.error(`Failed to send push notification: ${error}`);
+      this.logger.error(`Failed to create notification: ${error}`);
 
-      // Requeue if it's a transient error
       if (this.isTransientError(error)) {
         return new Nack(true);
       }
 
-      // Don't requeue for permanent failures
       return new Nack(false);
     }
   }
@@ -83,10 +87,10 @@ export class NotificationConsumer {
       // await this.mailService.sendTemplate(event.data);
 
       this.logger.log(
-        `Email sent: "${event.data.subject}" to ${event.data.to}`,
+        `Email notification logged: "${event.data.subject}" to ${event.data.to}`,
       );
     } catch (error) {
-      this.logger.error(`Failed to send email: ${error}`);
+      this.logger.error(`Failed to process email notification: ${error}`);
 
       if (this.isTransientError(error)) {
         return new Nack(true);
@@ -123,18 +127,18 @@ export class NotificationConsumer {
         location?: string;
       };
 
-      // Send emergency push notifications to all family members
-      await this.notificationsService.sendEmergencyAlert(
-        data.familyMemberIds,
-        data.careRecipientName,
-        data.type,
-        data.location,
-      );
+      // Create emergency notifications for all family members
+      await this.prisma.notification.createMany({
+        data: data.familyMemberIds.map((userId) => ({
+          userId,
+          type: 'EMERGENCY_ALERT' as const,
+          title: `🚨 EMERGENCY: ${data.type}`,
+          body: `${data.careRecipientName}: ${data.description || data.type}${data.location ? ` at ${data.location}` : ''}`,
+          data: { type: data.type, location: data.location },
+        })),
+      });
 
-      // TODO: Send SMS to family members with phone numbers
-      // TODO: Send email to family members
-
-      this.logger.log(`Emergency notifications dispatched for ${data.familyMemberIds.length} family members`);
+      this.logger.log(`Emergency notifications created for ${data.familyMemberIds.length} family members`);
     } catch (error) {
       this.logger.error(`Failed to process emergency alert: ${error}`);
       // Emergency alerts should always be requeued
@@ -164,15 +168,23 @@ export class NotificationConsumer {
         loggedById: string;
       };
 
-      // Notify family members (excluding the person who logged it)
-      await this.notificationsService.notifyFamily(
-        data.familyId,
-        'MEDICATION_LOGGED' as any,
-        '💊 Medication Logged',
-        `${data.loggedByName} logged ${data.medicationName} for ${data.careRecipientName} as ${data.status}`,
-        { medicationName: data.medicationName, status: data.status },
-        data.loggedById,
-      );
+      // Get all family members except the one who logged it
+      const members = await this.prisma.familyMember.findMany({
+        where: { familyId: data.familyId, userId: { not: data.loggedById } },
+        select: { userId: true },
+      });
+
+      if (members.length > 0) {
+        await this.prisma.notification.createMany({
+          data: members.map((m) => ({
+            userId: m.userId,
+            type: 'GENERAL' as const,
+            title: '💊 Medication Logged',
+            body: `${data.loggedByName} logged ${data.medicationName} for ${data.careRecipientName} as ${data.status}`,
+            data: { medicationName: data.medicationName, status: data.status },
+          })),
+        });
+      }
 
       this.logger.log(`Medication notification sent to family ${data.familyId}`);
     } catch (error) {
@@ -216,13 +228,22 @@ export class NotificationConsumer {
         }
       }
 
-      await this.notificationsService.notifyFamily(
-        data.familyId,
-        'SHIFT_UPDATE' as any,
-        title,
-        body,
-        { eventType: data.eventType, handoffNotes: data.handoffNotes },
-      );
+      const members = await this.prisma.familyMember.findMany({
+        where: { familyId: data.familyId },
+        select: { userId: true },
+      });
+
+      if (members.length > 0) {
+        await this.prisma.notification.createMany({
+          data: members.map((m) => ({
+            userId: m.userId,
+            type: 'SHIFT_REMINDER' as const,
+            title,
+            body,
+            data: { eventType: data.eventType, handoffNotes: data.handoffNotes },
+          })),
+        });
+      }
 
       this.logger.log(`Shift notification sent to family ${data.familyId}`);
     } catch (error) {
@@ -252,12 +273,15 @@ export class NotificationConsumer {
         timeUntil: string;
       };
 
-      await this.notificationsService.sendPushNotification(
-        data.familyMemberIds,
-        `📅 Appointment Reminder`,
-        `${data.appointmentTitle} for ${data.careRecipientName} in ${data.timeUntil}`,
-        { appointmentTime: data.appointmentTime },
-      );
+      await this.prisma.notification.createMany({
+        data: data.familyMemberIds.map((userId) => ({
+          userId,
+          type: 'APPOINTMENT_REMINDER' as const,
+          title: '📅 Appointment Reminder',
+          body: `${data.appointmentTitle} for ${data.careRecipientName} in ${data.timeUntil}`,
+          data: { appointmentTime: data.appointmentTime },
+        })),
+      });
 
       this.logger.log(`Appointment reminder sent to ${data.familyMemberIds.length} users`);
     } catch (error) {
@@ -286,12 +310,15 @@ export class NotificationConsumer {
         scheduledTime: string;
       };
 
-      await this.notificationsService.sendPushNotification(
-        data.familyMemberIds,
-        `💊 Medication Reminder`,
-        `Time to give ${data.medicationName} to ${data.careRecipientName}`,
-        { medicationName: data.medicationName, scheduledTime: data.scheduledTime },
-      );
+      await this.prisma.notification.createMany({
+        data: data.familyMemberIds.map((userId) => ({
+          userId,
+          type: 'MEDICATION_REMINDER' as const,
+          title: '💊 Medication Reminder',
+          body: `Time to give ${data.medicationName} to ${data.careRecipientName}`,
+          data: { medicationName: data.medicationName, scheduledTime: data.scheduledTime },
+        })),
+      });
 
       this.logger.log(`Medication reminder sent to ${data.familyMemberIds.length} users`);
     } catch (error) {

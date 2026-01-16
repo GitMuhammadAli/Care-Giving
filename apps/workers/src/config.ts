@@ -20,7 +20,7 @@ import 'dotenv/config';
 // LOGGER
 // ============================================================================
 
-export const logger = createLogger({ service: 'workers' });
+export const logger: ReturnType<typeof createLogger> = createLogger({ service: 'workers' });
 
 // ============================================================================
 // VALIDATED CONFIG
@@ -51,7 +51,8 @@ export function getRedisConnection(): Redis {
     const redisConfig = getRedisConfig(getConfig());
     
     if ('url' in redisConfig && redisConfig.url) {
-      _redisConnection = new Redis(redisConfig.url, {
+      // Pass URL as first parameter, options as second
+      _redisConnection = new Redis(redisConfig.url as string, {
         maxRetriesPerRequest: null,
       });
     } else {

@@ -83,7 +83,7 @@ async function processAppointmentReminder(job: Job<AppointmentReminderJob>) {
           family: {
             include: {
               members: {
-                where: { status: 'ACCEPTED' },
+                where: { isActive: true },
                 select: { userId: true, role: true },
               },
             },
@@ -108,7 +108,7 @@ async function processAppointmentReminder(job: Job<AppointmentReminderJob>) {
   const familyMembers = careRecipient.family.members;
 
   // Step 3: Format time with timezone
-  const timezone = careRecipient.timezone || 'America/New_York';
+  const timezone = 'America/New_York'; // TODO: Get from family settings or user preferences
   const formattedTime = formatInTimeZone(
     appointment.startTime, // Use DB source of truth
     timezone,
@@ -118,7 +118,7 @@ async function processAppointmentReminder(job: Job<AppointmentReminderJob>) {
   // Step 4: Build notification content
   let title: string;
   let body: string;
-  const careRecipientName = careRecipient.preferredName || careRecipient.firstName;
+  const careRecipientName = careRecipient.preferredName || careRecipient.fullName;
 
   if (minutesBefore === 1440) {
     // 24 hour reminder

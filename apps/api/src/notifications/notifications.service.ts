@@ -20,7 +20,7 @@ export class NotificationsService {
     const notification = {
       type: 'EMERGENCY_ALERT',
       title: `🚨 EMERGENCY: ${alert.title}`,
-      body: `${careRecipient.preferredName || careRecipient.firstName}: ${alert.description}`,
+      body: `${careRecipient.preferredName || careRecipient.fullName}: ${alert.description}`,
       data: {
         type: 'EMERGENCY',
         careRecipientId,
@@ -33,7 +33,7 @@ export class NotificationsService {
       alert,
       careRecipient: {
         id: careRecipient.id,
-        name: careRecipient.preferredName || `${careRecipient.firstName} ${careRecipient.lastName}`,
+        name: careRecipient.preferredName || careRecipient.fullName,
       },
     });
 
@@ -51,30 +51,13 @@ export class NotificationsService {
         data: notification.data,
       })),
     });
-
-    // Optional: Add push notifications and SMS for critical emergencies
-    //
-    // Web Push Notifications (Native API):
-    //   - Use WebPushService from ./web-push.service.ts (already implemented)
-    //   - Set VAPID keys in environment variables
-    //   - Call: await this.webPushService.sendEmergencyAlert(...)
-    //
-    // Firebase Cloud Messaging (Alternative):
-    //   - Install: npm install firebase-admin
-    //   - Initialize Firebase SDK with service account
-    //   - Send to device tokens
-    //
-    // SMS via Twilio:
-    //   - Install: npm install twilio
-    //   - Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER
-    //   - Send SMS: await twilioClient.messages.create({ to, from, body })
   }
 
   async notifyHighSeverityEntry(familyId: string, careRecipient: any, entry: any) {
     const notification = {
       type: 'TIMELINE_UPDATE',
       title: `⚠️ ${entry.type}: ${entry.title}`,
-      body: `${careRecipient.preferredName || careRecipient.firstName} - ${entry.description || 'New entry logged'}`,
+      body: `${careRecipient.preferredName || careRecipient.fullName} - ${entry.description || 'New entry logged'}`,
       data: {
         type: 'TIMELINE',
         careRecipientId: careRecipient.id,
@@ -86,7 +69,7 @@ export class NotificationsService {
       entry,
       careRecipient: {
         id: careRecipient.id,
-        name: careRecipient.preferredName || `${careRecipient.firstName} ${careRecipient.lastName}`,
+        name: careRecipient.preferredName || careRecipient.fullName,
       },
     });
 
@@ -111,7 +94,7 @@ export class NotificationsService {
         userId: shift.caregiverId,
         type: 'SHIFT_REMINDER',
         title: '📅 New Shift Assigned',
-        body: `You have been assigned a shift for ${shift.careRecipient.preferredName || shift.careRecipient.firstName}`,
+        body: `You have been assigned a shift for ${shift.careRecipient.preferredName || shift.careRecipient.fullName}`,
         data: {
           type: 'SHIFT',
           shiftId: shift.id,
@@ -129,7 +112,7 @@ export class NotificationsService {
         userId: toUser.id,
         type: 'SHIFT_HANDOFF',
         title: '🔄 Shift Handoff',
-        body: `${fromUser.fullName} has completed their shift for ${careRecipient.preferredName || careRecipient.firstName}`,
+        body: `${fromUser.fullName} has completed their shift for ${careRecipient.preferredName || careRecipient.fullName}`,
         data: {
           type: 'HANDOFF',
           careRecipientId: careRecipient.id,
@@ -151,7 +134,7 @@ export class NotificationsService {
         userId: caregiverId,
         type: 'MEDICATION_REMINDER',
         title: '💊 Medication Due',
-        body: `${careRecipient.preferredName || careRecipient.firstName}: ${medication.name} ${medication.dosage}`,
+        body: `${careRecipient.preferredName || careRecipient.fullName}: ${medication.name} ${medication.dosage}`,
         data: {
           type: 'MEDICATION',
           medicationId: medication.id,
@@ -170,7 +153,7 @@ export class NotificationsService {
     const notification = {
       type: 'APPOINTMENT_REMINDER',
       title: '📅 Appointment Reminder',
-      body: `${careRecipient.preferredName || careRecipient.firstName}: ${appointment.title} is coming up`,
+      body: `${careRecipient.preferredName || careRecipient.fullName}: ${appointment.title} is coming up`,
       data: {
         type: 'APPOINTMENT',
         appointmentId: appointment.id,
@@ -202,7 +185,7 @@ export class NotificationsService {
     const notification = {
       type: 'REFILL_NEEDED',
       title: '⚠️ Medication Refill Needed',
-      body: `${careRecipient.preferredName || careRecipient.firstName}: ${medication.name} is running low (${medication.currentSupply} remaining)`,
+      body: `${careRecipient.preferredName || careRecipient.fullName}: ${medication.name} is running low (${medication.currentSupply} remaining)`,
       data: {
         type: 'REFILL',
         medicationId: medication.id,

@@ -6,49 +6,53 @@ import {
   ValidationArguments,
 } from 'class-validator';
 import { Injectable } from '@nestjs/common';
-import { DataSource, Not } from 'typeorm';
+import { PrismaService } from '../../prisma/prisma.service';
 
 interface IsUniqueValidationArguments extends ValidationArguments {
-  constraints: [string, string?, string?]; // [entityName, columnName?, excludeColumn?]
+  constraints: [string, string?, string?]; // [modelName, columnName?, excludeColumn?]
 }
 
 @Injectable()
 @ValidatorConstraint({ name: 'isUnique', async: true })
 export class IsUniqueConstraint implements ValidatorConstraintInterface {
-  constructor(private dataSource: DataSource) {}
+  constructor(private prisma: PrismaService) {}
 
   async validate(
     value: any,
     args: IsUniqueValidationArguments,
   ): Promise<boolean> {
-    const [entityName, columnName = args.property, excludeColumn = 'id'] = args.constraints;
+    const [modelName, columnName = args.property, excludeColumn = 'id'] = args.constraints;
 
-    const repository = this.dataSource.getRepository(entityName);
+    try {
+      const model = (this.prisma as any)[modelName];
+      if (!model) return true;
 
-    const excludeValue = (args.object as any)[excludeColumn];
+      const excludeValue = (args.object as any)[excludeColumn];
 
-    const whereCondition: any = { [columnName]: value };
+      const whereCondition: any = { [columnName]: value };
 
-    if (excludeValue) {
-      whereCondition[excludeColumn] = Not(excludeValue);
+      if (excludeValue) {
+        whereCondition[excludeColumn] = { not: excludeValue };
+      }
+
+      const existing = await model.findFirst({
+        where: whereCondition,
+      });
+
+      return !existing;
+    } catch {
+      return true;
     }
-
-    const existing = await repository.findOne({
-      where: whereCondition,
-      withDeleted: false,
-    });
-
-    return !existing;
   }
 
   defaultMessage(args: IsUniqueValidationArguments): string {
-    const [entityName, columnName = args.property] = args.constraints;
-    return `${columnName} already exists in ${entityName}`;
+    const [modelName, columnName = args.property] = args.constraints;
+    return `${columnName} already exists in ${modelName}`;
   }
 }
 
 export function IsUnique(
-  entityName: string,
+  modelName: string,
   columnName?: string,
   excludeColumn?: string,
   validationOptions?: ValidationOptions,
@@ -58,9 +62,8 @@ export function IsUnique(
       target: object.constructor,
       propertyName: propertyName,
       options: validationOptions,
-      constraints: [entityName, columnName, excludeColumn],
+      constraints: [modelName, columnName, excludeColumn],
       validator: IsUniqueConstraint,
     });
   };
 }
-

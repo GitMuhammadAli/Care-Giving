@@ -1,13 +1,9 @@
 import { Module, Global } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { RabbitMQModule } from '@golevelup/nestjs-rabbitmq';
-import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { EXCHANGES, QUEUES } from './events.constants';
 import { EventPublisherService } from './publishers/event-publisher.service';
-import { OutboxEntity } from './outbox/outbox.entity';
-import { OutboxService } from './outbox/outbox.service';
-import { OutboxProcessor } from './outbox/outbox.processor';
 
 // Consumers
 import { WebSocketConsumer } from './consumers/websocket.consumer';
@@ -18,7 +14,6 @@ import { AuditConsumer } from './consumers/audit.consumer';
 @Module({
   imports: [
     ConfigModule,
-    TypeOrmModule.forFeature([OutboxEntity]),
     RabbitMQModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -109,13 +104,11 @@ import { AuditConsumer } from './consumers/audit.consumer';
   ],
   providers: [
     EventPublisherService,
-    OutboxService,
-    OutboxProcessor,
     WebSocketConsumer,
     NotificationConsumer,
     AuditConsumer,
   ],
-  exports: [EventPublisherService, OutboxService],
+  exports: [EventPublisherService],
 })
 export class EventsModule {}
 

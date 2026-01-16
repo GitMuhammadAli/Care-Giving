@@ -271,10 +271,10 @@ async function testShiftProcessor(job: Job): Promise<any> {
   const timezone = shift.caregiver.timezone || 'America/New_York';
   const formattedTime = formatInTimeZone(shift.startTime, timezone, 'h:mm a');
 
-  const title = minutesBefore === 60 
+  const title = minutesBefore === 60
     ? '⏰ Shift Starting in 1 Hour'
     : '⏰ Shift Starting Soon';
-  const body = `Your caregiving shift for ${shift.careRecipient.preferredName || shift.careRecipient.firstName} starts at ${formattedTime}.`;
+  const body = `Your caregiving shift for ${shift.careRecipient.preferredName || shift.careRecipient.fullName} starts at ${formattedTime}.`;
 
   const idempotencyKey = `shift-${shiftId}-${minutesBefore}`;
 

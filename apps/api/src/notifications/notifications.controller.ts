@@ -5,12 +5,18 @@ import {
   Body,
   Patch,
   Delete,
+  Param,
   Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { NotificationsService } from './service/notifications.service';
+import { NotificationsService } from './notifications.service';
 import { CurrentUser } from '../system/decorator/current-user.decorator';
-import { PushPlatform } from './entity/push-subscription.entity';
+import { Platform as PushPlatform } from '@prisma/client';
+
+interface CurrentUserPayload {
+  id: string;
+  email: string;
+}
 
 @ApiTags('Notifications')
 @ApiBearerAuth()
@@ -21,54 +27,50 @@ export class NotificationsController {
   @Get()
   @ApiOperation({ summary: 'Get all notifications for current user' })
   findAll(
-    @CurrentUser('id') userId: string,
-    @Query('limit') limit?: number,
-    @Query('offset') offset?: number,
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('unreadOnly') unreadOnly?: string,
+    @Query('limit') limit?: string,
   ) {
-    return this.notificationsService.findByUser(userId, limit || 50, offset || 0);
-  }
-
-  @Get('unread')
-  @ApiOperation({ summary: 'Get unread notifications' })
-  getUnread(@CurrentUser('id') userId: string) {
-    return this.notificationsService.findUnread(userId);
+    return this.notificationsService.getNotifications(
+      user.id,
+      unreadOnly === 'true',
+      limit ? parseInt(limit, 10) : 50,
+    );
   }
 
   @Get('unread/count')
   @ApiOperation({ summary: 'Get unread notification count' })
-  getUnreadCount(@CurrentUser('id') userId: string) {
-    return this.notificationsService.countUnread(userId);
+  getUnreadCount(@CurrentUser() user: CurrentUserPayload) {
+    return this.notificationsService.getUnreadCount(user.id);
   }
 
-  @Patch('read')
-  @ApiOperation({ summary: 'Mark notifications as read' })
-  markAsRead(@Body('ids') ids: string[]) {
-    return this.notificationsService.markAsRead(ids);
+  @Patch(':notificationId/read')
+  @ApiOperation({ summary: 'Mark a notification as read' })
+  markAsRead(
+    @Param('notificationId') notificationId: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.notificationsService.markAsRead(notificationId, user.id);
   }
 
   @Patch('read/all')
   @ApiOperation({ summary: 'Mark all notifications as read' })
-  markAllAsRead() {
-    return this.notificationsService.markAllAsRead();
+  markAllAsRead(@CurrentUser() user: CurrentUserPayload) {
+    return this.notificationsService.markAllAsRead(user.id);
   }
 
-  @Post('push-subscription')
-  @ApiOperation({ summary: 'Subscribe to push notifications' })
-  subscribeToPush(
-    @Body()
-    dto: {
-      endpoint: string;
-      keys: { p256dh: string; auth: string };
-      platform?: PushPlatform;
-      deviceName?: string;
-    },
+  @Post('push-token')
+  @ApiOperation({ summary: 'Register push notification token' })
+  registerPushToken(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: { token: string; platform: PushPlatform },
   ) {
-    return this.notificationsService.subscribeToPush(dto);
+    return this.notificationsService.registerPushToken(user.id, dto.token, dto.platform);
   }
 
-  @Delete('push-subscription')
-  @ApiOperation({ summary: 'Unsubscribe from push notifications' })
-  unsubscribeFromPush(@Body('endpoint') endpoint: string) {
-    return this.notificationsService.unsubscribeFromPush(endpoint);
+  @Delete('push-token')
+  @ApiOperation({ summary: 'Remove push notification token' })
+  removePushToken(@Body('token') token: string) {
+    return this.notificationsService.removePushToken(token);
   }
 }

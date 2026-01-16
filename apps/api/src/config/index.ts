@@ -27,7 +27,7 @@ import {
 // =============================================================================
 export const appConfig = registerAs("app", () => ({
   nodeEnv: optionalString("NODE_ENV", "development"),
-  port: int("PORT", 3001),
+  port: int("PORT", 4000),
   apiPrefix: optionalString("API_PREFIX", "api/v1"),
   frontendUrl: optionalString("FRONTEND_URL", "http://localhost:3000"),
   isDevelopment: isDevelopment(),
@@ -335,7 +335,7 @@ export const analyticsConfig = registerAs("analytics", () => ({
 // WEBSOCKET CONFIG
 // =============================================================================
 export const websocketConfig = registerAs("websocket", () => ({
-  url: optionalString("NEXT_PUBLIC_WS_URL", "http://localhost:3001"),
+  url: optionalString("NEXT_PUBLIC_WS_URL", "http://localhost:4000"),
 }));
 
 // =============================================================================

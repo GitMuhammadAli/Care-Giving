@@ -9,7 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Injectable, Inject, forwardRef } from '@nestjs/common';
-import { AuthService } from '../auth/auth.service';
+import { AuthService } from '../auth/service/auth.service';
 
 @Injectable()
 @WebSocketGateway({
@@ -34,14 +34,21 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const token = client.handshake.auth.token || client.handshake.headers.authorization?.replace('Bearer ', '');
       
       if (token) {
-        const payload = await this.authService.validateToken(token);
-        client.data.userId = payload.userId;
+        const user = await this.authService.validateToken(token);
         
-        const existing = this.userSockets.get(payload.userId) || [];
+        if (!user) {
+          console.log(`Client connection failed - invalid token: ${client.id}`);
+          client.disconnect();
+          return;
+        }
+        
+        client.data.userId = user.id;
+        
+        const existing = this.userSockets.get(user.id) || [];
         existing.push(client.id);
-        this.userSockets.set(payload.userId, existing);
+        this.userSockets.set(user.id, existing);
         
-        console.log(`Client connected: ${client.id} (user: ${payload.userId})`);
+        console.log(`Client connected: ${client.id} (user: ${user.id})`);
       }
     } catch (error) {
       console.log(`Client connection failed: ${client.id}`);

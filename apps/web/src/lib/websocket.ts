@@ -24,7 +24,7 @@ class WebSocketClient {
       this.isConnecting = true;
 
       // Connect to the /carecircle namespace
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
       const wsUrl = apiUrl.replace('/api/v1', '');
 
       this.socket = io(`${wsUrl}/carecircle`, {

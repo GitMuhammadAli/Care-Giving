@@ -8,82 +8,83 @@ import {
   Delete,
   Query,
   ParseUUIDPipe,
-  UploadedFile,
-  UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
-import { DocumentsService } from './service/documents.service';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { DocumentsService } from './documents.service';
 import { UploadDocumentDto } from './dto/upload-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
-import { DocumentCategory } from './entity/document.entity';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+
+interface CurrentUserPayload {
+  id: string;
+  email: string;
+}
 
 @ApiTags('Documents')
 @ApiBearerAuth()
-@Controller('care-recipients/:careRecipientId/documents')
+@Controller('families/:familyId/documents')
 export class DocumentsController {
   constructor(private readonly documentsService: DocumentsService) {}
 
   @Post()
-  @UseInterceptors(FileInterceptor('file'))
-  @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Upload a new document' })
-  upload(
-    @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
-    @UploadedFile() file: Express.Multer.File,
-    @Body() dto: UploadDocumentDto,
+  @ApiOperation({ summary: 'Create document record (file upload handled separately)' })
+  create(
+    @Param('familyId', ParseUUIDPipe) familyId: string,
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: UploadDocumentDto & { s3Key: string; mimeType: string; sizeBytes: number },
   ) {
-    return this.documentsService.upload(careRecipientId, file, dto);
+    return this.documentsService.create(familyId, user.id, dto, {
+      s3Key: dto.s3Key,
+      mimeType: dto.mimeType,
+      sizeBytes: dto.sizeBytes,
+    });
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all documents for a care recipient' })
-  findAll(@Param('careRecipientId', ParseUUIDPipe) careRecipientId: string) {
-    return this.documentsService.findAll(careRecipientId);
-  }
-
-  @Get('by-category')
-  @ApiOperation({ summary: 'Get documents by category' })
-  getByCategory(
-    @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
-    @Query('category') category: DocumentCategory,
+  @ApiOperation({ summary: 'Get all documents for a family' })
+  findAll(
+    @Param('familyId', ParseUUIDPipe) familyId: string,
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('type') type?: string,
   ) {
-    return this.documentsService.findByCategory(careRecipientId, category);
+    return this.documentsService.findAll(familyId, user.id, type);
   }
 
   @Get('expiring')
   @ApiOperation({ summary: 'Get documents expiring soon' })
   getExpiring(
-    @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
-    @Query('days') days?: number,
+    @Param('familyId', ParseUUIDPipe) familyId: string,
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('days') days?: string,
   ) {
-    return this.documentsService.getExpiringDocuments(careRecipientId, days || 30);
+    return this.documentsService.getExpiringDocuments(familyId, user.id, days ? parseInt(days, 10) : 30);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a document by ID' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.documentsService.findOne(id);
-  }
-
-  @Get(':id/url')
-  @ApiOperation({ summary: 'Get signed URL for document' })
-  getSignedUrl(@Param('id', ParseUUIDPipe) id: string) {
-    return this.documentsService.getSignedUrl(id);
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.documentsService.findOne(id, user.id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a document' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload,
     @Body() dto: UpdateDocumentDto,
   ) {
-    return this.documentsService.update(id, dto);
+    return this.documentsService.update(id, user.id, dto);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a document' })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.documentsService.remove(id);
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.documentsService.delete(id, user.id);
   }
 }

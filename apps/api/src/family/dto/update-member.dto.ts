@@ -1,7 +1,7 @@
 import { IsEnum, IsOptional, IsString, IsObject, ValidateNested, IsBoolean } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { FamilyRole } from '../entity/family-member.entity';
+import { FamilyRole } from '@prisma/client';
 
 class MemberNotifications {
   @IsBoolean()

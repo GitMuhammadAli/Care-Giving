@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { BullModule } from '@nestjs/bull';
 import { EventEmitterModule } from '@nestjs/event-emitter';
@@ -15,7 +14,7 @@ import {
 import * as path from 'path';
 
 import configs from './config';
-import { TypeOrmConfigService } from './database/typeorm-config.service';
+import { PrismaModule } from './prisma/prisma.module';
 
 // System
 import { SystemModule } from './system/system.module';
@@ -44,14 +43,6 @@ import { GatewayModule } from './gateway/gateway.module';
 import { HealthModule } from './health/health.module';
 import { MetricsModule } from './metrics/metrics.module';
 
-// Optional: RabbitMQ Events Module (event-driven architecture)
-// The app works fine without this using direct service calls and Socket.io for real-time features
-// To enable:
-//   1. Uncomment the import below and add to imports array
-//   2. Set RABBITMQ_URL in environment variables
-//   3. Run RabbitMQ server (docker-compose or cloud service like CloudAMQP)
-// import { EventsModule } from './events/events.module';
-
 @Module({
   imports: [
     // Config
@@ -61,11 +52,8 @@ import { MetricsModule } from './metrics/metrics.module';
       envFilePath: ['.env.local', '.env'],
     }),
 
-    // Database
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      useClass: TypeOrmConfigService,
-    }),
+    // Database - Prisma
+    PrismaModule,
 
     // Event Emitter for real-time events
     EventEmitterModule.forRoot(),
@@ -137,7 +125,6 @@ import { MetricsModule } from './metrics/metrics.module';
     SystemModule,
     HealthModule,
     MetricsModule,
-    // EventsModule, // Optional: Uncomment to enable RabbitMQ event-driven architecture
     AuthModule,
     UserModule,
     FamilyModule,

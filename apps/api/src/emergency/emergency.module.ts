@@ -1,16 +1,12 @@
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { EmergencyAlert } from './entity/emergency-alert.entity';
-import { EmergencyAlertRepository } from './repository/emergency-alert.repository';
-import { EmergencyService } from './service/emergency.service';
+import { Module, forwardRef } from '@nestjs/common';
+import { EmergencyService } from './emergency.service';
 import { EmergencyController } from './emergency.controller';
-import { FamilyMember } from '../family/entity/family-member.entity';
-import { FamilyMemberRepository } from '../family/repository/family-member.repository';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([EmergencyAlert, FamilyMember])],
+  imports: [forwardRef(() => NotificationsModule)],
   controllers: [EmergencyController],
-  providers: [EmergencyService, EmergencyAlertRepository, FamilyMemberRepository],
+  providers: [EmergencyService],
   exports: [EmergencyService],
 })
 export class EmergencyModule {}

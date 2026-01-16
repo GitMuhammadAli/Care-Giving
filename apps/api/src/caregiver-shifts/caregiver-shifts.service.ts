@@ -86,7 +86,7 @@ export class CaregiverShiftsService {
           select: { id: true, fullName: true, phone: true },
         },
         careRecipient: {
-          select: { firstName: true, lastName: true, preferredName: true },
+          select: { fullName: true, preferredName: true },
         },
       },
     });
@@ -160,7 +160,7 @@ export class CaregiverShiftsService {
       },
       include: {
         careRecipient: {
-          select: { id: true, firstName: true, lastName: true, preferredName: true },
+          select: { id: true, fullName: true, preferredName: true },
         },
       },
       orderBy: { startTime: 'asc' },
@@ -192,7 +192,7 @@ export class CaregiverShiftsService {
       },
       include: {
         careRecipient: {
-          select: { firstName: true, lastName: true, preferredName: true },
+          select: { fullName: true, preferredName: true },
         },
       },
     });
@@ -230,7 +230,7 @@ export class CaregiverShiftsService {
           select: { id: true, fullName: true },
         },
         careRecipient: {
-          select: { firstName: true, lastName: true, preferredName: true },
+          select: { fullName: true, preferredName: true },
         },
       },
     });

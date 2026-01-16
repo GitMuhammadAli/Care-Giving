@@ -8,93 +8,123 @@ import {
   Delete,
   Query,
   ParseUUIDPipe,
-} from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { AppointmentsService } from './service/appointments.service';
-import { CreateAppointmentDto } from './dto/create-appointment.dto';
-import { UpdateAppointmentDto } from './dto/update-appointment.dto';
-import { AppointmentStatus } from './entity/appointment.entity';
+} from "@nestjs/common";
+import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
+import { AppointmentsService } from "./appointments.service";
+import { CreateAppointmentDto } from "./dto/create-appointment.dto";
+import { UpdateAppointmentDto } from "./dto/update-appointment.dto";
+import { AssignTransportDto } from "./dto/assign-transport.dto";
+import { CurrentUser } from "../common/decorators/current-user.decorator";
 
-@ApiTags('Appointments')
+interface CurrentUserPayload {
+  id: string;
+  email: string;
+}
+
+@ApiTags("Appointments")
 @ApiBearerAuth()
-@Controller('care-recipients/:careRecipientId/appointments')
+@Controller("care-recipients/:careRecipientId/appointments")
 export class AppointmentsController {
   constructor(private readonly appointmentsService: AppointmentsService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create a new appointment' })
+  @ApiOperation({ summary: "Create a new appointment" })
   create(
-    @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
-    @Body() dto: CreateAppointmentDto,
+    @Param("careRecipientId", ParseUUIDPipe) careRecipientId: string,
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: CreateAppointmentDto
   ) {
-    return this.appointmentsService.create(careRecipientId, dto);
+    return this.appointmentsService.create(careRecipientId, user.id, dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all appointments for a care recipient' })
-  findAll(@Param('careRecipientId', ParseUUIDPipe) careRecipientId: string) {
-    return this.appointmentsService.findAll(careRecipientId);
+  @ApiOperation({ summary: "Get all appointments for a care recipient" })
+  findAll(
+    @Param("careRecipientId", ParseUUIDPipe) careRecipientId: string,
+    @CurrentUser() user: CurrentUserPayload,
+    @Query("startDate") startDate?: string,
+    @Query("endDate") endDate?: string,
+    @Query("status") status?: string
+  ) {
+    return this.appointmentsService.findAll(careRecipientId, user.id, {
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
+      status,
+    });
   }
 
-  @Get('upcoming')
-  @ApiOperation({ summary: 'Get upcoming appointments' })
+  @Get("upcoming")
+  @ApiOperation({ summary: "Get upcoming appointments" })
   getUpcoming(
-    @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
-    @Query('limit') limit?: number,
+    @Param("careRecipientId", ParseUUIDPipe) careRecipientId: string,
+    @CurrentUser() user: CurrentUserPayload,
+    @Query("days") days?: string
   ) {
-    return this.appointmentsService.findUpcoming(careRecipientId, limit || 5);
-  }
-
-  @Get('range')
-  @ApiOperation({ summary: 'Get appointments by date range' })
-  getByDateRange(
-    @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
-    @Query('startDate') startDate: string,
-    @Query('endDate') endDate: string,
-  ) {
-    return this.appointmentsService.findByDateRange(
+    return this.appointmentsService.findUpcoming(
       careRecipientId,
-      new Date(startDate),
-      new Date(endDate),
+      user.id,
+      days ? parseInt(days, 10) : 30
     );
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get an appointment by ID' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.appointmentsService.findOne(id);
+  @Get("day")
+  @ApiOperation({ summary: "Get appointments for a specific day" })
+  getForDay(
+    @Param("careRecipientId", ParseUUIDPipe) careRecipientId: string,
+    @CurrentUser() user: CurrentUserPayload,
+    @Query("date") date: string
+  ) {
+    return this.appointmentsService.findForDay(
+      careRecipientId,
+      user.id,
+      new Date(date)
+    );
   }
 
-  @Patch(':id')
-  @ApiOperation({ summary: 'Update an appointment' })
+  @Get(":id")
+  @ApiOperation({ summary: "Get an appointment by ID" })
+  findOne(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload
+  ) {
+    return this.appointmentsService.findOne(id, user.id);
+  }
+
+  @Patch(":id")
+  @ApiOperation({ summary: "Update an appointment" })
   update(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: UpdateAppointmentDto,
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: UpdateAppointmentDto
   ) {
-    return this.appointmentsService.update(id, dto);
+    return this.appointmentsService.update(id, user.id, dto);
   }
 
-  @Patch(':id/status')
-  @ApiOperation({ summary: 'Update appointment status' })
-  updateStatus(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body('status') status: AppointmentStatus,
+  @Patch(":id/cancel")
+  @ApiOperation({ summary: "Cancel an appointment" })
+  cancel(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload
   ) {
-    return this.appointmentsService.updateStatus(id, status);
+    return this.appointmentsService.cancel(id, user.id);
   }
 
-  @Patch(':id/transport')
-  @ApiOperation({ summary: 'Assign transport for appointment' })
+  @Post(":id/transport")
+  @ApiOperation({ summary: "Assign transport for appointment" })
   assignTransport(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body('userId') userId: string,
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: AssignTransportDto
   ) {
-    return this.appointmentsService.assignTransport(id, userId);
+    return this.appointmentsService.assignTransport(id, user.id, dto);
   }
 
-  @Delete(':id')
-  @ApiOperation({ summary: 'Delete an appointment' })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.appointmentsService.remove(id);
+  @Post(":id/transport/confirm")
+  @ApiOperation({ summary: "Confirm transport assignment" })
+  confirmTransport(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload
+  ) {
+    return this.appointmentsService.confirmTransport(id, user.id);
   }
 }

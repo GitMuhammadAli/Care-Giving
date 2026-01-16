@@ -1,13 +1,18 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
-import { addDays, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns';
-import { RRule } from 'rrule';
+import { AssignTransportDto } from './dto/assign-transport.dto';
+import { NotificationsService } from '../notifications/notifications.service';
+import { addMonths, startOfDay, endOfDay } from 'date-fns';
 
 @Injectable()
 export class AppointmentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(forwardRef(() => NotificationsService))
+    private notifications: NotificationsService,
+  ) {}
 
   private async verifyAccess(careRecipientId: string, userId: string) {
     const careRecipient = await this.prisma.careRecipient.findUnique({
@@ -42,8 +47,8 @@ export class AppointmentsService {
         doctorId: dto.doctorId,
         title: dto.title,
         type: dto.type,
-        startTime: new Date(dto.startTime || dto.dateTime || new Date()),
-        endTime: new Date(dto.endTime || dto.dateTime || new Date()),
+        startTime: new Date(dto.startTime),
+        endTime: new Date(dto.endTime),
         location: dto.location,
         address: dto.address,
         notes: dto.notes,
@@ -58,17 +63,50 @@ export class AppointmentsService {
     });
   }
 
-  async getUpcoming(careRecipientId: string, userId: string, days: number = 30) {
+  async findAll(careRecipientId: string, userId: string, options?: {
+    startDate?: Date;
+    endDate?: Date;
+    status?: string;
+  }) {
+    await this.verifyAccess(careRecipientId, userId);
+
+    const where: any = { careRecipientId };
+
+    if (options?.startDate || options?.endDate) {
+      where.startTime = {};
+      if (options?.startDate) {
+        where.startTime.gte = options.startDate;
+      }
+      if (options?.endDate) {
+        where.startTime.lte = options.endDate;
+      }
+    }
+
+    if (options?.status) {
+      where.status = options.status;
+    }
+
+    return this.prisma.appointment.findMany({
+      where,
+      include: {
+        doctor: true,
+        transportAssignment: true,
+      },
+      orderBy: { startTime: 'asc' },
+    });
+  }
+
+  async findUpcoming(careRecipientId: string, userId: string, days: number = 30) {
     await this.verifyAccess(careRecipientId, userId);
 
     const now = new Date();
-    const futureDate = addDays(now, days);
+    const endDate = addMonths(now, 1);
 
-    const appointments = await this.prisma.appointment.findMany({
+    return this.prisma.appointment.findMany({
       where: {
         careRecipientId,
-        startTime: { gte: now, lte: futureDate },
-        status: { not: 'CANCELLED' },
+        startTime: { gte: now, lte: endDate },
+        status: { in: ['SCHEDULED', 'CONFIRMED'] },
       },
       include: {
         doctor: true,
@@ -76,18 +114,15 @@ export class AppointmentsService {
       },
       orderBy: { startTime: 'asc' },
     });
-
-    return this.expandRecurring(appointments, now, futureDate);
   }
 
-  async getForDay(careRecipientId: string, userId: string, date: Date) {
+  async findForDay(careRecipientId: string, userId: string, date: Date) {
     await this.verifyAccess(careRecipientId, userId);
 
     return this.prisma.appointment.findMany({
       where: {
         careRecipientId,
         startTime: { gte: startOfDay(date), lte: endOfDay(date) },
-        status: { not: 'CANCELLED' },
       },
       include: {
         doctor: true,
@@ -97,28 +132,28 @@ export class AppointmentsService {
     });
   }
 
-  async getForMonth(careRecipientId: string, userId: string, year: number, month: number) {
-    await this.verifyAccess(careRecipientId, userId);
-
-    const date = new Date(year, month - 1, 1);
-
-    return this.prisma.appointment.findMany({
-      where: {
-        careRecipientId,
-        startTime: { gte: startOfMonth(date), lte: endOfMonth(date) },
-        status: { not: 'CANCELLED' },
-      },
-      include: {
-        doctor: true,
-        transportAssignment: true,
-      },
-      orderBy: { startTime: 'asc' },
-    });
-  }
-
-  async update(appointmentId: string, userId: string, dto: UpdateAppointmentDto) {
+  async findOne(id: string, userId: string) {
     const appointment = await this.prisma.appointment.findUnique({
-      where: { id: appointmentId },
+      where: { id },
+      include: {
+        careRecipient: true,
+        doctor: true,
+        transportAssignment: true,
+      },
+    });
+
+    if (!appointment) {
+      throw new NotFoundException('Appointment not found');
+    }
+
+    await this.verifyAccess(appointment.careRecipientId, userId);
+
+    return appointment;
+  }
+
+  async update(id: string, userId: string, dto: UpdateAppointmentDto) {
+    const appointment = await this.prisma.appointment.findUnique({
+      where: { id },
     });
 
     if (!appointment) {
@@ -132,8 +167,9 @@ export class AppointmentsService {
     }
 
     return this.prisma.appointment.update({
-      where: { id: appointmentId },
+      where: { id },
       data: {
+        doctorId: dto.doctorId,
         title: dto.title,
         type: dto.type,
         startTime: dto.startTime ? new Date(dto.startTime) : undefined,
@@ -151,9 +187,9 @@ export class AppointmentsService {
     });
   }
 
-  async cancel(appointmentId: string, userId: string) {
+  async cancel(id: string, userId: string) {
     const appointment = await this.prisma.appointment.findUnique({
-      where: { id: appointmentId },
+      where: { id },
     });
 
     if (!appointment) {
@@ -167,14 +203,14 @@ export class AppointmentsService {
     }
 
     return this.prisma.appointment.update({
-      where: { id: appointmentId },
+      where: { id },
       data: { status: 'CANCELLED' },
     });
   }
 
-  async assignTransport(appointmentId: string, userId: string, assigneeId: string, notes?: string) {
+  async assignTransport(id: string, userId: string, dto: AssignTransportDto) {
     const appointment = await this.prisma.appointment.findUnique({
-      where: { id: appointmentId },
+      where: { id },
     });
 
     if (!appointment) {
@@ -187,24 +223,35 @@ export class AppointmentsService {
       throw new ForbiddenException('Viewers cannot assign transport');
     }
 
-    return this.prisma.transportAssignment.upsert({
-      where: { appointmentId },
-      create: {
-        appointmentId,
-        assignedToId: assigneeId,
-        notes,
-      },
-      update: {
-        assignedToId: assigneeId,
-        notes,
-        confirmed: false,
+    // Check if assignment already exists
+    const existing = await this.prisma.transportAssignment.findUnique({
+      where: { appointmentId: id },
+    });
+
+    if (existing) {
+      return this.prisma.transportAssignment.update({
+        where: { appointmentId: id },
+        data: {
+          assignedToId: dto.assigneeId,
+          notes: dto.notes,
+          confirmed: false,
+        },
+      });
+    }
+
+    return this.prisma.transportAssignment.create({
+      data: {
+        appointmentId: id,
+        assignedToId: dto.assigneeId,
+        notes: dto.notes,
       },
     });
   }
 
-  async confirmTransport(appointmentId: string, userId: string) {
+  async confirmTransport(id: string, userId: string) {
     const assignment = await this.prisma.transportAssignment.findUnique({
-      where: { appointmentId },
+      where: { appointmentId: id },
+      include: { appointment: true },
     });
 
     if (!assignment) {
@@ -212,44 +259,13 @@ export class AppointmentsService {
     }
 
     if (assignment.assignedToId !== userId) {
-      throw new ForbiddenException('Only the assigned person can confirm transport');
+      throw new ForbiddenException('You are not assigned to this transport');
     }
 
     return this.prisma.transportAssignment.update({
-      where: { appointmentId },
+      where: { appointmentId: id },
       data: { confirmed: true },
     });
-  }
-
-  private expandRecurring(appointments: any[], start: Date, end: Date): any[] {
-    const expanded: any[] = [];
-
-    for (const apt of appointments) {
-      if (apt.isRecurring && apt.recurrenceRule) {
-        try {
-          const rule = RRule.fromString(apt.recurrenceRule);
-          const occurrences = rule.between(start, end);
-
-          for (const occurrence of occurrences) {
-            expanded.push({
-              ...apt,
-              startTime: occurrence,
-              isRecurrenceInstance: true,
-              originalAppointmentId: apt.id,
-            });
-          }
-        } catch {
-          // Invalid rule, just add the original
-          expanded.push(apt);
-        }
-      } else {
-        expanded.push(apt);
-      }
-    }
-
-    return expanded.sort(
-      (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
-    );
   }
 }
 

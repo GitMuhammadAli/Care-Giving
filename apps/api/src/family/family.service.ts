@@ -184,8 +184,7 @@ export class FamilyService {
         careRecipients: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            fullName: true,
             preferredName: true,
             photoUrl: true,
           },

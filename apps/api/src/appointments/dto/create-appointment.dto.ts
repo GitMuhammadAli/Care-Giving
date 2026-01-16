@@ -1,7 +1,7 @@
 import { IsString, IsNotEmpty, IsEnum, IsOptional, IsDateString, IsArray, IsBoolean, IsInt, IsUUID, Min } from 'class-validator';
 import { AppointmentType } from '@prisma/client';
 
-// Import TypeORM enum for backward compatibility with TypeORM-based service
+// Recurrence pattern enum
 export enum RecurrencePattern {
   NONE = 'none',
   DAILY = 'daily',
@@ -34,7 +34,6 @@ export class CreateAppointmentDto {
   @IsOptional()
   address?: string;
 
-  // Prisma schema fields
   @IsDateString()
   @IsOptional()
   startTime?: string;
@@ -43,7 +42,6 @@ export class CreateAppointmentDto {
   @IsOptional()
   endTime?: string;
 
-  // TypeORM entity fields
   @IsDateString()
   @IsOptional()
   dateTime?: string;

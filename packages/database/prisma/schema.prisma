@@ -105,7 +105,9 @@ model FamilyMember {
   role     FamilyRole
   nickname String?
   canEdit  Boolean    @default(true)
+  isActive Boolean    @default(true)
   joinedAt DateTime   @default(now())
+  notifications Json?
 
   family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -145,12 +147,11 @@ enum InvitationStatus {
 }
 
 model CareRecipient {
-  id            String   @id @default(uuid())
+  id            String    @id @default(uuid())
   familyId      String
-  firstName     String
-  lastName      String
+  fullName      String
   preferredName String?
-  dateOfBirth   DateTime
+  dateOfBirth   DateTime?
   photoUrl      String?
 
   // Medical info

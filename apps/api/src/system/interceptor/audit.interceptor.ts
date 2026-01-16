@@ -6,17 +6,19 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { AuditLog, AuditAction } from '../entity/audit-log.entity';
+import { PrismaService } from '../../prisma/prisma.service';
 import { ContextHelper } from '../helper/context.helper';
+
+export enum AuditAction {
+  CREATE = 'CREATE',
+  READ = 'READ',
+  UPDATE = 'UPDATE',
+  DELETE = 'DELETE',
+}
 
 @Injectable()
 export class AuditInterceptor implements NestInterceptor {
-  constructor(
-    @InjectRepository(AuditLog)
-    private auditLogRepository: Repository<AuditLog>,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
@@ -32,13 +34,11 @@ export class AuditInterceptor implements NestInterceptor {
           await this.createAuditLog({
             userId,
             action,
-            entityType: this.extractEntityType(url),
-            entityId: params?.id || response?.id,
-            newValue: method !== 'GET' ? body : undefined,
+            resource: this.extractEntityType(url),
+            resourceId: params?.id || response?.id,
+            metadata: method !== 'GET' ? body : undefined,
             ipAddress: ip,
             userAgent: request.headers['user-agent'],
-            requestPath: url,
-            requestMethod: method,
           });
         }
       }),
@@ -81,14 +81,30 @@ export class AuditInterceptor implements NestInterceptor {
     return entityPart || 'unknown';
   }
 
-  private async createAuditLog(data: Partial<AuditLog>): Promise<void> {
+  private async createAuditLog(data: {
+    userId?: string;
+    action: AuditAction;
+    resource: string;
+    resourceId?: string;
+    metadata?: any;
+    ipAddress?: string;
+    userAgent?: string;
+  }): Promise<void> {
     try {
-      const log = this.auditLogRepository.create(data);
-      await this.auditLogRepository.save(log);
+      await this.prisma.auditLog.create({
+        data: {
+          userId: data.userId,
+          action: data.action,
+          resource: data.resource,
+          resourceId: data.resourceId,
+          metadata: data.metadata,
+          ipAddress: data.ipAddress,
+          userAgent: data.userAgent,
+        },
+      });
     } catch (error) {
       // Log but don't fail the request
       console.error('Failed to create audit log:', error);
     }
   }
 }
-

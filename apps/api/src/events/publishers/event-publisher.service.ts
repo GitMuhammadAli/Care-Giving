@@ -2,12 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { v4 as uuidv4 } from 'uuid';
 
-import { OutboxService, CreateOutboxEventOptions } from '../outbox/outbox.service';
 import { EXCHANGES, ROUTING_KEYS, RoutingKey } from '../events.constants';
 import { BaseEvent } from '../dto/events.dto';
 
 export interface PublishOptions {
-  /** Use outbox pattern (default: true) - recommended for domain events */
+  /** Use outbox pattern - currently not implemented, all publishes are direct */
   useOutbox?: boolean;
   /** Correlation ID for distributed tracing */
   correlationId?: string;
@@ -24,25 +23,23 @@ export interface PublishOptions {
 /**
  * Event Publisher Service
  * 
- * Provides two modes of publishing:
- * 1. Direct publish - Immediate publish to RabbitMQ (for non-critical events)
- * 2. Outbox pattern - Stores event in DB first (for domain events that must not be lost)
+ * Publishes events directly to RabbitMQ.
  * 
  * Usage:
  * 
  * ```typescript
- * // Domain event (uses outbox by default)
+ * // Domain event
  * await eventPublisher.publish(
  *   ROUTING_KEYS.MEDICATION_LOGGED,
  *   payload,
  *   { aggregateType: 'Medication', aggregateId: medicationId }
  * );
  * 
- * // Notification (direct publish, non-critical)
- * await eventPublisher.publishDirect(
- *   ROUTING_KEYS.NOTIFY_PUSH,
+ * // Notification
+ * await eventPublisher.publishNotification(
+ *   'push',
  *   payload,
- *   { exchange: EXCHANGES.NOTIFICATIONS }
+ *   { correlationId: '...' }
  * );
  * ```
  */
@@ -50,14 +47,10 @@ export interface PublishOptions {
 export class EventPublisherService {
   private readonly logger = new Logger(EventPublisherService.name);
 
-  constructor(
-    private readonly amqpConnection: AmqpConnection,
-    private readonly outboxService: OutboxService,
-  ) {}
+  constructor(private readonly amqpConnection: AmqpConnection) {}
 
   /**
-   * Publish a domain event using the outbox pattern
-   * This ensures the event is stored in the same transaction as domain changes.
+   * Publish a domain event
    */
   async publish<T extends Record<string, unknown>>(
     eventType: RoutingKey,
@@ -69,7 +62,6 @@ export class EventPublisherService {
     options: PublishOptions = {},
   ): Promise<void> {
     const {
-      useOutbox = true,
       correlationId = uuidv4(),
       causedBy,
       familyId,
@@ -77,39 +69,21 @@ export class EventPublisherService {
       exchange = EXCHANGES.DOMAIN_EVENTS,
     } = options;
 
-    if (useOutbox) {
-      // Store in outbox (will be picked up by OutboxProcessor)
-      await this.outboxService.createEvent({
-        eventType,
-        exchange,
-        routingKey: eventType,
-        payload,
-        aggregateType: meta.aggregateType,
-        aggregateId: meta.aggregateId,
-        correlationId,
-        causedBy,
-        familyId,
-        careRecipientId,
-      });
+    await this.publishDirect(eventType, payload, {
+      correlationId,
+      causedBy,
+      familyId,
+      careRecipientId,
+      exchange,
+    });
 
-      this.logger.debug(
-        `Event queued in outbox: ${eventType} for ${meta.aggregateType}:${meta.aggregateId}`,
-      );
-    } else {
-      // Direct publish (fire-and-forget)
-      await this.publishDirect(eventType, payload, {
-        correlationId,
-        causedBy,
-        familyId,
-        careRecipientId,
-        exchange,
-      });
-    }
+    this.logger.debug(
+      `Published event: ${eventType} for ${meta.aggregateType}:${meta.aggregateId}`,
+    );
   }
 
   /**
-   * Publish directly to RabbitMQ (bypasses outbox)
-   * Use for non-critical events that can be lost if broker is unavailable.
+   * Publish directly to RabbitMQ
    */
   async publishDirect<T extends Record<string, unknown>>(
     eventType: RoutingKey,
@@ -149,7 +123,7 @@ export class EventPublisherService {
         },
       });
 
-      this.logger.debug(`Published event directly: ${eventType}`);
+      this.logger.debug(`Published event: ${eventType}`);
     } catch (error) {
       this.logger.error(`Failed to publish event ${eventType}:`, error);
       throw error;
@@ -157,7 +131,7 @@ export class EventPublisherService {
   }
 
   /**
-   * Publish a notification event (direct, to notification exchange)
+   * Publish a notification event (to notification exchange)
    */
   async publishNotification<T extends Record<string, unknown>>(
     type: 'push' | 'email' | 'sms',
@@ -234,7 +208,7 @@ export class EventPublisherService {
     await this.publish(ROUTING_KEYS.MEDICATION_DUE, payload, {
       aggregateType: 'Medication',
       aggregateId: medicationId,
-    }, { ...options, useOutbox: false }); // Reminders can use direct publish
+    }, options);
   }
 
   async publishEmergencyAlert(
@@ -242,11 +216,10 @@ export class EventPublisherService {
     payload: Record<string, unknown>,
     options?: PublishOptions,
   ): Promise<void> {
-    // Emergency alerts MUST use outbox for reliability
     await this.publish(ROUTING_KEYS.EMERGENCY_ALERT_CREATED, payload, {
       aggregateType: 'EmergencyAlert',
       aggregateId: alertId,
-    }, { ...options, useOutbox: true });
+    }, options);
   }
 
   async publishShiftStarted(
@@ -290,7 +263,6 @@ export class EventPublisherService {
     await this.publish(ROUTING_KEYS.APPOINTMENT_REMINDER, payload, {
       aggregateType: 'Appointment',
       aggregateId: appointmentId,
-    }, { ...options, useOutbox: false }); // Reminders can use direct publish
+    }, options);
   }
 }
-

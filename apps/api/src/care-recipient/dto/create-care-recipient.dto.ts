@@ -8,7 +8,19 @@ import {
   MaxLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { BloodType } from '../entity/care-recipient.entity';
+
+// Blood type enum defined locally as it's not in Prisma schema
+export enum BloodType {
+  A_POSITIVE = 'A+',
+  A_NEGATIVE = 'A-',
+  B_POSITIVE = 'B+',
+  B_NEGATIVE = 'B-',
+  AB_POSITIVE = 'AB+',
+  AB_NEGATIVE = 'AB-',
+  O_POSITIVE = 'O+',
+  O_NEGATIVE = 'O-',
+  UNKNOWN = 'Unknown',
+}
 
 export class CreateCareRecipientDto {
   @ApiProperty({ example: 'Margaret Thompson' })

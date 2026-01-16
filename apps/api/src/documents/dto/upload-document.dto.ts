@@ -1,7 +1,7 @@
 import { IsString, IsNotEmpty, IsEnum, IsOptional, IsDateString } from 'class-validator';
 import { DocumentType } from '@prisma/client';
 
-// TypeORM entity category enum for backward compatibility
+// Document category enum
 export enum DocumentCategory {
   MEDICAL = 'medical',
   INSURANCE = 'insurance',

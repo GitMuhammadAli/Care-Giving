@@ -1,14 +1,12 @@
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Appointment } from './entity/appointment.entity';
-import { AppointmentRepository } from './repository/appointment.repository';
-import { AppointmentsService } from './service/appointments.service';
+import { Module, forwardRef } from '@nestjs/common';
+import { AppointmentsService } from './appointments.service';
 import { AppointmentsController } from './appointments.controller';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Appointment])],
+  imports: [forwardRef(() => NotificationsModule)],
   controllers: [AppointmentsController],
-  providers: [AppointmentsService, AppointmentRepository],
+  providers: [AppointmentsService],
   exports: [AppointmentsService],
 })
 export class AppointmentsModule {}

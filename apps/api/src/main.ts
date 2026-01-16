@@ -22,7 +22,7 @@ async function bootstrap() {
   const clsService = app.get(ClsService);
   ContextHelper.setClsService(clsService);
 
-  const port = configService.get('app.port') || 3001;
+  const port = configService.get('app.port') || 4000;
   const apiPrefix = configService.get('app.apiPrefix') || 'api/v1';
   const frontendUrl = configService.get('app.frontendUrl') || 'http://localhost:3000';
   const isProduction = configService.get('app.nodeEnv') === 'production';

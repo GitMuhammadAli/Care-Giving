@@ -169,7 +169,7 @@ export function serializeError(error: unknown): Record<string, unknown> {
     // Copy any additional properties from the error
     for (const key of Object.keys(error)) {
       if (!(key in serialized)) {
-        serialized[key] = (error as Record<string, unknown>)[key];
+        serialized[key] = (error as unknown as Record<string, unknown>)[key];
       }
     }
     

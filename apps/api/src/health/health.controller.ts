@@ -3,7 +3,6 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import {
   HealthCheck,
   HealthCheckService,
-  TypeOrmHealthIndicator,
   MemoryHealthIndicator,
   DiskHealthIndicator,
 } from '@nestjs/terminus';
@@ -15,7 +14,6 @@ import { RedisHealthIndicator } from './redis.health';
 export class HealthController {
   constructor(
     private health: HealthCheckService,
-    private db: TypeOrmHealthIndicator,
     private prismaHealth: PrismaHealthIndicator,
     private redisHealth: RedisHealthIndicator,
     private memory: MemoryHealthIndicator,
@@ -41,7 +39,7 @@ export class HealthController {
       // Memory check (RSS should not exceed 500MB)
       () => this.memory.checkRSS('memory_rss', 500 * 1024 * 1024),
 
-      // Disk check (should have at least 50GB free)
+      // Disk check (should have at least 10% free)
       () => this.disk.checkStorage('disk', {
         thresholdPercent: 0.9,
         path: '/',

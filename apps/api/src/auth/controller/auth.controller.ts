@@ -9,7 +9,7 @@ import {
   Res,
   Req,
 } from '@nestjs/common';
-import { Response, Request } from 'express';
+import type { Response, Request } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -60,10 +60,9 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: 'Verify email with OTP' })
   @HttpCode(HttpStatus.OK)
-  async verifyEmail(@Body() dto: VerifyEmailDto, @Res() res: Response) {
-    const result = await this.authService.verifyEmail(dto.email, dto.otp);
-    this.setTokenCookies(res, result.tokens);
-    return res.json(result);
+  async verifyEmail(@Body() dto: VerifyEmailDto) {
+    // Email verification is currently a stub - returns error
+    return this.authService.verifyEmail(dto.email, dto.otp);
   }
 
   @Post('resend-verification')
@@ -123,8 +122,8 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Logout from all devices' })
   @HttpCode(HttpStatus.OK)
-  async logoutAll(@Res() res: Response) {
-    await this.authService.logoutAll();
+  async logoutAll(@GetUser() user: CurrentUser, @Res() res: Response) {
+    await this.authService.logoutAll(user.id);
     this.clearTokenCookies(res);
     return res.json({ message: 'Logged out from all devices' });
   }

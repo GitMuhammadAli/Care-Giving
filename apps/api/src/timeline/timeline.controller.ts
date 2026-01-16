@@ -4,14 +4,20 @@ import {
   Post,
   Body,
   Param,
+  Patch,
   Delete,
   Query,
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { TimelineService } from './service/timeline.service';
+import { TimelineService } from './timeline.service';
 import { CreateTimelineEntryDto } from './dto/create-timeline-entry.dto';
-import { TimelineEntryType } from './entity/timeline-entry.entity';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+
+interface CurrentUserPayload {
+  id: string;
+  email: string;
+}
 
 @ApiTags('Timeline')
 @ApiBearerAuth()
@@ -23,67 +29,67 @@ export class TimelineController {
   @ApiOperation({ summary: 'Create a new timeline entry' })
   create(
     @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
+    @CurrentUser() user: CurrentUserPayload,
     @Body() dto: CreateTimelineEntryDto,
   ) {
-    return this.timelineService.create(careRecipientId, dto);
+    return this.timelineService.create(careRecipientId, user.id, dto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Get all timeline entries for a care recipient' })
   findAll(
     @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
-    @Query('limit') limit?: number,
-    @Query('offset') offset?: number,
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('type') type?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
   ) {
-    return this.timelineService.findAll(careRecipientId, limit || 50, offset || 0);
-  }
-
-  @Get('recent')
-  @ApiOperation({ summary: 'Get recent timeline entries' })
-  getRecent(
-    @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
-    @Query('limit') limit?: number,
-  ) {
-    return this.timelineService.findRecent(careRecipientId, limit || 10);
-  }
-
-  @Get('by-type')
-  @ApiOperation({ summary: 'Get timeline entries by type' })
-  getByType(
-    @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
-    @Query('types') types: string,
-    @Query('limit') limit?: number,
-  ) {
-    const typeArray = types.split(',') as TimelineEntryType[];
-    return this.timelineService.findByType(careRecipientId, typeArray, limit || 50);
+    return this.timelineService.findAll(careRecipientId, user.id, {
+      type,
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
+      limit: limit ? parseInt(limit, 10) : 50,
+      offset: offset ? parseInt(offset, 10) : 0,
+    });
   }
 
   @Get('vitals')
-  @ApiOperation({ summary: 'Get vitals history' })
-  getVitalsHistory(
+  @ApiOperation({ summary: 'Get recent vitals' })
+  getRecentVitals(
     @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
-    @Query('days') days?: number,
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('days') days?: string,
   ) {
-    return this.timelineService.getVitalsHistory(careRecipientId, days || 30);
-  }
-
-  @Get('vitals/summary')
-  @ApiOperation({ summary: 'Get vitals summary' })
-  getVitalsSummary(
-    @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
-  ) {
-    return this.timelineService.getVitalsSummary(careRecipientId);
+    return this.timelineService.getRecentVitals(careRecipientId, user.id, days ? parseInt(days, 10) : 7);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a timeline entry by ID' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.timelineService.findOne(id);
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.timelineService.findOne(id, user.id);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update a timeline entry' })
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: Partial<CreateTimelineEntryDto>,
+  ) {
+    return this.timelineService.update(id, user.id, dto);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a timeline entry' })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.timelineService.remove(id);
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.timelineService.delete(id, user.id);
   }
 }

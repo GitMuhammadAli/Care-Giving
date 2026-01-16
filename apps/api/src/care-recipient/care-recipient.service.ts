@@ -1,12 +1,11 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCareRecipientDto } from './dto/create-care-recipient.dto';
-import { UpdateCareRecipientDto } from './dto/update-care-recipient.dto';
 import { CreateDoctorDto } from './dto/create-doctor.dto';
 import { CreateEmergencyContactDto } from './dto/create-emergency-contact.dto';
 
 @Injectable()
-export class CareRecipientsService {
+export class CareRecipientService {
   constructor(private prisma: PrismaService) {}
 
   private async verifyFamilyAccess(familyId: string, userId: string) {
@@ -52,18 +51,17 @@ export class CareRecipientsService {
     return this.prisma.careRecipient.create({
       data: {
         familyId,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
+        fullName: dto.fullName,
         preferredName: dto.preferredName,
-        dateOfBirth: new Date(dto.dateOfBirth),
+        dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
         bloodType: dto.bloodType,
         allergies: dto.allergies || [],
         conditions: dto.conditions || [],
         notes: dto.notes,
-        primaryHospital: dto.primaryHospital,
-        hospitalAddress: dto.hospitalAddress,
+        primaryHospital: dto.preferredHospital,
+        hospitalAddress: dto.preferredHospitalAddress,
         insuranceProvider: dto.insuranceProvider,
-        insurancePolicyNo: dto.insurancePolicyNo,
+        insurancePolicyNo: dto.insurancePolicyNumber,
       },
     });
   }
@@ -82,12 +80,12 @@ export class CareRecipientsService {
           },
         },
       },
-      orderBy: { firstName: 'asc' },
+      orderBy: { fullName: 'asc' },
     });
   }
 
   async findOne(id: string, userId: string) {
-    const { careRecipient } = await this.verifyCareRecipientAccess(id, userId);
+    await this.verifyCareRecipientAccess(id, userId);
 
     return this.prisma.careRecipient.findUnique({
       where: { id },
@@ -105,7 +103,7 @@ export class CareRecipientsService {
     });
   }
 
-  async update(id: string, userId: string, dto: UpdateCareRecipientDto) {
+  async update(id: string, userId: string, dto: Partial<CreateCareRecipientDto>) {
     const { membership } = await this.verifyCareRecipientAccess(id, userId);
 
     if (membership.role === 'VIEWER') {
@@ -115,19 +113,18 @@ export class CareRecipientsService {
     return this.prisma.careRecipient.update({
       where: { id },
       data: {
-        firstName: dto.firstName,
-        lastName: dto.lastName,
+        fullName: dto.fullName,
         preferredName: dto.preferredName,
         dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
         bloodType: dto.bloodType,
         allergies: dto.allergies,
         conditions: dto.conditions,
         notes: dto.notes,
-        primaryHospital: dto.primaryHospital,
-        hospitalAddress: dto.hospitalAddress,
+        primaryHospital: dto.preferredHospital,
+        hospitalAddress: dto.preferredHospitalAddress,
         insuranceProvider: dto.insuranceProvider,
-        insurancePolicyNo: dto.insurancePolicyNo,
-        photoUrl: dto.photoUrl,
+        insurancePolicyNo: dto.insurancePolicyNumber,
+        photoUrl: dto.avatarUrl,
       },
     });
   }
@@ -156,8 +153,14 @@ export class CareRecipientsService {
 
     return this.prisma.doctor.create({
       data: {
-        careRecipientId,
-        ...dto,
+        careRecipient: { connect: { id: careRecipientId } },
+        name: dto.name,
+        specialty: dto.specialty || '',
+        phone: dto.phone || '',
+        fax: dto.fax,
+        email: dto.email,
+        address: dto.address,
+        notes: dto.notes,
       },
     });
   }

@@ -1,14 +1,12 @@
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { TimelineEntry } from './entity/timeline-entry.entity';
-import { TimelineEntryRepository } from './repository/timeline-entry.repository';
-import { TimelineService } from './service/timeline.service';
+import { Module, forwardRef } from '@nestjs/common';
+import { TimelineService } from './timeline.service';
 import { TimelineController } from './timeline.controller';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([TimelineEntry])],
+  imports: [forwardRef(() => NotificationsModule)],
   controllers: [TimelineController],
-  providers: [TimelineService, TimelineEntryRepository],
+  providers: [TimelineService],
   exports: [TimelineService],
 })
 export class TimelineModule {}

@@ -40,8 +40,8 @@ const c = colors;
 
 const config = {
   webPort: process.env.WEB_PORT || '3000',
-  apiPort: process.env.API_PORT || '3001',
-  workersHealthPort: process.env.HEALTH_PORT || '3002',
+  apiPort: process.env.API_PORT || '4000',
+  workersHealthPort: process.env.HEALTH_PORT || '4001',
   redisPort: process.env.REDIS_PORT || '6379',
   postgresPort: process.env.DB_PORT || '5432',
   rabbitMQPort: process.env.RABBITMQ_PORT || '15672',
@@ -181,10 +181,10 @@ async function main() {
   // Spawn turbo dev
   const isWindows = process.platform === 'win32';
   const npxCmd = isWindows ? 'npx.cmd' : 'npx';
-  
+
   turboProcess = spawn(npxCmd, ['turbo', 'dev'], {
     cwd: process.cwd(),
-    shell: false, // Don't use shell to get correct PID
+    shell: isWindows, // Windows needs shell for .cmd files
     env: { ...process.env, FORCE_COLOR: '1' },
     stdio: ['inherit', 'pipe', 'pipe'],
     // On Unix, create a new process group for easier cleanup

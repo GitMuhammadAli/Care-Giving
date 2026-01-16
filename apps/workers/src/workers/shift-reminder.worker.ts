@@ -117,30 +117,37 @@ async function processShiftReminder(job: Job<ShiftReminderJob>) {
 
   if (minutesBefore === 60) {
     title = '⏰ Shift Starting in 1 Hour';
-    body = `Your caregiving shift for ${careRecipient.preferredName || careRecipient.firstName} starts at ${formattedTime}.`;
+    body = `Your caregiving shift for ${careRecipient.preferredName || careRecipient.fullName} starts at ${formattedTime}.`;
   } else if (minutesBefore === 15) {
     title = '⏰ Shift Starting in 15 Minutes';
-    body = `Your caregiving shift for ${careRecipient.preferredName || careRecipient.firstName} starts at ${formattedTime}. Please prepare.`;
+    body = `Your caregiving shift for ${careRecipient.preferredName || careRecipient.fullName} starts at ${formattedTime}. Please prepare.`;
   } else {
     title = '⏰ Shift Starting Soon';
-    body = `Your caregiving shift for ${careRecipient.preferredName || careRecipient.firstName} starts in ${minutesBefore} minutes.`;
+    body = `Your caregiving shift for ${careRecipient.preferredName || careRecipient.fullName} starts in ${minutesBefore} minutes.`;
   }
 
   // Step 6: Create notification with idempotency
-  // Use upsert to prevent duplicate notifications
   const idempotencyKey = `shift-${shiftId}-${minutesBefore}`;
-  
-  const notification = await prisma.notification.upsert({
+
+  // Check for existing notification (idempotency)
+  const existing = await prisma.notification.findFirst({
     where: {
-      // Unique constraint: one notification per shift per reminder window
-      userId_type_data: {
-        userId: caregiverId,
-        type: 'SHIFT_REMINDER',
-        // Store idempotency data in the data field
-        data: { shiftId, minutesBefore },
-      } as unknown as { id: string },
+      userId: caregiverId,
+      type: 'SHIFT_REMINDER',
+      data: {
+        path: ['idempotencyKey'],
+        equals: idempotencyKey,
+      },
     },
-    create: {
+  });
+
+  if (existing) {
+    jobLogger.debug({ idempotencyKey }, 'Notification already sent');
+    return { skipped: true, reason: 'duplicate_notification' };
+  }
+
+  const notification = await prisma.notification.create({
+    data: {
       userId: caregiverId,
       type: 'SHIFT_REMINDER',
       title,
@@ -153,57 +160,9 @@ async function processShiftReminder(job: Job<ShiftReminderJob>) {
         idempotencyKey,
       },
     },
-    update: {
-      // If exists, just update timestamp
-      updatedAt: new Date(),
-    },
-  }).catch(async (err) => {
-    // If unique constraint doesn't exist, fallback to create with check
-    if (err.code === 'P2002' || err.code === 'P2025') {
-      // Already exists, skip
-      jobLogger.info({ idempotencyKey }, 'Notification already sent (idempotent)');
-      return null;
-    }
-    
-    // Try regular create with manual idempotency check
-    const existing = await prisma.notification.findFirst({
-      where: {
-        userId: caregiverId,
-        type: 'SHIFT_REMINDER',
-        data: {
-          path: ['idempotencyKey'],
-          equals: idempotencyKey,
-        },
-      },
-    });
-
-    if (existing) {
-      jobLogger.info({ idempotencyKey }, 'Notification already sent (idempotent)');
-      return null;
-    }
-
-    return prisma.notification.create({
-      data: {
-        userId: caregiverId,
-        type: 'SHIFT_REMINDER',
-        title,
-        body,
-        data: {
-          shiftId,
-          careRecipientId: careRecipient.id,
-          startTime: shift.startTime.toISOString(),
-          minutesBefore,
-          idempotencyKey,
-        },
-      },
-    });
   });
 
-  if (!notification) {
-    return { skipped: true, reason: 'duplicate_notification' };
-  }
-
-  // Step 7: Queue push notification (only if notification was created)
+  // Step 7: Queue push notification
   await notificationQueue.add(
     'send-push',
     {

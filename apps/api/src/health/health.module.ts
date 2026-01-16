@@ -4,12 +4,10 @@ import { BullModule } from '@nestjs/bull';
 import { HealthController } from './health.controller';
 import { PrismaHealthIndicator } from './prisma.health';
 import { RedisHealthIndicator } from './redis.health';
-import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
   imports: [
     TerminusModule,
-    PrismaModule,
     BullModule.registerQueue({
       name: 'notifications',
     }),

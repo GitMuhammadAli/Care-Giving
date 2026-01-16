@@ -1,10 +1,11 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { CareCircleGateway } from './carecircle.gateway';
-import { NotificationsModule } from '../notifications/notifications.module';
+import { EventsGateway } from './events.gateway';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [NotificationsModule],
-  providers: [CareCircleGateway],
-  exports: [CareCircleGateway],
+  imports: [forwardRef(() => AuthModule)],
+  providers: [CareCircleGateway, EventsGateway],
+  exports: [CareCircleGateway, EventsGateway],
 })
 export class GatewayModule {}

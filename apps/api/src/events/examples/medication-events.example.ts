@@ -2,16 +2,15 @@
  * Example: How to Use the Event Publisher in Services
  * 
  * This file demonstrates the proper way to publish events
- * using the new RabbitMQ-based event system with the outbox pattern.
+ * using the new RabbitMQ-based event system.
  */
 
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { PrismaService } from '../../prisma/prisma.service';
 import { EventPublisherService } from '../publishers/event-publisher.service';
 import { ROUTING_KEYS } from '../events.constants';
 
-// Example entity (replace with actual entity)
+// Example types (replace with actual Prisma types)
 interface Medication {
   id: string;
   name: string;
@@ -41,7 +40,7 @@ interface CareRecipient {
 @Injectable()
 export class MedicationEventExample {
   constructor(
-    private readonly dataSource: DataSource,
+    private readonly prisma: PrismaService,
     private readonly eventPublisher: EventPublisherService,
   ) {}
 
@@ -49,9 +48,9 @@ export class MedicationEventExample {
    * Example: Log medication with event publishing
    * 
    * This demonstrates the recommended pattern:
-   * 1. Use a transaction for both database changes AND event creation
-   * 2. The outbox processor will pick up and publish the event
-   * 3. This ensures atomicity - event is only sent if DB commit succeeds
+   * 1. Use a Prisma transaction for database changes
+   * 2. Publish event after successful commit
+   * 3. This ensures atomicity for database operations
    */
   async logMedicationWithEvent(
     medicationId: string,
@@ -60,52 +59,56 @@ export class MedicationEventExample {
     medication: Medication,
     careRecipient: CareRecipient,
   ): Promise<MedicationLog> {
-    // Use a transaction to ensure atomicity
-    return this.dataSource.transaction(async (entityManager) => {
+    // Use Prisma transaction for atomicity
+    const log = await this.prisma.$transaction(async (tx) => {
       // 1. Create the medication log (domain operation)
-      const log: MedicationLog = {
-        id: 'generated-uuid',
-        medicationId,
-        status: dto.status,
-        scheduledTime: new Date(dto.scheduledTime),
-        givenTime: dto.status === 'GIVEN' ? new Date() : undefined,
-      };
-
-      // Save the log using entity manager (within transaction)
-      // await entityManager.save(MedicationLogEntity, log);
+      const createdLog = await tx.medicationLog.create({
+        data: {
+          medication: { connect: { id: medicationId } },
+          givenBy: { connect: { id: user.id } },
+          status: dto.status,
+          scheduledTime: new Date(dto.scheduledTime),
+          givenTime: dto.status === 'GIVEN' ? new Date() : null,
+        },
+      });
 
       // 2. Update medication supply count if needed
-      // await entityManager.decrement(MedicationEntity, { id: medicationId }, 'currentSupply', 1);
+      await tx.medication.update({
+        where: { id: medicationId },
+        data: { currentSupply: { decrement: 1 } },
+      });
 
-      // 3. Publish event (stored in outbox within same transaction)
-      await this.eventPublisher.publish(
-        ROUTING_KEYS.MEDICATION_LOGGED,
-        {
-          medicationId: medication.id,
-          medicationName: medication.name,
-          status: dto.status,
-          loggedById: user.id,
-          loggedByName: user.fullName,
-          careRecipientId: careRecipient.id,
-          careRecipientName: careRecipient.fullName,
-          scheduledTime: dto.scheduledTime,
-          actualTime: new Date().toISOString(),
-          notes: dto.notes,
-        },
-        {
-          aggregateType: 'Medication',
-          aggregateId: medicationId,
-        },
-        {
-          useOutbox: true, // Store in outbox (recommended for domain events)
-          causedBy: user.id,
-          familyId: careRecipient.familyId,
-          careRecipientId: careRecipient.id,
-        },
-      );
-
-      return log;
+      return createdLog;
     });
+
+    // 3. Publish event after successful commit
+    await this.eventPublisher.publish(
+      ROUTING_KEYS.MEDICATION_LOGGED,
+      {
+        medicationId: medication.id,
+        medicationName: medication.name,
+        status: dto.status,
+        loggedById: user.id,
+        loggedByName: user.fullName,
+        careRecipientId: careRecipient.id,
+        careRecipientName: careRecipient.fullName,
+        scheduledTime: dto.scheduledTime,
+        actualTime: new Date().toISOString(),
+        notes: dto.notes,
+      },
+      {
+        aggregateType: 'Medication',
+        aggregateId: medicationId,
+      },
+      {
+        useOutbox: false,
+        causedBy: user.id,
+        familyId: careRecipient.familyId,
+        careRecipientId: careRecipient.id,
+      },
+    );
+
+    return log as unknown as MedicationLog;
   }
 
   /**

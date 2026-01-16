@@ -6,16 +6,16 @@ import {
   ValidationArguments,
 } from 'class-validator';
 import { Injectable } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { PrismaService } from '../../prisma/prisma.service';
 
 interface IsExistsValidationArguments extends ValidationArguments {
-  constraints: [string, string?]; // [entityName, columnName?]
+  constraints: [string, string?]; // [modelName, columnName?]
 }
 
 @Injectable()
 @ValidatorConstraint({ name: 'isExists', async: true })
 export class IsExistsConstraint implements ValidatorConstraintInterface {
-  constructor(private dataSource: DataSource) {}
+  constructor(private prisma: PrismaService) {}
 
   async validate(
     value: any,
@@ -23,26 +23,30 @@ export class IsExistsConstraint implements ValidatorConstraintInterface {
   ): Promise<boolean> {
     if (!value) return true; // Let @IsNotEmpty handle empty values
 
-    const [entityName, columnName = 'id'] = args.constraints;
+    const [modelName, columnName = 'id'] = args.constraints;
 
-    const repository = this.dataSource.getRepository(entityName);
+    try {
+      const model = (this.prisma as any)[modelName];
+      if (!model) return false;
 
-    const existing = await repository.findOne({
-      where: { [columnName]: value },
-      withDeleted: false,
-    });
+      const existing = await model.findFirst({
+        where: { [columnName]: value },
+      });
 
-    return !!existing;
+      return !!existing;
+    } catch {
+      return false;
+    }
   }
 
   defaultMessage(args: IsExistsValidationArguments): string {
-    const [entityName, columnName = 'id'] = args.constraints;
-    return `${entityName} with this ${columnName} does not exist`;
+    const [modelName, columnName = 'id'] = args.constraints;
+    return `${modelName} with this ${columnName} does not exist`;
   }
 }
 
 export function IsExists(
-  entityName: string,
+  modelName: string,
   columnName?: string,
   validationOptions?: ValidationOptions,
 ) {
@@ -51,9 +55,8 @@ export function IsExists(
       target: object.constructor,
       propertyName: propertyName,
       options: validationOptions,
-      constraints: [entityName, columnName],
+      constraints: [modelName, columnName],
       validator: IsExistsConstraint,
     });
   };
 }
-

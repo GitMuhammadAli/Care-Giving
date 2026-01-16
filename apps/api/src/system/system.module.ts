@@ -1,10 +1,8 @@
 import { Module, Global } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { ClsModule } from 'nestjs-cls';
 
-// Entities
-import { AuditLog } from './entity/audit-log.entity';
+import { PrismaModule } from '../prisma/prisma.module';
 
 // Helpers
 import { OtpHelper } from './helper/otp.helper';
@@ -22,7 +20,7 @@ import { MailModule } from './module/mail/mail.module';
 @Module({
   imports: [
     ConfigModule,
-    TypeOrmModule.forFeature([AuditLog]),
+    PrismaModule,
     ClsModule.forRoot({
       global: true,
       middleware: {
@@ -39,7 +37,7 @@ import { MailModule } from './module/mail/mail.module';
     IsExistsConstraint,
   ],
   exports: [
-    TypeOrmModule,
+    PrismaModule,
     OtpHelper,
     LockHelper,
     IsUniqueConstraint,

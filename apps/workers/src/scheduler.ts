@@ -79,10 +79,10 @@ class ReminderScheduler {
     // Get all active medications with their schedules
     const medications = await prisma.medication.findMany({
       where: { isActive: true },
-      include: { 
+      include: {
         careRecipient: {
-          select: { id: true, timezone: true }
-        } 
+          select: { id: true }
+        }
       },
     });
 
@@ -157,10 +157,10 @@ class ReminderScheduler {
         },
         status: { in: ['SCHEDULED', 'CONFIRMED'] },
       },
-      include: { 
+      include: {
         careRecipient: {
-          select: { id: true, timezone: true }
-        } 
+          select: { id: true }
+        }
       },
     });
 
@@ -278,7 +278,7 @@ class ReminderScheduler {
             family: {
               include: {
                 members: {
-                  where: { status: 'ACCEPTED' },
+                  where: { isActive: true },
                   select: { userId: true },
                 },
               },
@@ -300,9 +300,9 @@ class ReminderScheduler {
         // Use date-based job ID to only send one alert per day per medication
         const today = startOfDay(now).toISOString().split('T')[0];
         const jobId = `refill-${med.id}-${today}`;
-        
-        const careRecipientName = `${med.careRecipient.firstName} ${med.careRecipient.lastName}`;
-        const familyMemberUserIds = med.careRecipient.family.members.map(m => m.userId);
+
+        const careRecipientName = med.careRecipient.fullName;
+        const familyMemberUserIds = med.careRecipient.family.members.map((m: { userId: string }) => m.userId);
 
         if (familyMemberUserIds.length === 0) {
           continue;

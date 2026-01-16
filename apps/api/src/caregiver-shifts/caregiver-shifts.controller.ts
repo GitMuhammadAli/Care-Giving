@@ -9,9 +9,15 @@ import {
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { CaregiverShiftsService } from './service/caregiver-shifts.service';
+import { CaregiverShiftsService } from './caregiver-shifts.service';
 import { CreateShiftDto } from './dto/create-shift.dto';
 import { CheckOutDto } from './dto/check-out.dto';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+
+interface CurrentUserPayload {
+  id: string;
+  email: string;
+}
 
 @ApiTags('Caregiver Shifts')
 @ApiBearerAuth()
@@ -23,15 +29,10 @@ export class CaregiverShiftsController {
   @ApiOperation({ summary: 'Create a new shift' })
   create(
     @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
+    @CurrentUser() user: CurrentUserPayload,
     @Body() dto: CreateShiftDto,
   ) {
-    return this.shiftsService.create(careRecipientId, dto);
-  }
-
-  @Get()
-  @ApiOperation({ summary: 'Get all shifts for a care recipient' })
-  findAll(@Param('careRecipientId', ParseUUIDPipe) careRecipientId: string) {
-    return this.shiftsService.findAll(careRecipientId);
+    return this.shiftsService.createShift(careRecipientId, user.id, dto);
   }
 
   @Get('current')
@@ -39,67 +40,64 @@ export class CaregiverShiftsController {
   getCurrentShift(
     @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
   ) {
-    return this.shiftsService.findCurrentShift(careRecipientId);
-  }
-
-  @Get('on-duty')
-  @ApiOperation({ summary: 'Get who is currently on duty' })
-  getOnDuty(@Param('careRecipientId', ParseUUIDPipe) careRecipientId: string) {
-    return this.shiftsService.getOnDutyCaregiver(careRecipientId);
+    return this.shiftsService.getCurrentShift(careRecipientId);
   }
 
   @Get('upcoming')
   @ApiOperation({ summary: 'Get upcoming shifts' })
   getUpcoming(
     @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
-    @Query('limit') limit?: number,
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('days') days?: string,
   ) {
-    return this.shiftsService.findUpcoming(careRecipientId, limit || 5);
+    return this.shiftsService.getUpcoming(careRecipientId, user.id, days ? parseInt(days, 10) : 7);
   }
 
-  @Get('range')
-  @ApiOperation({ summary: 'Get shifts by date range' })
-  getByDateRange(
+  @Get('day')
+  @ApiOperation({ summary: 'Get shifts for a specific day' })
+  getForDay(
     @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
-    @Query('startDate') startDate: string,
-    @Query('endDate') endDate: string,
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('date') date: string,
   ) {
-    return this.shiftsService.findByDateRange(
-      careRecipientId,
-      new Date(startDate),
-      new Date(endDate),
-    );
-  }
-
-  @Get(':id')
-  @ApiOperation({ summary: 'Get a shift by ID' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.shiftsService.findOne(id);
+    return this.shiftsService.getForDay(careRecipientId, user.id, new Date(date));
   }
 
   @Post(':id/checkin')
   @ApiOperation({ summary: 'Check in to a shift' })
   checkIn(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body('notes') notes?: string,
-    @Body('location') location?: string,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.shiftsService.checkIn(id, notes, location);
+    return this.shiftsService.checkIn(id, user.id);
   }
 
   @Post(':id/checkout')
   @ApiOperation({ summary: 'Check out from a shift' })
   checkOut(
     @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload,
     @Body() dto: CheckOutDto,
   ) {
-    return this.shiftsService.checkOut(id, dto);
+    return this.shiftsService.checkOut(id, user.id, dto.handoffNotes);
+  }
+
+  @Post(':id/confirm')
+  @ApiOperation({ summary: 'Confirm a shift' })
+  confirmShift(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.shiftsService.confirmShift(id, user.id);
   }
 
   @Patch(':id/cancel')
   @ApiOperation({ summary: 'Cancel a shift' })
-  cancel(@Param('id', ParseUUIDPipe) id: string) {
-    return this.shiftsService.cancel(id);
+  cancelShift(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.shiftsService.cancelShift(id, user.id);
   }
 }
 
@@ -111,7 +109,10 @@ export class MyShiftsController {
 
   @Get()
   @ApiOperation({ summary: 'Get my shifts' })
-  getMyShifts(@Query('upcomingOnly') upcomingOnly?: string) {
-    return this.shiftsService.getMyCaregiverShifts(upcomingOnly === 'true');
+  getMyShifts(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('upcomingOnly') upcomingOnly?: string,
+  ) {
+    return this.shiftsService.getMyShifts(user.id, upcomingOnly === 'true');
   }
 }

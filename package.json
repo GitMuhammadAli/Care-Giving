@@ -10,9 +10,10 @@
     "build": "turbo build",
     "test": "turbo test",
     "test:workers": "pnpm --filter @carecircle/workers test",
-    "db:migrate": "pnpm --filter @carecircle/api migration:run",
-    "db:seed": "pnpm --filter @carecircle/api seed:run",
-    "db:generate": "pnpm --filter @carecircle/api migration:generate",
+    "db:migrate": "pnpm --filter @carecircle/database migrate:deploy",
+    "db:migrate:dev": "pnpm --filter @carecircle/database migrate",
+    "db:push": "pnpm --filter @carecircle/database push",
+    "db:generate": "pnpm --filter @carecircle/database generate",
     "db:studio": "pnpm --filter @carecircle/database studio",
     "lint": "turbo lint",
     "clean": "turbo clean && rm -rf node_modules",
@@ -22,6 +23,11 @@
     "turbo": "^2.0.0",
     "typescript": "^5.3.0",
     "concurrently": "^8.2.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "ioredis": "5.9.2"
+    }
   },
   "packageManager": "pnpm@9.0.0"
 }

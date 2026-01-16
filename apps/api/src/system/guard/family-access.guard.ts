@@ -6,17 +6,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { PrismaService } from '../../prisma/prisma.service';
 import { FAMILY_ACCESS_KEY, FamilyAccessOptions } from '../decorator/family-access.decorator';
-import { FamilyMember } from '../../family/entity/family-member.entity';
 
 @Injectable()
 export class FamilyAccessGuard implements CanActivate {
   constructor(
     private reflector: Reflector,
-    @InjectRepository(FamilyMember)
-    private familyMemberRepository: Repository<FamilyMember>,
+    private prisma: PrismaService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -42,10 +39,12 @@ export class FamilyAccessGuard implements CanActivate {
       return true;
     }
 
-    const member = await this.familyMemberRepository.findOne({
+    const member = await this.prisma.familyMember.findUnique({
       where: {
-        familyId,
-        userId: user.id,
+        familyId_userId: {
+          familyId,
+          userId: user.id,
+        },
       },
     });
 
@@ -54,7 +53,7 @@ export class FamilyAccessGuard implements CanActivate {
     }
 
     if (options.roles && options.roles.length > 0) {
-      if (!options.roles.includes(member.role)) {
+      if (!options.roles.includes(member.role as any)) {
         throw new ForbiddenException(
           `Required role: ${options.roles.join(' or ')}`,
         );
@@ -67,4 +66,3 @@ export class FamilyAccessGuard implements CanActivate {
     return true;
   }
 }
-

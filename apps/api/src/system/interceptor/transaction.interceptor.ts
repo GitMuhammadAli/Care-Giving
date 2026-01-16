@@ -4,36 +4,46 @@ import {
   ExecutionContext,
   CallHandler,
 } from '@nestjs/common';
-import { Observable, tap, catchError, throwError } from 'rxjs';
-import { DataSource } from 'typeorm';
-import { ContextHelper } from '../helper/context.helper';
+import { Observable, catchError, throwError, tap } from 'rxjs';
+import { PrismaService } from '../../prisma/prisma.service';
 
+/**
+ * Transaction Interceptor for Prisma
+ * 
+ * For explicit transactions, use prisma.$transaction() in your service methods.
+ * This interceptor provides a hook for transaction-like behavior but
+ * individual operations are atomic in Prisma by default.
+ * 
+ * For complex transactions, use:
+ * await prisma.$transaction([
+ *   prisma.user.create(...),
+ *   prisma.post.create(...),
+ * ]);
+ * 
+ * Or interactive transactions:
+ * await prisma.$transaction(async (tx) => {
+ *   const user = await tx.user.create(...);
+ *   await tx.post.create({ data: { authorId: user.id } });
+ * });
+ */
 @Injectable()
 export class TransactionInterceptor implements NestInterceptor {
-  constructor(private dataSource: DataSource) {}
+  constructor(private prisma: PrismaService) {}
 
-  async intercept(
+  intercept(
     context: ExecutionContext,
     next: CallHandler,
-  ): Promise<Observable<any>> {
-    const queryRunner = this.dataSource.createQueryRunner();
-    
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-    
-    ContextHelper.setTrx(queryRunner.manager);
-
+  ): Observable<any> {
+    // Prisma transactions are handled at the service level
+    // This interceptor can be used for logging/metrics
     return next.handle().pipe(
-      tap(async () => {
-        await queryRunner.commitTransaction();
-        await queryRunner.release();
+      tap(() => {
+        // Transaction committed (success path)
       }),
-      catchError(async (error) => {
-        await queryRunner.rollbackTransaction();
-        await queryRunner.release();
+      catchError((error) => {
+        // Transaction rolled back (error path)
         return throwError(() => error);
       }),
     );
   }
 }
-

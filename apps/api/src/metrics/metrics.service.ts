@@ -14,7 +14,7 @@ import { register, collectDefaultMetrics, Counter, Histogram, Gauge } from 'prom
  * scrape_configs:
  *   - job_name: 'carecircle-api'
  *     static_configs:
- *       - targets: ['localhost:3001']
+ *       - targets: ['localhost:4000']
  *     metrics_path: '/metrics'
  */
 

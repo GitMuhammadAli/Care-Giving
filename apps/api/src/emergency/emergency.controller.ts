@@ -3,83 +3,81 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
   Query,
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { EmergencyService } from './service/emergency.service';
+import { EmergencyService } from './emergency.service';
 import { CreateEmergencyAlertDto } from './dto/create-emergency-alert.dto';
 import { ResolveAlertDto } from './dto/resolve-alert.dto';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+
+interface CurrentUserPayload {
+  id: string;
+  email: string;
+}
 
 @ApiTags('Emergency')
 @ApiBearerAuth()
-@Controller('families/:familyId/emergency')
+@Controller('care-recipients/:careRecipientId/emergency')
 export class EmergencyController {
   constructor(private readonly emergencyService: EmergencyService) {}
 
-  @Post('alert')
+  @Get('info')
+  @ApiOperation({ summary: 'Get complete emergency info for care recipient (for offline caching)' })
+  getEmergencyInfo(
+    @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.emergencyService.getEmergencyInfo(careRecipientId, user.id);
+  }
+
+  @Post('alerts')
   @ApiOperation({ summary: 'Create an emergency alert' })
   createAlert(
-    @Param('familyId', ParseUUIDPipe) familyId: string,
-    @Body() dto: CreateEmergencyAlertDto & { careRecipientId: string },
+    @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: CreateEmergencyAlertDto,
   ) {
-    return this.emergencyService.createAlert(
-      dto.careRecipientId,
-      familyId,
-      dto,
-    );
+    return this.emergencyService.createEmergencyAlert(careRecipientId, user.id, dto);
   }
 
   @Get('alerts')
-  @ApiOperation({ summary: 'Get all emergency alerts for a family' })
-  findAll(
-    @Param('familyId', ParseUUIDPipe) familyId: string,
-    @Query('limit') limit?: number,
-  ) {
-    return this.emergencyService.findByFamily(familyId, limit || 20);
-  }
-
-  @Get('alerts/active')
   @ApiOperation({ summary: 'Get active emergency alerts' })
-  getActive(@Param('familyId', ParseUUIDPipe) familyId: string) {
-    return this.emergencyService.findActive(familyId);
+  getActiveAlerts(
+    @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.emergencyService.getActiveAlerts(careRecipientId, user.id);
   }
 
-  @Get('alerts/:id')
-  @ApiOperation({ summary: 'Get an emergency alert by ID' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.emergencyService.findOne(id);
+  @Get('alerts/history')
+  @ApiOperation({ summary: 'Get alert history' })
+  getAlertHistory(
+    @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('limit') limit?: string,
+  ) {
+    return this.emergencyService.getAlertHistory(careRecipientId, user.id, limit ? parseInt(limit, 10) : 20);
   }
 
-  @Post('alerts/:id/acknowledge')
+  @Post('alerts/:alertId/acknowledge')
   @ApiOperation({ summary: 'Acknowledge an emergency alert' })
-  acknowledge(@Param('id', ParseUUIDPipe) id: string) {
-    return this.emergencyService.acknowledge(id);
+  acknowledgeAlert(
+    @Param('alertId', ParseUUIDPipe) alertId: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.emergencyService.acknowledgeAlert(alertId, user.id);
   }
 
-  @Post('alerts/:id/resolve')
+  @Post('alerts/:alertId/resolve')
   @ApiOperation({ summary: 'Resolve an emergency alert' })
-  resolve(
-    @Param('id', ParseUUIDPipe) id: string,
+  resolveAlert(
+    @Param('alertId', ParseUUIDPipe) alertId: string,
+    @CurrentUser() user: CurrentUserPayload,
     @Body() dto: ResolveAlertDto,
   ) {
-    return this.emergencyService.resolve(id, dto);
-  }
-
-  @Patch('alerts/:id/cancel')
-  @ApiOperation({ summary: 'Cancel an emergency alert' })
-  cancel(@Param('id', ParseUUIDPipe) id: string) {
-    return this.emergencyService.cancel(id);
-  }
-
-  @Get(':careRecipientId/info')
-  @ApiOperation({ summary: 'Get complete emergency info for care recipient (for offline caching)' })
-  getEmergencyInfo(
-    @Param('familyId', ParseUUIDPipe) familyId: string,
-    @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
-  ) {
-    return this.emergencyService.getEmergencyInfo(careRecipientId, familyId);
+    return this.emergencyService.resolveAlert(alertId, user.id, dto.resolutionNotes);
   }
 }

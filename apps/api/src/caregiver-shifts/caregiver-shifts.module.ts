@@ -1,14 +1,12 @@
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { CaregiverShift } from './entity/caregiver-shift.entity';
-import { CaregiverShiftRepository } from './repository/caregiver-shift.repository';
-import { CaregiverShiftsService } from './service/caregiver-shifts.service';
+import { Module, forwardRef } from '@nestjs/common';
+import { CaregiverShiftsService } from './caregiver-shifts.service';
 import { CaregiverShiftsController, MyShiftsController } from './caregiver-shifts.controller';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([CaregiverShift])],
+  imports: [forwardRef(() => NotificationsModule)],
   controllers: [CaregiverShiftsController, MyShiftsController],
-  providers: [CaregiverShiftsService, CaregiverShiftRepository],
+  providers: [CaregiverShiftsService],
   exports: [CaregiverShiftsService],
 })
 export class CaregiverShiftsModule {}
