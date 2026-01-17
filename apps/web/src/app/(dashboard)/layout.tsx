@@ -22,12 +22,20 @@ export default function DashboardLayout({
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { user } = useAuthContext();
   const familyId = user?.families?.[0]?.id;
+  const careRecipient = user?.families?.[0]?.careRecipients?.[0];
+
+  const careRecipientData = careRecipient ? {
+    id: careRecipient.id,
+    name: careRecipient.fullName,
+    preferredName: careRecipient.preferredName,
+    photoUrl: careRecipient.photoUrl
+  } : undefined;
 
   return (
     <NotificationProvider>
       <RealtimeProvider familyId={familyId}>
         <div className="min-h-screen bg-background flex flex-col texture-paper">
-          <DashboardHeader />
+          <DashboardHeader careRecipient={careRecipientData} />
           <main className="flex-1 pt-24 pb-12 md:pb-20">
             {children}
           </main>

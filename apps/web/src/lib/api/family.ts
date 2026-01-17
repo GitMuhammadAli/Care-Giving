@@ -4,8 +4,9 @@ export interface Family {
   id: string;
   name: string;
   createdAt: string;
-  members: FamilyMember[];
-  careRecipients: { id: string; firstName: string; lastName: string; preferredName?: string }[];
+  members?: FamilyMember[];
+  careRecipients?: { id: string; fullName: string; preferredName?: string; photoUrl?: string }[];
+  invitations?: FamilyInvitation[];
 }
 
 export interface FamilyMember {

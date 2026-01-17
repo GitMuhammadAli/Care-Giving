@@ -93,9 +93,9 @@ export default function VerifyEmailPage() {
       setSuccess(true);
       toast.success('Email verified successfully! Redirecting...');
 
-      // Redirect to dashboard after success
+      // Redirect to onboarding for new users (they don't have a family yet)
       setTimeout(() => {
-        router.push('/dashboard');
+        router.push('/onboarding');
       }, 1500);
     } catch (err) {
       if (err instanceof ApiError) {

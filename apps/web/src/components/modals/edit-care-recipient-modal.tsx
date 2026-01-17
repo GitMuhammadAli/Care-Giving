@@ -11,13 +11,12 @@ import toast from 'react-hot-toast';
 
 interface CareRecipient {
   id: string;
-  firstName: string;
-  lastName: string;
+  fullName: string;
   preferredName?: string;
   dateOfBirth: string;
   bloodType?: string;
   allergies: string[];
-  medicalConditions: string[];
+  conditions: string[];
   notes?: string;
   insuranceProvider?: string;
   insurancePolicyNumber?: string;
@@ -36,13 +35,12 @@ interface Props {
 export function EditCareRecipientModal({ isOpen, onClose, careRecipient }: Props) {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
-    firstName: careRecipient.firstName,
-    lastName: careRecipient.lastName,
+    fullName: careRecipient.fullName || '',
     preferredName: careRecipient.preferredName || '',
-    dateOfBirth: careRecipient.dateOfBirth.split('T')[0],
+    dateOfBirth: careRecipient.dateOfBirth?.split('T')[0] || '',
     bloodType: careRecipient.bloodType || '',
-    allergies: careRecipient.allergies,
-    medicalConditions: careRecipient.medicalConditions,
+    allergies: careRecipient.allergies || [],
+    conditions: careRecipient.conditions || [],
     notes: careRecipient.notes || '',
     insuranceProvider: careRecipient.insuranceProvider || '',
     insurancePolicyNumber: careRecipient.insurancePolicyNumber || '',
@@ -94,7 +92,7 @@ export function EditCareRecipientModal({ isOpen, onClose, careRecipient }: Props
     if (newCondition.trim()) {
       setFormData({
         ...formData,
-        medicalConditions: [...formData.medicalConditions, newCondition.trim()],
+        conditions: [...formData.conditions, newCondition.trim()],
       });
       setNewCondition('');
     }
@@ -103,7 +101,7 @@ export function EditCareRecipientModal({ isOpen, onClose, careRecipient }: Props
   const removeCondition = (index: number) => {
     setFormData({
       ...formData,
-      medicalConditions: formData.medicalConditions.filter((_, i) => i !== index),
+      conditions: formData.conditions.filter((_, i) => i !== index),
     });
   };
 
@@ -113,16 +111,11 @@ export function EditCareRecipientModal({ isOpen, onClose, careRecipient }: Props
         {/* Basic Info */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
-            label="First Name"
-            value={formData.firstName}
-            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+            label="Full Name"
+            value={formData.fullName}
+            onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
             required
-          />
-          <Input
-            label="Last Name"
-            value={formData.lastName}
-            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-            required
+            className="sm:col-span-2"
           />
           <Input
             label="Preferred Name (Nickname)"
@@ -142,6 +135,7 @@ export function EditCareRecipientModal({ isOpen, onClose, careRecipient }: Props
             value={formData.bloodType}
             onChange={(e) => setFormData({ ...formData, bloodType: e.target.value })}
             placeholder="e.g., A+"
+            className="sm:col-span-2"
           />
         </div>
 
@@ -186,7 +180,7 @@ export function EditCareRecipientModal({ isOpen, onClose, careRecipient }: Props
             Medical Conditions
           </label>
           <div className="flex flex-wrap gap-2 mb-2">
-            {formData.medicalConditions.map((condition, index) => (
+            {formData.conditions.map((condition, index) => (
               <span
                 key={index}
                 className="inline-flex items-center gap-1 px-3 py-1 bg-warning-light text-warning rounded-full text-sm"

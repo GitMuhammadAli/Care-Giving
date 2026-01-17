@@ -269,7 +269,17 @@ export class AuthService {
         familyMemberships: {
           include: {
             family: {
-              select: { id: true, name: true },
+              include: {
+                careRecipients: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    preferredName: true,
+                    dateOfBirth: true,
+                    photoUrl: true,
+                  },
+                },
+              },
             },
           },
         },
@@ -395,6 +405,20 @@ export class AuthService {
     return { message: 'Verification code sent successfully' };
   }
 
+  async completeOnboarding(userId: string) {
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        onboardingCompleted: true,
+        onboardingCompletedAt: new Date(),
+      },
+    });
+
+    await this.logAudit(userId, 'COMPLETE_ONBOARDING', 'user', userId);
+
+    return { message: 'Onboarding completed successfully' };
+  }
+
   private async generateTokens(userId: string, email: string) {
     const payload = { sub: userId, email };
 
@@ -434,8 +458,28 @@ export class AuthService {
       passwordHash,
       passwordResetToken,
       passwordResetExpiresAt,
+      familyMemberships,
       ...sanitized
     } = user;
-    return sanitized;
+
+    // Transform familyMemberships into families array for frontend compatibility
+    const families = familyMemberships?.map((membership: any) => ({
+      id: membership.family.id,
+      name: membership.family.name,
+      role: membership.role,
+      careRecipients: membership.family.careRecipients || [],
+    })) || [];
+
+    console.log('Auth Service - sanitizeUser:', {
+      userId: user.id,
+      hasFamilyMemberships: !!familyMemberships,
+      membershipCount: familyMemberships?.length || 0,
+      families: families,
+    });
+
+    return {
+      ...sanitized,
+      families,
+    };
   }
 }

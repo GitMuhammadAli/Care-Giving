@@ -6,83 +6,106 @@
 
 @layer base {
   :root {
-    /* CareCircle Design Tokens - Pixel Perfect */
-    --background: 40 33% 97%; /* Warm cream #F9F6F1 */
-    --foreground: 0 0% 12%; /* Ink black */
+    /* CareCircle Design System - Sage Scale */
+    --sage-50: 92 15% 96%;   /* #F4F6F2 - Subtle backgrounds */
+    --sage-100: 92 14% 89%;  /* #E4E9E0 - Light backgrounds */
+    --sage-200: 92 13% 81%;  /* #D0D9C9 - Light borders */
+    --sage-300: 92 12% 72%;  /* #B8C4AE - Muted borders */
+    --sage-400: 92 12% 61%;  /* #9AAA8D - Secondary text */
+    --sage-500: 92 12% 55%;  /* #8B9A7E - Accent elements */
+    --sage-600: 92 13% 42%;  /* #6B7A5E - Hover states */
+    --sage-700: 92 14% 32%;  /* #525E48 - Primary buttons */
+    --sage-800: 92 15% 23%;  /* #3E4538 - Dark text */
+    --sage-900: 92 16% 15%;  /* #2D3328 - Darkest */
 
-    --card: 40 33% 98%;
+    /* Semantic Tokens */
+    --background: 40 33% 97%; /* Cream #F9F6F1 */
+    --foreground: 0 0% 12%; /* Ink #1E1E1E */
+
+    --card: 40 33% 97%; /* Same as background - cream */
     --card-foreground: 0 0% 12%;
 
-    --popover: 40 33% 98%;
+    --popover: 40 33% 97%; /* Same as background - cream */
     --popover-foreground: 0 0% 12%;
 
-    /* Sage green - primary */
-    --primary: 92 10% 67%; /* Soft sage #A8B5A0 */
-    --primary-foreground: 0 0% 12%;
+    /* Primary - Sage for buttons and accents */
+    --primary: 92 14% 32%; /* sage-700 #525E48 */
+    --primary-foreground: 40 33% 97%; /* Cream text on sage */
 
-    /* Terracotta - accent warmth */
-    --secondary: 30 30% 64%; /* Gentle terracotta #C4A484 */
-    --secondary-foreground: 0 0% 12%;
+    /* Secondary - Terracotta warmth */
+    --secondary: 25 28% 50%; /* #996B4D */
+    --secondary-foreground: 40 33% 97%;
 
-    /* Muted slate */
-    --muted: 208 13% 48%; /* Muted slate blue #6B7B8C */
-    --muted-foreground: 208 13% 40%;
+    /* Muted - Light sage backgrounds */
+    --muted: 92 15% 96%; /* sage-50 */
+    --muted-foreground: 92 12% 61%; /* sage-400 */
 
-    /* Cream accent */
-    --accent: 40 33% 95%;
-    --accent-foreground: 0 0% 15%;
+    /* Accent - Light sage */
+    --accent: 92 15% 96%; /* sage-50 */
+    --accent-foreground: 0 0% 12%; /* ink */
 
     --destructive: 0 45% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 40 20% 88%;
-    --input: 40 20% 88%;
-    --ring: 92 10% 67%;
+    --border: 92 13% 81%; /* sage-200 borders */
+    --input: 92 15% 96%; /* sage-50 */
+    --ring: 92 14% 32%; /* sage-700 */
 
     --radius: 0.25rem;
 
-    /* Caregiving context tokens */
-    --ink: 0 0% 12%;
-    --cream: 40 33% 97%;
-    --sage: 92 10% 67%;
-    --terracotta: 30 30% 64%;
-    --slate: 208 13% 48%;
-    --warm-gray: 35 10% 60%;
-    --stone: 40 20% 92%;
+    /* Core Color Tokens */
+    --ink: 0 0% 12%; /* #1E1E1E */
+    --cream: 40 33% 97%; /* #F9F6F1 */
+    --sage: 92 14% 32%; /* #525E48 - Primary buttons */
+    --sage-light: 92 12% 55%; /* #8B9A7E - Accent */
+    --terracotta: 25 28% 50%; /* #996B4D - Only for accents */
+    --slate: 208 18% 38%; /* #4A5F70 - Only for accents */
+    --stone: 92 15% 96%; /* sage-50 */
+    --warm-gray: 92 12% 61%; /* sage-400 - NO BROWN */
 
     /* Semantic caregiving tokens */
-    --care-calm: 92 10% 67%;
-    --care-warmth: 30 30% 64%;
-    --care-trust: 208 13% 48%;
-    --care-light: 40 33% 97%;
-    --care-text: 0 0% 12%;
+    --care-calm: 92 12% 55%; /* sage-light */
+    --care-warmth: 25 28% 50%; /* terracotta */
+    --care-trust: 208 18% 38%; /* slate */
+    --care-light: 40 33% 97%; /* cream */
+    --care-text: 0 0% 12%; /* ink */
 
-    /* Legacy tokens (for backward compatibility during migration) */
-    --bg-base: #F9F6F1;
-    --bg-surface: #FDFCFA;
-    --bg-muted: #F5F3EE;
-    --bg-subtle: #EEEDE9;
-    --bg-inverse: #1A1A18;
-    
-    --border-subtle: #E8E7E3;
-    --border-default: #D9D8D4;
-    --border-strong: #C4C3BF;
-    --border-focus: hsl(92 10% 55%);
-    
-    --text-primary: #1A1A18;
-    --text-secondary: #5C5C58;
-    --text-tertiary: #8A8A86;
-    --text-disabled: #B5B5B1;
-    --text-inverse: #FAFAF8;
-    --text-link: hsl(92 10% 50%);
-    
-    --accent-primary: hsl(92 10% 55%);
-    --accent-primary-hover: hsl(92 10% 45%);
-    --accent-primary-light: hsl(92 10% 92%);
-    --accent-warm: hsl(30 30% 60%);
-    --accent-warm-hover: hsl(30 30% 50%);
-    --accent-warm-light: hsl(30 30% 94%);
-    
+    /* Legacy tokens */
+    --bg-base: hsl(40 33% 97%); /* cream */
+    --bg-surface: hsl(40 33% 98%); /* card */
+    --bg-muted: hsl(92 15% 96%); /* sage-50 - NO BEIGE */
+    --bg-subtle: hsl(92 15% 96%); /* sage-50 */
+    --bg-inverse: hsl(0 0% 12%); /* ink */
+
+    --border-subtle: hsl(92 13% 81%); /* sage-200 */
+    --border-default: hsl(92 13% 81%); /* sage-200 - NO BEIGE */
+    --border-strong: hsl(92 12% 72%); /* sage-300 */
+    --border-focus: hsl(92 14% 32%); /* sage-700 */
+
+    --text-primary: hsl(0 0% 12%); /* ink - black */
+    --text-secondary: hsl(92 12% 61%); /* sage-400 */
+    --text-tertiary: hsl(92 13% 81%); /* sage-200 */
+    --text-disabled: hsl(92 13% 81%); /* sage-200 */
+    --text-inverse: hsl(40 33% 97%); /* cream */
+    --text-link: hsl(92 14% 32%); /* sage-700 */
+
+    --accent-primary: hsl(92 14% 32%); /* sage */
+    --accent-primary-hover: hsl(92 13% 42%); /* sage-600 */
+    --accent-primary-light: hsl(92 14% 89%); /* sage-100 */
+    --accent-warm: hsl(25 28% 50%); /* terracotta */
+    --accent-warm-hover: hsl(25 28% 40%);
+    --accent-warm-light: hsl(25 28% 90%);
+
+    /* Legacy color aliases - map old names to new design system */
+    --text-text-primary: hsl(0 0% 12%); /* -> ink */
+    --text-text-secondary: hsl(92 12% 61%); /* -> sage-400 */
+    --text-text-tertiary: hsl(92 13% 81%); /* -> sage-200 */
+    --bg-bg-muted: hsl(92 15% 96%); /* -> sage-50 */
+    --bg-accent-primary: hsl(92 14% 32%); /* -> sage-700 */
+    --bg-accent-primary-hover: hsl(92 13% 42%); /* -> sage-600 */
+    --text-accent-primary: hsl(92 14% 32%); /* -> sage-700 */
+    --text-accent-warm: hsl(25 28% 50%); /* -> terracotta (only for accents) */
+
     --success: #3D8B6E;
     --success-light: #E8F5EF;
     --warning: #C49A3D;
@@ -228,46 +251,68 @@
     border-width: 0.5px;
   }
 
-  /* Caregiving color utilities */
-  .text-ink {
-    color: hsl(var(--ink));
-  }
+  /* Sage Scale Utilities */
+  .bg-sage-50 { background-color: hsl(var(--sage-50)); }
+  .bg-sage-100 { background-color: hsl(var(--sage-100)); }
+  .bg-sage-200 { background-color: hsl(var(--sage-200)); }
+  .bg-sage-300 { background-color: hsl(var(--sage-300)); }
+  .bg-sage-400 { background-color: hsl(var(--sage-400)); }
+  .bg-sage-500 { background-color: hsl(var(--sage-500)); }
+  .bg-sage-600 { background-color: hsl(var(--sage-600)); }
+  .bg-sage-700 { background-color: hsl(var(--sage-700)); }
+  .bg-sage-800 { background-color: hsl(var(--sage-800)); }
+  .bg-sage-900 { background-color: hsl(var(--sage-900)); }
 
-  .text-sage {
-    color: hsl(var(--sage));
-  }
+  .text-sage-50 { color: hsl(var(--sage-50)); }
+  .text-sage-100 { color: hsl(var(--sage-100)); }
+  .text-sage-200 { color: hsl(var(--sage-200)); }
+  .text-sage-300 { color: hsl(var(--sage-300)); }
+  .text-sage-400 { color: hsl(var(--sage-400)); }
+  .text-sage-500 { color: hsl(var(--sage-500)); }
+  .text-sage-600 { color: hsl(var(--sage-600)); }
+  .text-sage-700 { color: hsl(var(--sage-700)); }
+  .text-sage-800 { color: hsl(var(--sage-800)); }
+  .text-sage-900 { color: hsl(var(--sage-900)); }
 
-  .text-terracotta {
-    color: hsl(var(--terracotta));
-  }
+  .border-sage-50 { border-color: hsl(var(--sage-50)); }
+  .border-sage-100 { border-color: hsl(var(--sage-100)); }
+  .border-sage-200 { border-color: hsl(var(--sage-200)); }
+  .border-sage-300 { border-color: hsl(var(--sage-300)); }
+  .border-sage-400 { border-color: hsl(var(--sage-400)); }
+  .border-sage-500 { border-color: hsl(var(--sage-500)); }
+  .border-sage-600 { border-color: hsl(var(--sage-600)); }
+  .border-sage-700 { border-color: hsl(var(--sage-700)); }
+  .border-sage-800 { border-color: hsl(var(--sage-800)); }
+  .border-sage-900 { border-color: hsl(var(--sage-900)); }
 
-  .text-slate {
-    color: hsl(var(--slate));
-  }
+  /* Core Color Utilities */
+  .text-ink { color: hsl(var(--ink)); }
+  .text-sage { color: hsl(var(--sage)); }
+  .text-sage-light { color: hsl(var(--sage-light)); }
+  .text-terracotta { color: hsl(var(--terracotta)); }
+  .text-slate { color: hsl(var(--slate)); }
+  .text-warm-gray { color: hsl(var(--warm-gray)); }
 
-  .text-warm-gray {
-    color: hsl(var(--warm-gray));
-  }
+  .bg-cream { background-color: hsl(var(--cream)); }
+  .bg-sage { background-color: hsl(var(--sage)); }
+  .bg-sage-light { background-color: hsl(var(--sage-light)); }
+  .bg-terracotta { background-color: hsl(var(--terracotta)); }
+  .bg-slate { background-color: hsl(var(--slate)); }
+  .bg-stone { background-color: hsl(var(--stone)); }
 
-  .bg-cream {
-    background-color: hsl(var(--cream));
-  }
+  .border-sage { border-color: hsl(var(--sage)); }
+  .border-terracotta { border-color: hsl(var(--terracotta)); }
+  .border-slate { border-color: hsl(var(--slate)); }
 
-  .bg-sage {
-    background-color: hsl(var(--sage));
-  }
-
-  .bg-terracotta {
-    background-color: hsl(var(--terracotta));
-  }
-
-  .bg-stone {
-    background-color: hsl(var(--stone));
-  }
-
-  .bg-slate {
-    background-color: hsl(var(--slate));
-  }
+  /* Legacy color class aliases */
+  .text-text-primary { color: hsl(var(--text-text-primary)); }
+  .text-text-secondary { color: hsl(var(--text-text-secondary)); }
+  .text-text-tertiary { color: hsl(var(--text-text-tertiary)); }
+  .bg-bg-muted { background-color: hsl(var(--bg-bg-muted)); }
+  .bg-accent-primary { background-color: hsl(var(--bg-accent-primary)); }
+  .hover\:bg-accent-primary-hover:hover { background-color: hsl(var(--bg-accent-primary-hover)); }
+  .text-accent-primary { color: hsl(var(--text-accent-primary)); }
+  .text-accent-warm { color: hsl(var(--text-accent-warm)); }
 
   /* Subtle texture overlay */
   .texture-paper {
@@ -285,23 +330,23 @@
 
   /* Care card styles */
   .care-card {
-    @apply bg-card border border-border p-6 transition-all duration-300;
+    @apply bg-card border border-sage-200 p-6 transition-all duration-300;
   }
 
   .care-card:hover {
-    @apply border-primary/40;
+    @apply border-sage-700;
   }
 
-  /* Dashboard card with subtle gradient and shadow */
+  /* Dashboard card with subtle shadow */
   .dashboard-card {
-    @apply bg-card border border-border rounded-2xl p-6 transition-all duration-300;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.03);
-    background: linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--card) / 0.97) 100%);
+    @apply bg-card border border-sage-200 rounded-2xl p-6 transition-all duration-300;
+    box-shadow: 0 1px 3px rgba(82, 94, 72, 0.04), 0 4px 12px rgba(82, 94, 72, 0.03);
   }
 
   .dashboard-card:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 2px 8px rgba(82, 94, 72, 0.08), 0 8px 24px rgba(82, 94, 72, 0.05);
     transform: translateY(-1px);
+    @apply border-sage-700;
   }
 
   /* Status indicator pulse */
@@ -314,10 +359,9 @@
     50% { opacity: 0.6; }
   }
 
-  /* Loved one card with special gradient */
+  /* Loved one card */
   .loved-one-card {
-    background: linear-gradient(135deg, hsl(var(--primary) / 0.08) 0%, hsl(var(--card)) 50%, hsl(var(--secondary) / 0.05) 100%);
-    border: 1px solid hsl(var(--primary) / 0.15);
+    @apply bg-sage-50 border border-sage-300;
   }
 
   /* Quick action button refined */
@@ -325,14 +369,8 @@
     @apply relative overflow-hidden transition-all duration-200;
   }
 
-  .quick-action-btn::before {
-    content: '';
-    @apply absolute inset-0 opacity-0 transition-opacity duration-200;
-    background: linear-gradient(135deg, hsl(var(--primary) / 0.1) 0%, transparent 100%);
-  }
-
-  .quick-action-btn:hover::before {
-    @apply opacity-100;
+  .quick-action-btn:hover {
+    @apply bg-accent;
   }
 
   /* Task item styling */
@@ -406,11 +444,6 @@
   /* Loading skeleton */
   .skeleton {
     @apply bg-accent animate-pulse rounded-md;
-  }
-
-  /* Warm gradient text */
-  .text-gradient-warm {
-    @apply bg-gradient-to-r from-terracotta to-primary bg-clip-text text-transparent;
   }
 
   /* Subtle border with warmth */

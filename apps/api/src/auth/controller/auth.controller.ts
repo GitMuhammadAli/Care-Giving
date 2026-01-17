@@ -175,6 +175,15 @@ export class AuthController {
     return this.authService.getProfile(user.id);
   }
 
+  @Post('complete-onboarding')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Mark onboarding as completed' })
+  @HttpCode(HttpStatus.OK)
+  async completeOnboarding(@GetUser() user: CurrentUser) {
+    return this.authService.completeOnboarding(user.id);
+  }
+
   private setTokenCookies(
     res: Response,
     tokens: { accessToken: string; refreshToken: string },

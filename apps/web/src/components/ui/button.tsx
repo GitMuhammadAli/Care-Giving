@@ -7,27 +7,35 @@ import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap font-body text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 active:scale-[0.98]',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap font-body text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 active:scale-[0.98]',
   {
     variants: {
       variant: {
-        default: 'bg-foreground text-background hover:bg-foreground/90 shadow-sm',
-        destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-        outline: 'border border-foreground/20 bg-transparent text-foreground hover:bg-foreground/5',
-        secondary: 'bg-muted text-foreground hover:bg-muted/80',
-        ghost: 'hover:bg-foreground/5 hover:text-foreground',
-        link: 'text-foreground underline-offset-4 hover:underline',
-        // Pixel-perfect editorial variants
-        editorial: 'bg-primary text-foreground hover:bg-primary/80 tracking-caps uppercase text-xs font-semibold',
-        'editorial-outline': 'border border-foreground/20 bg-transparent text-foreground hover:border-foreground/40 tracking-caps uppercase text-xs font-medium',
-        sage: 'bg-primary text-foreground hover:bg-primary/80 shadow-sm hover:shadow-md',
-        terracotta: 'bg-secondary text-foreground hover:bg-secondary/80 shadow-sm hover:shadow-md',
-        slate: 'bg-muted text-muted-foreground hover:bg-muted/80',
+        // Primary sage-700 buttons
+        default: 'bg-sage-700 text-cream hover:bg-sage-600 shadow-md hover:shadow-lg',
+        // Destructive red
+        destructive: 'bg-destructive text-destructive-foreground hover:opacity-90 shadow-md hover:shadow-lg',
+        // Outline sage
+        outline: 'border-2 border-sage-700 bg-transparent text-sage-700 hover:bg-sage-50 font-semibold',
+        // Secondary sage-light
+        secondary: 'bg-sage-500 text-ink hover:bg-sage-600 hover:text-cream shadow-md hover:shadow-lg',
+        // Ghost sage-light
+        ghost: 'text-sage-700 hover:bg-sage-50 font-semibold',
+        // Link sage
+        link: 'text-sage-700 underline-offset-4 hover:underline font-semibold',
+        // Editorial variants
+        editorial: 'bg-sage-700 text-cream hover:bg-sage-600 tracking-caps uppercase text-xs font-bold shadow-md',
+        'editorial-outline': 'border-2 border-sage-700 bg-transparent text-sage-700 hover:bg-sage-50 tracking-caps uppercase text-xs font-bold',
+        // Color variants
+        sage: 'bg-sage-700 text-cream hover:bg-sage-600 shadow-md hover:shadow-lg',
+        'sage-light': 'bg-sage-500 text-ink hover:bg-sage-600 shadow-md hover:shadow-lg',
+        terracotta: 'bg-terracotta text-cream hover:opacity-90 shadow-md hover:shadow-lg',
+        slate: 'bg-slate text-cream hover:opacity-90 shadow-md hover:shadow-lg',
         // Legacy variants for backward compatibility
-        primary: 'bg-primary text-foreground hover:bg-primary/80 shadow-sm hover:shadow-md',
-        warm: 'bg-secondary text-foreground hover:bg-secondary/80 shadow-sm hover:shadow-md',
-        danger: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-        emergency: 'bg-emergency text-white hover:bg-emergency-dark shadow-lg animate-pulse-emergency disabled:animate-none',
+        primary: 'bg-sage-700 text-cream hover:bg-sage-600 shadow-md hover:shadow-lg',
+        warm: 'bg-sage-500 text-ink hover:bg-sage-600 hover:text-cream shadow-md hover:shadow-lg',
+        danger: 'bg-destructive text-destructive-foreground hover:opacity-90 shadow-md hover:shadow-lg',
+        emergency: 'bg-[#D32F2F] text-white hover:bg-[#B71C1C] shadow-lg hover:shadow-xl animate-pulse-emergency disabled:animate-none',
       },
       size: {
         default: 'h-10 px-5 py-2',

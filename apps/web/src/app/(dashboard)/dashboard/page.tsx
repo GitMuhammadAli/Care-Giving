@@ -64,12 +64,17 @@ const Dashboard = () => {
   const careRecipientFromUser = user?.families?.[0]?.careRecipients?.[0];
   const careRecipientId = careRecipientFromUser?.id;
 
-  // Redirect to onboarding if no family exists
+  // Debug logging
+  console.log('Dashboard - User families:', user?.families);
+  console.log('Dashboard - familyId:', familyId);
+  console.log('Dashboard - careRecipientId:', careRecipientId);
+
+  // Redirect to onboarding if user hasn't completed onboarding
   useEffect(() => {
-    if (!authLoading && user && !familyId) {
+    if (!authLoading && user && !user.onboardingCompleted) {
       router.push('/onboarding');
     }
-  }, [authLoading, user, familyId, router]);
+  }, [authLoading, user, router]);
 
   // Fetch care recipient details
   const { data: careRecipient, isLoading: careRecipientLoading } = useQuery({
@@ -82,6 +87,10 @@ const Dashboard = () => {
   const { data: familyMembers, isLoading: membersLoading } = useFamilyMembers(familyId || '');
   const { data: pendingInvitations } = usePendingInvitations(familyId || '');
   const inviteMember = useInviteMember(familyId || '');
+
+  // Debug family members
+  console.log('Dashboard - familyMembers:', familyMembers);
+  console.log('Dashboard - pendingInvitations:', pendingInvitations);
 
   // Fetch active alerts
   const { data: activeAlerts, isLoading: alertsLoading } = useActiveAlerts(familyId || '');
@@ -494,11 +503,11 @@ const Dashboard = () => {
                   <div className="space-y-1">
                     <p className="label-caps text-muted-foreground">Your Loved One</p>
                     <h2 className="font-serif text-2xl text-foreground">
-                      {careRecipient ? `${careRecipient.firstName} ${careRecipient.lastName}` : careRecipientFromUser ? `${careRecipientFromUser.firstName} ${careRecipientFromUser.lastName}` : 'No care recipient'}
+                      {careRecipient?.fullName || careRecipientFromUser?.fullName || 'No care recipient'}
                     </h2>
                     <p className="text-muted-foreground">
                       {careRecipientAge ? `${careRecipientAge} years old` : ''}
-                      {careRecipient?.medicalConditions?.length ? ` • ${careRecipient.medicalConditions[0]}` : ''}
+                      {careRecipient?.conditions?.length ? ` • ${careRecipient.conditions[0]}` : ''}
                     </p>
                   </div>
                 </div>

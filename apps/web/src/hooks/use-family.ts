@@ -20,19 +20,19 @@ export function useFamily(id: string) {
 }
 
 export function useFamilyMembers(familyId: string) {
-  return useQuery({
-    queryKey: ['families', familyId, 'members'],
-    queryFn: () => familyApi.getMembers(familyId),
-    enabled: !!familyId,
-  });
+  const familyQuery = useFamily(familyId);
+  return {
+    ...familyQuery,
+    data: familyQuery.data?.members || [],
+  };
 }
 
 export function usePendingInvitations(familyId: string) {
-  return useQuery({
-    queryKey: ['families', familyId, 'invitations'],
-    queryFn: () => familyApi.getPendingInvitations(familyId),
-    enabled: !!familyId,
-  });
+  const familyQuery = useFamily(familyId);
+  return {
+    ...familyQuery,
+    data: familyQuery.data?.invitations || [],
+  };
 }
 
 export function useCreateFamily() {
@@ -65,8 +65,8 @@ export function useInviteMember(familyId?: string) {
     },
     onSuccess: (_, variables) => {
       const targetFamilyId = variables.familyId || familyId;
-      queryClient.invalidateQueries({ queryKey: ['families', targetFamilyId, 'invitations'] });
-      queryClient.invalidateQueries({ queryKey: ['families', targetFamilyId, 'members'] });
+      queryClient.invalidateQueries({ queryKey: ['families', targetFamilyId] });
+      queryClient.invalidateQueries({ queryKey: ['auth'] });
       toast.success('Invitation sent');
     },
     onError: (error: Error) => {
@@ -112,7 +112,7 @@ export function useCancelInvitation(familyId: string) {
   return useMutation({
     mutationFn: (invitationId: string) => familyApi.cancelInvitation(familyId, invitationId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['families', familyId, 'invitations'] });
+      queryClient.invalidateQueries({ queryKey: ['families', familyId] });
       toast.success('Invitation cancelled');
     },
     onError: (error: Error) => {
@@ -142,7 +142,7 @@ export function useResetMemberPassword(familyId: string) {
   return useMutation({
     mutationFn: (userId: string) => familyApi.resetMemberPassword(familyId, userId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['families', familyId, 'members'] });
+      queryClient.invalidateQueries({ queryKey: ['families', familyId] });
       toast.success('Password reset successfully. Temporary password sent via email.');
     },
     onError: (error: Error) => {

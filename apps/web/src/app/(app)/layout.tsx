@@ -36,7 +36,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
           }}
           careRecipient={careRecipient ? {
             id: careRecipient.id,
-            name: `${careRecipient.firstName} ${careRecipient.lastName}`,
+            name: careRecipient.fullName || '',
             preferredName: careRecipient.preferredName,
             photoUrl: careRecipient.photoUrl,
           } : undefined}

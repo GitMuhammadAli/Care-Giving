@@ -3,9 +3,9 @@ import type { CareRecipient } from './care-recipients';
 
 // Simplified family type for User.families - full Family type is in ./family.ts
 export interface UserFamily {
-  [x: string]: any;
   id: string;
   name: string;
+  role: 'ADMIN' | 'CAREGIVER' | 'VIEWER';
   careRecipients?: CareRecipient[];
 }
 
@@ -19,6 +19,8 @@ export interface User {
   createdAt: string;
   avatarUrl?: string;
   families?: UserFamily[];
+  onboardingCompleted?: boolean;
+  onboardingCompletedAt?: string;
 }
 
 export interface AuthResponse {
@@ -99,6 +101,10 @@ export const authApi = {
 
   resetPassword: async (token: string, password: string): Promise<void> => {
     await api.post('/auth/reset-password', { token, password }, { skipAuth: true });
+  },
+
+  completeOnboarding: async (): Promise<{ message: string }> => {
+    return api.post('/auth/complete-onboarding', {});
   },
 };
 

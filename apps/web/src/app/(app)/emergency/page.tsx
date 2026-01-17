@@ -177,13 +177,13 @@ export default function EmergencyPage() {
           <CardContent className="space-y-4">
             <div className="flex items-center gap-4">
               <Avatar
-                name={careRecipient.preferredName || careRecipient.firstName}
+                name={careRecipient.preferredName || careRecipient.fullName}
                 src={careRecipient.photoUrl}
                 size="xl"
               />
               <div>
                 <h3 className="text-xl font-semibold">
-                  {careRecipient.firstName} {careRecipient.lastName}
+                  {careRecipient.fullName}
                 </h3>
                 {careRecipient.preferredName && (
                   <p className="text-sm text-muted-foreground">"{careRecipient.preferredName}"</p>
@@ -229,7 +229,7 @@ export default function EmergencyPage() {
         )}
 
         {/* Medical Conditions */}
-        {careRecipient.medicalConditions && careRecipient.medicalConditions.length > 0 && (
+        {careRecipient.conditions && careRecipient.conditions.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -239,7 +239,7 @@ export default function EmergencyPage() {
             </CardHeader>
             <CardContent>
               <ul className="space-y-2">
-                {careRecipient.medicalConditions.map((condition: string) => (
+                {careRecipient.conditions.map((condition: string) => (
                   <li key={condition} className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-primary" />
                     <span>{condition}</span>

@@ -1,6 +1,8 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/layout/header';
@@ -97,6 +99,14 @@ export default function LandingPage() {
   const featured = testimonials.find((t) => t.featured);
   const secondary = testimonials.filter((t) => !t.featured).slice(0, 2);
   const { isAuthenticated, isInitialized, user } = useAuthContext();
+  const router = useRouter();
+
+  // Auto-redirect authenticated users to dashboard
+  useEffect(() => {
+    if (isInitialized && isAuthenticated && user) {
+      router.push('/dashboard');
+    }
+  }, [isInitialized, isAuthenticated, user, router]);
 
   return (
     <div className="min-h-screen bg-background">

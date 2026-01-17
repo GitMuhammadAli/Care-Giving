@@ -12,8 +12,7 @@ import { motion } from 'framer-motion';
 interface CareRecipientCardProps {
   recipient: {
     id: string;
-    firstName: string;
-    lastName: string;
+    fullName: string;
     preferredName?: string;
     photoUrl?: string;
     bloodType?: string;
@@ -41,7 +40,7 @@ export function CareRecipientCard({
   onEmergency,
   className,
 }: CareRecipientCardProps) {
-  const displayName = recipient.preferredName || `${recipient.firstName} ${recipient.lastName}`;
+  const displayName = recipient.preferredName || recipient.fullName;
   const age = Math.floor(
     (new Date().getTime() - new Date(recipient.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000)
   );

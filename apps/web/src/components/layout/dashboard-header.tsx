@@ -81,18 +81,18 @@ export function DashboardHeader({ className, currentUser, careRecipient }: Dashb
 
   return (
     <header className={cn(
-      "fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border/50",
+      "fixed top-0 left-0 right-0 z-50 bg-background backdrop-blur-sm border-b border-border shadow-sm",
       className
     )}>
       <div className="container max-w-7xl mx-auto">
-        <div className="flex items-center justify-between h-16 px-4 md:px-6">
+        <div className="flex items-center justify-between h-16 px-4 md:px-6 gap-4">
           {/* Logo */}
-          <Link href="/dashboard" className="font-serif text-xl tracking-tight text-foreground">
+          <Link href="/dashboard" className="font-serif text-xl font-bold tracking-tight text-primary hover:opacity-80 transition-opacity shrink-0">
             CareCircle
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-1">
+          <nav className="hidden lg:flex items-center gap-1 flex-1 justify-center max-w-3xl">
             {mainNavLinks.map((link) => {
               const isActive = pathname === link.href;
               return (
@@ -100,10 +100,10 @@ export function DashboardHeader({ className, currentUser, careRecipient }: Dashb
                   key={link.href}
                   href={link.href}
                   className={cn(
-                    "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                    "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all",
                     isActive
-                      ? "text-foreground bg-sage/15"
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                      ? "text-primary-foreground bg-primary shadow-sm"
+                      : "text-foreground hover:text-primary hover:bg-accent"
                   )}
                 >
                   <link.icon className="w-4 h-4" />
@@ -114,9 +114,9 @@ export function DashboardHeader({ className, currentUser, careRecipient }: Dashb
           </nav>
 
           {/* Right Side Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {/* Notifications */}
-            <div className="relative">
+            <div className="relative hidden sm:block">
               <Button
                 variant="ghost"
                 size="icon"
@@ -126,7 +126,7 @@ export function DashboardHeader({ className, currentUser, careRecipient }: Dashb
                   setUserMenuOpen(false);
                 }}
               >
-                <Bell className="w-5 h-5 text-muted-foreground" />
+                <Bell className="w-5 h-5" />
                 {/* Notification badge - uncomment when needed */}
                 {/* <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive rounded-full text-[10px] flex items-center justify-center text-destructive-foreground font-semibold">
                   3
@@ -134,21 +134,21 @@ export function DashboardHeader({ className, currentUser, careRecipient }: Dashb
               </Button>
 
               {notificationsOpen && (
-                <div className="absolute right-0 top-12 w-80 bg-card border border-border rounded-2xl shadow-xl z-50 p-4 animate-fade">
-                  <h3 className="font-serif text-lg text-foreground mb-3">Notifications</h3>
+                <div className="absolute right-0 top-12 w-80 bg-card border border-border rounded-xl shadow-lg z-50 p-4 animate-fade">
+                  <h3 className="font-serif text-lg text-primary mb-3 font-bold">Notifications</h3>
                   <p className="text-sm text-muted-foreground text-center py-4">No new notifications</p>
                 </div>
               )}
             </div>
 
             {/* Settings */}
-            <Link href="/settings">
+            <Link href="/settings" className="hidden sm:block">
               <Button
                 variant="ghost"
                 size="icon"
-                className="hidden sm:flex rounded-xl h-10 w-10"
+                className="rounded-xl h-10 w-10"
               >
-                <Settings className="w-5 h-5 text-muted-foreground" />
+                <Settings className="w-5 h-5" />
               </Button>
             </Link>
 
@@ -159,30 +159,30 @@ export function DashboardHeader({ className, currentUser, careRecipient }: Dashb
                   setUserMenuOpen(!userMenuOpen);
                   setNotificationsOpen(false);
                 }}
-                className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-accent/50 transition-colors"
+                className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-accent transition-colors"
               >
                 {/* Avatar */}
                 {user?.avatarUrl ? (
                   <img
                     src={user.avatarUrl}
                     alt={user.fullName || 'User'}
-                    className="w-8 h-8 rounded-lg object-cover"
+                    className="w-9 h-9 rounded-lg object-cover border-2 border-primary"
                   />
                 ) : (
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/30 to-secondary/20 flex items-center justify-center">
-                    <span className="text-xs font-semibold text-primary">
+                  <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center shadow-sm">
+                    <span className="text-xs font-bold text-primary-foreground">
                       {user?.fullName ? getInitials(user.fullName) : <User className="w-4 h-4" />}
                     </span>
                   </div>
                 )}
-                <ChevronDown className="w-4 h-4 text-muted-foreground hidden sm:block" />
+                <ChevronDown className="w-4 h-4 hidden sm:block" />
               </button>
 
               {userMenuOpen && (
-                <div className="absolute right-0 top-12 w-64 bg-card border border-border rounded-2xl shadow-xl z-50 overflow-hidden animate-fade">
+                <div className="absolute right-0 top-12 w-64 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden animate-fade">
                   {/* User Info */}
-                  <div className="p-4 border-b border-border">
-                    <p className="font-medium text-foreground truncate">{user?.fullName || 'User'}</p>
+                  <div className="p-4 border-b border-border bg-accent">
+                    <p className="font-bold text-foreground truncate">{user?.fullName || 'User'}</p>
                     <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
                   </div>
 
@@ -191,22 +191,22 @@ export function DashboardHeader({ className, currentUser, careRecipient }: Dashb
                     <Link
                       href="/settings"
                       onClick={() => setUserMenuOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-foreground hover:bg-accent/50 transition-colors"
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-foreground hover:bg-accent hover:text-primary transition-colors font-semibold"
                     >
-                      <Settings className="w-4 h-4 text-muted-foreground" />
+                      <Settings className="w-4 h-4" />
                       Account Settings
                     </Link>
                     <Link
                       href="/settings"
                       onClick={() => setUserMenuOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-foreground hover:bg-accent/50 transition-colors"
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-foreground hover:bg-accent hover:text-primary transition-colors font-semibold"
                     >
-                      <User className="w-4 h-4 text-muted-foreground" />
+                      <User className="w-4 h-4" />
                       Profile
                     </Link>
                     <button
                       onClick={handleLogout}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-destructive hover:bg-destructive/10 transition-colors w-full"
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-destructive hover:bg-destructive/10 transition-colors w-full font-semibold"
                     >
                       <LogOut className="w-4 h-4" />
                       Sign Out
@@ -218,12 +218,12 @@ export function DashboardHeader({ className, currentUser, careRecipient }: Dashb
 
             {/* Care Recipient Selector (Desktop) */}
             {careRecipient && (
-              <div className="hidden lg:flex">
+              <div className="hidden xl:flex">
                 <button
                   className={cn(
-                    'flex items-center gap-2 px-3 py-1.5 rounded-lg',
-                    'bg-sage/10 hover:bg-sage/20',
-                    'transition-colors duration-150'
+                    'flex items-center gap-2 px-3 py-2 rounded-lg border border-border',
+                    'bg-card hover:bg-accent',
+                    'transition-all duration-150 shadow-sm hover:shadow'
                   )}
                 >
                   <Avatar
@@ -231,10 +231,10 @@ export function DashboardHeader({ className, currentUser, careRecipient }: Dashb
                     src={careRecipient.photoUrl}
                     size="sm"
                   />
-                  <span className="text-sm font-medium text-foreground">
-                    {careRecipient.preferredName || careRecipient.name}
+                  <span className="text-sm font-semibold text-primary max-w-[120px] truncate">
+                    {careRecipient.preferredName || careRecipient.name.split(' ')[0]}
                   </span>
-                  <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                  <ChevronDown className="w-3 h-3" />
                 </button>
               </div>
             )}
@@ -269,7 +269,7 @@ export function DashboardHeader({ className, currentUser, careRecipient }: Dashb
                 <button
                   className={cn(
                     'w-full flex items-center gap-3 p-3 rounded-lg',
-                    'bg-sage/10 hover:bg-sage/20',
+                    'bg-primary/10 hover:bg-primary/20',
                     'transition-colors duration-150'
                   )}
                 >
@@ -304,7 +304,7 @@ export function DashboardHeader({ className, currentUser, careRecipient }: Dashb
                     className={cn(
                       "flex items-center gap-3 px-3 py-3 rounded-lg transition-colors",
                       isActive
-                        ? "bg-sage/15 text-foreground font-medium"
+                        ? "bg-primary/15 text-foreground font-medium"
                         : "text-foreground hover:bg-accent/50"
                     )}
                   >
@@ -327,7 +327,7 @@ export function DashboardHeader({ className, currentUser, careRecipient }: Dashb
                     className={cn(
                       "flex items-center gap-3 px-3 py-3 rounded-lg transition-colors",
                       isActive
-                        ? "bg-sage/15 text-foreground font-medium"
+                        ? "bg-primary/15 text-foreground font-medium"
                         : "text-foreground hover:bg-accent/50"
                     )}
                   >

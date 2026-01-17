@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -18,9 +18,10 @@ import {
   Plus,
   X,
 } from 'lucide-react';
-import { useCreateFamily, useFamilies } from '@/hooks/use-family';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { careRecipientsApi } from '@/lib/api';
+import { useCreateFamily, useInviteMember } from '@/hooks/use-family';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { careRecipientsApi, authApi } from '@/lib/api';
+import { useAuth } from '@/hooks/use-auth';
 import toast from 'react-hot-toast';
 
 type Step = 'family' | 'care-recipient' | 'invite' | 'complete';
@@ -44,6 +45,9 @@ interface InviteMemberData {
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { user, isLoading: authLoading, fetchUser } = useAuth();
+  const queryClient = useQueryClient();
+
   const [currentStep, setCurrentStep] = useState<Step>('family');
   const [familyData, setFamilyData] = useState<FamilyData>({ name: '' });
   const [careRecipientData, setCareRecipientData] = useState<CareRecipientData>({
@@ -58,29 +62,47 @@ export default function OnboardingPage() {
   const [newInviteRole, setNewInviteRole] = useState<'ADMIN' | 'CAREGIVER' | 'VIEWER'>('CAREGIVER');
 
   const [createdFamilyId, setCreatedFamilyId] = useState<string | null>(null);
+  const [isSendingInvites, setIsSendingInvites] = useState(false);
+  const [isFinishing, setIsFinishing] = useState(false);
 
-  const { data: existingFamilies } = useFamilies();
   const createFamily = useCreateFamily();
+  const inviteMember = useInviteMember(createdFamilyId || '');
 
   const createCareRecipient = useMutation({
     mutationFn: async (data: CareRecipientData & { familyId: string }) => {
-      const { familyId, ...careRecipientData } = data;
-      return careRecipientsApi.create(familyId, careRecipientData);
+      const { familyId, firstName, lastName, preferredName, dateOfBirth, relationship } = data;
+
+      // Transform data to match API expectations
+      const apiData = {
+        fullName: `${firstName} ${lastName}`.trim(),
+        preferredName: preferredName || undefined,
+        dateOfBirth: dateOfBirth || undefined,
+        // Note: relationship is not in the API schema, so we don't send it
+      };
+
+      return careRecipientsApi.create(familyId, apiData);
     },
     onSuccess: () => {
       toast.success('Care recipient added successfully!');
       setCurrentStep('invite');
     },
-    onError: () => {
-      toast.error('Failed to add care recipient');
+    onError: (error: any) => {
+      const errorMessage = error?.message || 'Failed to add care recipient';
+      toast.error(errorMessage);
     },
   });
 
-  // If user already has a family, redirect to dashboard
-  if (existingFamilies && existingFamilies.length > 0) {
-    router.push('/dashboard');
-    return null;
-  }
+  // Check if user has completed onboarding
+  const onboardingCompleted = user?.onboardingCompleted === true;
+
+  // CRITICAL: If user has completed onboarding, redirect to dashboard immediately
+  // This prevents duplicate families and ensures onboarding is one-time only
+  useEffect(() => {
+    if (!authLoading && onboardingCompleted) {
+      console.log('User has completed onboarding, redirecting to dashboard');
+      window.location.href = '/dashboard';
+    }
+  }, [authLoading, onboardingCompleted]);
 
   const steps = [
     { id: 'family', label: 'Create Family', icon: Users },
@@ -93,8 +115,23 @@ export default function OnboardingPage() {
 
   const handleCreateFamily = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Guard: Prevent creating families if onboarding is already completed
+    if (onboardingCompleted) {
+      toast.error('Onboarding already completed. Redirecting to dashboard...');
+      window.location.href = '/dashboard';
+      return;
+    }
+
     if (!familyData.name) {
       toast.error('Please enter a family name');
+      return;
+    }
+
+    // Guard: Only allow creating one family during this session
+    if (createdFamilyId) {
+      toast.error('Family already created. Please continue to next step.');
+      setCurrentStep('care-recipient');
       return;
     }
 
@@ -102,7 +139,9 @@ export default function OnboardingPage() {
       const result = await createFamily.mutateAsync({
         name: familyData.name,
       });
+
       setCreatedFamilyId(result.id);
+      toast.success('Family created successfully!');
       setCurrentStep('care-recipient');
     } catch (error) {
       // Error handled by mutation
@@ -113,6 +152,23 @@ export default function OnboardingPage() {
     e.preventDefault();
     if (!careRecipientData.firstName || !careRecipientData.lastName || !careRecipientData.dateOfBirth) {
       toast.error('Please fill in all required fields');
+      return;
+    }
+
+    // Validate date of birth is not in the future
+    const dob = new Date(careRecipientData.dateOfBirth);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to compare dates only
+
+    if (dob > today) {
+      toast.error('Date of birth cannot be in the future');
+      return;
+    }
+
+    // Validate age is reasonable (e.g., not more than 150 years old)
+    const age = Math.floor((today.getTime() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+    if (age > 150) {
+      toast.error('Please enter a valid date of birth');
       return;
     }
 
@@ -142,9 +198,76 @@ export default function OnboardingPage() {
     setCurrentStep('complete');
   };
 
-  const handleFinish = () => {
-    router.push('/dashboard');
+  const handleSendInvites = async () => {
+    if (!createdFamilyId || inviteMembers.length === 0) return;
+
+    setIsSendingInvites(true);
+
+    try {
+      // Send all invitations
+      for (const invite of inviteMembers) {
+        await inviteMember.mutateAsync({
+          email: invite.email,
+          role: invite.role,
+          familyId: createdFamilyId,
+        });
+      }
+
+      toast.success(`${inviteMembers.length} invitation${inviteMembers.length > 1 ? 's' : ''} sent successfully!`);
+      setCurrentStep('complete');
+    } catch (error) {
+      // Error is already handled by the mutation
+      setIsSendingInvites(false);
+    }
   };
+
+  const handleFinish = async () => {
+    setIsFinishing(true);
+    try {
+      console.log('Marking onboarding as completed...');
+      // Mark onboarding as completed in the database
+      await authApi.completeOnboarding();
+
+      console.log('Onboarding marked complete, refreshing user data...');
+      // Refresh auth context to get updated user data
+      await fetchUser();
+
+      console.log('User data refreshed, navigating to dashboard...');
+      toast.success('Welcome to CareCircle! 🎉');
+
+      // Navigate to dashboard
+      window.location.href = '/dashboard';
+    } catch (error) {
+      console.error('Failed to complete onboarding:', error);
+      toast.error('Failed to complete onboarding. Please try again.');
+      setIsFinishing(false);
+    }
+  };
+
+  // Show loading state while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Checking your status...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // CRITICAL: Don't render onboarding if user has completed onboarding
+  // This prevents the UI from showing and prevents duplicate work
+  if (onboardingCompleted) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Redirecting to dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -285,8 +408,12 @@ export default function OnboardingPage() {
                         type="date"
                         value={careRecipientData.dateOfBirth}
                         onChange={(e) => setCareRecipientData({ ...careRecipientData, dateOfBirth: e.target.value })}
+                        max={new Date().toISOString().split('T')[0]}
                         required
                       />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Cannot be a future date
+                      </p>
                     </div>
                     <div>
                       <label className="text-sm font-medium mb-2 block">Relationship</label>
@@ -372,15 +499,16 @@ export default function OnboardingPage() {
                     <div className="space-y-2 mt-6">
                       <p className="text-sm font-medium">Invitations to send:</p>
                       {inviteMembers.map((invite, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                        <div key={index} className="flex items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-lg hover:bg-primary/10 transition-colors">
                           <div>
-                            <p className="font-medium">{invite.email}</p>
-                            <p className="text-sm text-muted-foreground">{invite.role}</p>
+                            <p className="font-medium text-foreground">{invite.email}</p>
+                            <p className="text-sm text-primary font-medium">{invite.role}</p>
                           </div>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleRemoveInvite(index)}
+                            className="hover:bg-destructive/10 hover:text-destructive"
                           >
                             <X className="w-4 h-4" />
                           </Button>
@@ -394,17 +522,22 @@ export default function OnboardingPage() {
                       type="button"
                       variant="outline"
                       onClick={handleSkipInvites}
+                      disabled={isSendingInvites}
                     >
                       Skip for Now
                     </Button>
                     <Button
                       size="lg"
                       fullWidth
-                      onClick={() => setCurrentStep('complete')}
+                      onClick={handleSendInvites}
                       rightIcon={<ArrowRight className="w-5 h-5" />}
-                      disabled={inviteMembers.length === 0}
+                      disabled={inviteMembers.length === 0 || isSendingInvites}
                     >
-                      {inviteMembers.length > 0 ? `Send ${inviteMembers.length} Invitation${inviteMembers.length > 1 ? 's' : ''}` : 'Continue'}
+                      {isSendingInvites
+                        ? 'Sending...'
+                        : inviteMembers.length > 0
+                        ? `Send ${inviteMembers.length} Invitation${inviteMembers.length > 1 ? 's' : ''}`
+                        : 'Continue'}
                     </Button>
                   </div>
                 </div>
@@ -446,9 +579,10 @@ export default function OnboardingPage() {
                   size="xl"
                   fullWidth
                   onClick={handleFinish}
+                  disabled={isFinishing}
                   rightIcon={<ArrowRight className="w-5 h-5" />}
                 >
-                  Go to Dashboard
+                  {isFinishing ? 'Loading...' : 'Go to Dashboard'}
                 </Button>
               </Card>
             </motion.div>

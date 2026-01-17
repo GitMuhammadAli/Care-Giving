@@ -3,13 +3,12 @@ import { api } from './client';
 export interface CareRecipient {
   id: string;
   familyId: string;
-  firstName: string;
-  lastName: string;
+  fullName: string;
   preferredName?: string;
-  dateOfBirth: string;
+  dateOfBirth?: string;
   bloodType?: string;
   allergies: string[];
-  medicalConditions: string[];
+  conditions: string[];
   notes?: string;
   photoUrl?: string;
   createdAt: string;
@@ -37,13 +36,12 @@ export interface EmergencyContact {
 }
 
 export interface CreateCareRecipientInput {
-  firstName: string;
-  lastName: string;
+  fullName: string;
   preferredName?: string;
-  dateOfBirth: string;
+  dateOfBirth?: string;
   bloodType?: string;
   allergies?: string[];
-  medicalConditions?: string[];
+  conditions?: string[];
   notes?: string;
 }
 
