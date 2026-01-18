@@ -9,6 +9,9 @@ interface AuthState {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  // Flag to track if we've already checked for an existing session
+  // This prevents repeated refresh attempts when there's no valid session
+  sessionChecked: boolean;
 
   // Actions
   login: (data: LoginInput) => Promise<void>;
@@ -29,16 +32,18 @@ export const useAuth = create<AuthState>()(
       token: null,
       isLoading: true,
       isAuthenticated: false,
+      sessionChecked: false,
 
       login: async (data) => {
         set({ isLoading: true });
         try {
           const response = await authApi.login(data);
-          set({ 
-            user: response.user, 
+          set({
+            user: response.user,
             token: response.accessToken || null,
-            isAuthenticated: true, 
-            isLoading: false 
+            isAuthenticated: true,
+            isLoading: false,
+            sessionChecked: true
           });
         } catch (error) {
           set({ isLoading: false });
@@ -67,6 +72,7 @@ export const useAuth = create<AuthState>()(
             token: response.accessToken || null,
             isAuthenticated: true,
             isLoading: false,
+            sessionChecked: true
           });
         } catch (error) {
           set({ isLoading: false });
@@ -82,28 +88,39 @@ export const useAuth = create<AuthState>()(
         try {
           await authApi.logout();
         } finally {
-          set({ user: null, token: null, isAuthenticated: false });
+          // Reset sessionChecked so next login attempt will check for session
+          set({ user: null, token: null, isAuthenticated: false, sessionChecked: false });
         }
       },
 
       fetchUser: async () => {
+        const { sessionChecked } = get();
+
+        // If we've already checked the session and there's no valid session, don't retry
+        // This prevents repeated 401 errors when visiting public pages
+        if (sessionChecked && !get().isAuthenticated) {
+          set({ isLoading: false });
+          return;
+        }
+
         set({ isLoading: true });
         try {
           // Try to refresh access token from httpOnly cookie
           try {
             const refreshResult = await authApi.refresh();
-            set({ token: refreshResult.accessToken });
+            set({ token: refreshResult.accessToken, sessionChecked: true });
           } catch (refreshError) {
             // No valid refresh token (cookie expired or user not logged in)
-            set({ user: null, token: null, isAuthenticated: false, isLoading: false });
+            // Mark session as checked so we don't retry on subsequent calls
+            set({ user: null, token: null, isAuthenticated: false, isLoading: false, sessionChecked: true });
             return;
           }
 
           // Now fetch user profile with the new access token
           const user = await authApi.getProfile();
-          set({ user, isAuthenticated: true, isLoading: false });
+          set({ user, isAuthenticated: true, isLoading: false, sessionChecked: true });
         } catch (error) {
-          set({ user: null, token: null, isAuthenticated: false, isLoading: false });
+          set({ user: null, token: null, isAuthenticated: false, isLoading: false, sessionChecked: true });
         }
       },
 
@@ -126,6 +143,7 @@ export const useAuth = create<AuthState>()(
         user: state.user,
         // Don't persist token - it's in memory only
         // Don't persist isAuthenticated - will be determined on page load via refresh
+        // Don't persist sessionChecked - reset each page load, checked once per session
       }),
     }
   )

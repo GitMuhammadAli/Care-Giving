@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useCallback, ReactNode } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { User } from '@/lib/api';
 
@@ -24,33 +24,23 @@ interface AuthProviderProps {
 
 /**
  * AuthProvider - Centralized authentication provider for the entire app
- * 
+ *
  * This provider:
  * - Initializes auth state on app mount (attempts to restore session from httpOnly cookie)
  * - Provides auth state and helper methods to all child components
  * - Handles session restoration once and shares state across all routes
+ * - Uses zustand's sessionChecked flag to prevent duplicate refresh API calls
  */
 export function AuthProvider({ children }: AuthProviderProps) {
-  const { user, isAuthenticated, isLoading, fetchUser } = useAuth();
-  const [isInitialized, setIsInitialized] = useState(false);
+  // Use sessionChecked from zustand store as the initialization flag
+  // This prevents duplicate API calls across React's Strict Mode re-renders
+  const { user, isAuthenticated, isLoading, fetchUser, sessionChecked } = useAuth();
 
-  // Initialize auth on mount - this runs ONCE for the entire app
+  // Initialize auth on mount - uses zustand's sessionChecked to prevent duplicate calls
   useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        await fetchUser();
-      } catch (error) {
-        console.error('Failed to initialize auth:', error);
-      } finally {
-        setIsInitialized(true);
-      }
-    };
-
-    // Only initialize if not already initialized
-    if (!isInitialized) {
-      initializeAuth();
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    // fetchUser internally checks sessionChecked and skips if already checked
+    fetchUser();
+  }, [fetchUser]);
 
   // Helper: Check if user has specific role in a family
   const hasRole = useCallback((familyId: string, role: 'ADMIN' | 'CAREGIVER' | 'VIEWER'): boolean => {
@@ -89,7 +79,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     user,
     isAuthenticated,
     isLoading,
-    isInitialized,
+    isInitialized: sessionChecked, // Use zustand's sessionChecked as the initialization flag
     hasRole,
     hasAnyRole,
     isAdmin,
