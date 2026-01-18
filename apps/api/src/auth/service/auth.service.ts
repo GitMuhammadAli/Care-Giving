@@ -163,7 +163,7 @@ export class AuthService {
       where: { email: email.toLowerCase() },
     });
 
-    // Don't reveal if email exists
+    // Don't reveal if email exists (security best practice)
     if (!user) {
       return { message: 'If the email exists, a reset link has been sent' };
     }
@@ -179,7 +179,8 @@ export class AuthService {
       },
     });
 
-    // TODO: Send password reset email via MailService
+    // Send password reset email
+    await this.mailService.sendPasswordReset(user.email, token, user.fullName);
 
     return { message: 'If the email exists, a reset link has been sent' };
   }

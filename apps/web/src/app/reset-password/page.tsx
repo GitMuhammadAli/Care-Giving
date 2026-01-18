@@ -4,11 +4,13 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { Heart, Lock, CheckCircle2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Lock, CheckCircle2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { authApi } from '@/lib/api';
+import { ApiError } from '@/lib/api/client';
 
 function ResetPasswordContent() {
   const router = useRouter();
@@ -33,8 +35,8 @@ function ResetPasswordContent() {
   }, [searchParams]);
 
   const validatePassword = (password: string): string | null => {
-    if (password.length < 8) {
-      return 'Password must be at least 8 characters';
+    if (password.length < 12) {
+      return 'Password must be at least 12 characters';
     }
     if (!/[A-Z]/.test(password)) {
       return 'Password must contain at least one uppercase letter';
@@ -68,22 +70,7 @@ function ResetPasswordContent() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/reset-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          token,
-          newPassword,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to reset password');
-      }
+      await authApi.resetPassword(token, newPassword);
 
       setIsSuccess(true);
       toast.success('Your password has been reset successfully');
@@ -92,9 +79,15 @@ function ResetPasswordContent() {
       setTimeout(() => {
         router.push('/login');
       }, 2000);
-    } catch (err: any) {
-      setError(err.message || 'Failed to reset password. The link may have expired.');
-      toast.error(err.message || 'Failed to reset password');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+        toast.error(err.message);
+      } else {
+        const errorMsg = 'Failed to reset password. The link may have expired.';
+        setError(errorMsg);
+        toast.error(errorMsg);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -107,6 +100,7 @@ function ResetPasswordContent() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
+        className="w-full max-w-md"
       >
         <Card padding="spacious" className="shadow-lg text-center">
           <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-success-light flex items-center justify-center">
@@ -135,6 +129,7 @@ function ResetPasswordContent() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
+        className="w-full max-w-md"
       >
         <Card padding="spacious" className="shadow-lg text-center">
           <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-error-light flex items-center justify-center">
@@ -159,6 +154,7 @@ function ResetPasswordContent() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
+      className="w-full max-w-md"
     >
       <div className="text-center mb-8">
         <h1 className="text-2xl sm:text-3xl font-semibold text-text-primary">
@@ -222,8 +218,8 @@ function ResetPasswordContent() {
           <div className="bg-bg-muted p-4 rounded-lg">
             <p className="text-sm font-medium text-text-secondary mb-2">Password must contain:</p>
             <ul className="text-sm text-text-tertiary space-y-1">
-              <li className={newPassword.length >= 8 ? 'text-success' : ''}>
-                • At least 8 characters
+              <li className={newPassword.length >= 12 ? 'text-success' : ''}>
+                • At least 12 characters
               </li>
               <li className={/[A-Z]/.test(newPassword) ? 'text-success' : ''}>
                 • One uppercase letter
@@ -253,10 +249,45 @@ function ResetPasswordContent() {
   );
 }
 
+function LoadingState() {
+  return (
+    <div className="w-full max-w-md">
+      <Card padding="spacious" className="shadow-lg">
+        <div className="flex flex-col items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mb-4" />
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <ResetPasswordContent />
-    </Suspense>
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header */}
+      <header className="p-4 sm:p-6">
+        <Link href="/" className="inline-flex items-center gap-2">
+          <div className="w-9 h-9 rounded-lg bg-sage flex items-center justify-center">
+            <Heart className="w-5 h-5 text-foreground" fill="currentColor" />
+          </div>
+          <span className="font-serif text-xl text-foreground">CareCircle</span>
+        </Link>
+      </header>
+
+      {/* Content */}
+      <main className="flex-1 flex items-center justify-center p-4 sm:p-6">
+        <Suspense fallback={<LoadingState />}>
+          <ResetPasswordContent />
+        </Suspense>
+      </main>
+
+      {/* Footer */}
+      <footer className="p-4 sm:p-6 text-center">
+        <p className="text-sm text-muted-foreground">
+          © {new Date().getFullYear()} CareCircle. Made with care for families.
+        </p>
+      </footer>
+    </div>
   );
 }

@@ -3,39 +3,37 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { authApi } from '@/lib/api';
+import { ApiError } from '@/lib/api/client';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/forgot-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to send reset email');
+      await authApi.forgotPassword(email);
+      setIsSubmitted(true);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+        toast.error(err.message);
+      } else {
+        // Network or unexpected error - still show success for security
+        // (don't let attackers know if the request failed)
+        setIsSubmitted(true);
       }
-
-      // Always show success to prevent email enumeration
-      setIsSubmitted(true);
-    } catch (error) {
-      console.error('Password reset error:', error);
-      // Still show success message for security (prevent email enumeration)
-      setIsSubmitted(true);
     } finally {
       setIsLoading(false);
     }
@@ -83,6 +81,16 @@ export default function ForgotPasswordPage() {
 
       <Card padding="spacious" className="shadow-lg">
         <form onSubmit={handleSubmit} className="space-y-5">
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20"
+            >
+              {error}
+            </motion.div>
+          )}
+
           <Input
             label="Email"
             type="email"

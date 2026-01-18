@@ -99,8 +99,8 @@ export const authApi = {
     await api.post('/auth/forgot-password', { email }, { skipAuth: true });
   },
 
-  resetPassword: async (token: string, password: string): Promise<void> => {
-    await api.post('/auth/reset-password', { token, password }, { skipAuth: true });
+  resetPassword: async (token: string, newPassword: string): Promise<void> => {
+    await api.post('/auth/reset-password', { token, newPassword }, { skipAuth: true });
   },
 
   completeOnboarding: async (): Promise<{ message: string }> => {

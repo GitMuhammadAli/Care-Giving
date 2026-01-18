@@ -24,7 +24,7 @@ async function bootstrap() {
 
   const port = configService.get('app.port') || 4000;
   const apiPrefix = configService.get('app.apiPrefix') || 'api/v1';
-  const frontendUrl = configService.get('app.frontendUrl') || 'http://localhost:3000';
+  const frontendUrl = configService.get('app.frontendUrl') || 'http://localhost:4173';
   const isProduction = configService.get('app.nodeEnv') === 'production';
 
   // Security

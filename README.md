@@ -120,9 +120,9 @@ pnpm dev:workers  # Background workers
 
 | Service | URL |
 |---------|-----|
-| Web App | http://localhost:3000 |
-| API Server | http://localhost:3001 |
-| Swagger Docs | http://localhost:3001/api |
+| Web App | http://localhost:4173 |
+| API Server | http://localhost:4000 |
+| Swagger Docs | http://localhost:4000/api |
 | Mailpit (dev) | http://localhost:8025 |
 
 ## Project Structure

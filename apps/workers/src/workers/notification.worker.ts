@@ -216,7 +216,7 @@ async function sendEmailNotification(
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
         <p style="font-size: 12px; color: #9ca3af;">
           This is an automated notification from CareCircle. 
-          <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/settings/notifications">Manage notification preferences</a>
+          <a href="${process.env.FRONTEND_URL || 'http://localhost:4173'}/settings/notifications">Manage notification preferences</a>
         </p>
       </div>
     `,

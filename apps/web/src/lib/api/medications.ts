@@ -79,7 +79,7 @@ export const medicationsApi = {
   // Schedule
   getTodaySchedule: async (careRecipientId: string, date?: string): Promise<MedicationScheduleItem[]> => {
     const params = date ? `?date=${date}` : '';
-    return api.get<MedicationScheduleItem[]>(`/care-recipients/${careRecipientId}/medications/today${params}`);
+    return api.get<MedicationScheduleItem[]>(`/care-recipients/${careRecipientId}/medications/schedule/today${params}`);
   },
 
   // Logging

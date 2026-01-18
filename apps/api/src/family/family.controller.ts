@@ -9,11 +9,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { FamilyService } from './family.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtAuthGuard } from '../system/guard/jwt-auth.guard';
 import { CurrentUser, CurrentUserPayload } from '../common/decorators/current-user.decorator';
 import { CreateFamilyDto } from './dto/create-family.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
+import { Public } from '../system/decorator/public.decorator';
 
 @Controller('families')
 @UseGuards(JwtAuthGuard)
@@ -44,12 +45,26 @@ export class FamilyController {
     return this.familyService.inviteMember(familyId, user.id, dto);
   }
 
+  // Public endpoint - no auth required to view invitation details
+  @Public()
+  @Get('invitations/:token/details')
+  getInvitationDetails(@Param('token') token: string) {
+    return this.familyService.getInvitationDetails(token);
+  }
+
   @Post('invitations/:token/accept')
   acceptInvitation(
     @Param('token') token: string,
     @CurrentUser() user: CurrentUserPayload,
   ) {
     return this.familyService.acceptInvitation(token, user.id);
+  }
+
+  // Public endpoint - no auth required to decline
+  @Public()
+  @Post('invitations/:token/decline')
+  declineInvitation(@Param('token') token: string) {
+    return this.familyService.declineInvitation(token);
   }
 
   @Patch(':familyId/members/:memberId/role')

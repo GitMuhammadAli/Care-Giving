@@ -7,10 +7,10 @@
 # artillery run apps/api/test/load-testing/artillery-load-test.yml
 #
 # Quick test:
-# artillery quick --count 10 --num 100 http://localhost:3001/api/v1/health
+# artillery quick --count 10 --num 100 http://localhost:4000/api/v1/health
 
 config:
-  target: "http://localhost:3001"
+  target: "http://localhost:4000"
   phases:
     # Warm-up phase
     - duration: 60

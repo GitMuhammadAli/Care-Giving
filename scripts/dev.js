@@ -39,7 +39,7 @@ const c = colors;
 // ============================================================================
 
 const config = {
-  webPort: process.env.WEB_PORT || '3000',
+  webPort: process.env.WEB_PORT || '4173',
   apiPort: process.env.API_PORT || '4000',
   workersHealthPort: process.env.HEALTH_PORT || '4001',
   redisPort: process.env.REDIS_PORT || '6379',
@@ -104,13 +104,13 @@ function prefixOutput(prefix, color, data) {
 
 function classifyOutput(str) {
   // Classify based on content
-  if (str.includes('@carecircle/web') || str.includes('next') || str.includes(':3000')) {
+  if (str.includes('@carecircle/web') || str.includes('next') || str.includes(':4173')) {
     return { prefix: 'WEB', color: c.blue };
   }
-  if (str.includes('@carecircle/api') || str.includes('nest') || str.includes(':3001')) {
+  if (str.includes('@carecircle/api') || str.includes('nest') || str.includes(':4000')) {
     return { prefix: 'API', color: c.green };
   }
-  if (str.includes('@carecircle/workers') || str.includes('bull') || str.includes(':3002')) {
+  if (str.includes('@carecircle/workers') || str.includes('bull') || str.includes(':4001')) {
     return { prefix: 'WORKER', color: c.magenta };
   }
   if (str.includes('@carecircle/database') || str.includes('prisma')) {

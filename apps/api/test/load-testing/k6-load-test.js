@@ -25,7 +25,7 @@ const loginDuration = new Trend('login_duration');
 const apiCalls = new Counter('api_calls');
 
 // Configuration
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:3001';
+const BASE_URL = __ENV.BASE_URL || 'http://localhost:4000';
 const API_PREFIX = '/api/v1';
 
 // Test scenarios

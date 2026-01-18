@@ -19,7 +19,7 @@ interface BroadcastPayload {
 }
 
 // Get frontend URL at module load time (after dotenv is loaded)
-const frontendUrl = optionalString('FRONTEND_URL', 'http://localhost:3000');
+const frontendUrl = optionalString('FRONTEND_URL', 'http://localhost:4173');
 const corsOrigin = isDevelopment() ? true : frontendUrl;
 
 @WebSocketGateway({

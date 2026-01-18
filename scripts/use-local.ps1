@@ -76,8 +76,8 @@ Write-Host "     pnpm --filter @carecircle/database generate" -ForegroundColor C
 Write-Host "     pnpm --filter @carecircle/database push" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  3. Start all services:" -ForegroundColor White
-Write-Host "     pnpm dev:api     # Terminal 1 - API on http://localhost:3001" -ForegroundColor Cyan
-Write-Host "     pnpm dev:web     # Terminal 2 - Web on http://localhost:3000" -ForegroundColor Cyan
+Write-Host "     pnpm dev:api     # Terminal 1 - API on http://localhost:4000" -ForegroundColor Cyan
+Write-Host "     pnpm dev:web     # Terminal 2 - Web on http://localhost:4173" -ForegroundColor Cyan
 Write-Host "     pnpm dev:workers # Terminal 3 - Background workers" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  Or start all at once:" -ForegroundColor White

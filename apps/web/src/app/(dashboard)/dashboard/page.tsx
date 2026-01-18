@@ -64,10 +64,6 @@ const Dashboard = () => {
   const careRecipientFromUser = user?.families?.[0]?.careRecipients?.[0];
   const careRecipientId = careRecipientFromUser?.id;
 
-  // Debug logging
-  console.log('Dashboard - User families:', user?.families);
-  console.log('Dashboard - familyId:', familyId);
-  console.log('Dashboard - careRecipientId:', careRecipientId);
 
   // Redirect to onboarding if user hasn't completed onboarding
   useEffect(() => {
@@ -88,9 +84,6 @@ const Dashboard = () => {
   const { data: pendingInvitations } = usePendingInvitations(familyId || '');
   const inviteMember = useInviteMember(familyId || '');
 
-  // Debug family members
-  console.log('Dashboard - familyMembers:', familyMembers);
-  console.log('Dashboard - pendingInvitations:', pendingInvitations);
 
   // Fetch active alerts
   const { data: activeAlerts, isLoading: alertsLoading } = useActiveAlerts(familyId || '');
@@ -181,15 +174,15 @@ const Dashboard = () => {
   const circleMembers = useMemo(() => {
     const members = (familyMembers || []).map((member) => ({
       id: member.id,
-      name: member.user.fullName,
+      name: member.user?.fullName || member.user?.email || 'Unknown',
       role: member.role === 'ADMIN' ? 'Family Admin' : member.role === 'CAREGIVER' ? 'Caregiver' : 'Family Member',
       status: 'active' as const,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone.split('/')[1] || 'Local',
     }));
 
-    // Add pending invitations
-    const pending = (pendingInvitations || []).map((inv, i) => ({
-      id: `pending-${i}`,
+    // Add pending invitations - use invitation ID for stable key
+    const pending = (pendingInvitations || []).map((inv) => ({
+      id: `pending-${inv.id}`,
       name: inv.email.split('@')[0],
       role: inv.role === 'ADMIN' ? 'Family Admin' : inv.role === 'CAREGIVER' ? 'Caregiver' : 'Family Member',
       status: 'pending' as const,

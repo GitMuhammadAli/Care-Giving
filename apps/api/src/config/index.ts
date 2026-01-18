@@ -29,7 +29,7 @@ export const appConfig = registerAs("app", () => ({
   nodeEnv: optionalString("NODE_ENV", "development"),
   port: int("PORT", 4000),
   apiPrefix: optionalString("API_PREFIX", "api/v1"),
-  frontendUrl: optionalString("FRONTEND_URL", "http://localhost:3000"),
+  frontendUrl: optionalString("FRONTEND_URL", "http://localhost:4173"),
   isDevelopment: isDevelopment(),
   isProduction: isProduction(),
 }));

@@ -64,8 +64,8 @@ if (process.env.NODE_ENV !== 'production') {
   console.log('║                                                              ║');
   console.log('╠══════════════════════════════════════════════════════════════╣');
   console.log('║                                                              ║');
-  console.log('║   🚀  App:     http://localhost:3000                         ║');
-  console.log(`║   🔗  API:     ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}`.padEnd(63) + '║');
+  console.log('║   🚀  App:     http://localhost:4173                         ║');
+  console.log(`║   🔗  API:     ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'}`.padEnd(63) + '║');
   console.log('║                                                              ║');
   console.log('╚══════════════════════════════════════════════════════════════╝');
   console.log('');

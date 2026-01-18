@@ -113,6 +113,65 @@ export class FamilyService {
     };
   }
 
+  // Public method - get invitation details without auth
+  async getInvitationDetails(token: string) {
+    const invitation = await this.prisma.familyInvitation.findUnique({
+      where: { token },
+      include: {
+        family: { select: { name: true } },
+      },
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Invitation not found');
+    }
+
+    if (invitation.status !== 'PENDING') {
+      throw new ForbiddenException('This invitation is no longer valid');
+    }
+
+    if (invitation.expiresAt < new Date()) {
+      throw new ForbiddenException('This invitation has expired');
+    }
+
+    // Get inviter name separately since there's no relation
+    const inviter = await this.prisma.user.findUnique({
+      where: { id: invitation.invitedById },
+      select: { fullName: true },
+    });
+
+    return {
+      id: invitation.id,
+      familyName: invitation.family.name,
+      inviterName: inviter?.fullName || 'A family member',
+      role: invitation.role,
+      email: invitation.email,
+      expiresAt: invitation.expiresAt,
+    };
+  }
+
+  // Public method - decline invitation without auth
+  async declineInvitation(token: string) {
+    const invitation = await this.prisma.familyInvitation.findUnique({
+      where: { token },
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Invitation not found');
+    }
+
+    if (invitation.status !== 'PENDING') {
+      throw new ForbiddenException('This invitation has already been processed');
+    }
+
+    await this.prisma.familyInvitation.update({
+      where: { id: invitation.id },
+      data: { status: 'CANCELLED' },
+    });
+
+    return { success: true, message: 'Invitation declined' };
+  }
+
   async acceptInvitation(token: string, userId: string) {
     const invitation = await this.prisma.familyInvitation.findUnique({
       where: { token },
