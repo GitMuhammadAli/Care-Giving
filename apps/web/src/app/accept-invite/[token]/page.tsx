@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { api } from '@/lib/api/client';
 import { useAuthContext } from '@/components/providers/auth-provider';
+import { useAuth } from '@/hooks/use-auth';
 import { Users, CheckCircle, XCircle, Loader2, Home, Heart } from 'lucide-react';
 
 interface InvitationDetails {
@@ -24,6 +25,7 @@ export default function AcceptInvitePage() {
   const token = params.token as string;
 
   const { isAuthenticated, isInitialized, user } = useAuthContext();
+  const { refetchUser } = useAuth();
   const [status, setStatus] = useState<'loading' | 'valid' | 'accepted' | 'declined' | 'error'>('loading');
   const [invitation, setInvitation] = useState<InvitationDetails | null>(null);
   const [error, setError] = useState<string>('');
@@ -77,6 +79,8 @@ export default function AcceptInvitePage() {
     setIsProcessing(true);
     try {
       await api.post(`/families/invitations/${token}/accept`, {});
+      // Refresh user data to get updated onboardingCompleted status
+      await refetchUser();
       setStatus('accepted');
       setTimeout(() => router.push('/dashboard'), 2000);
     } catch (err: any) {

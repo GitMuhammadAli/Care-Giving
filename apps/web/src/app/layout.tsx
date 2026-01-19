@@ -9,6 +9,7 @@ import { libreBaskerville, sourceSans3 } from '@/lib/fonts';
 import '@/styles/globals.css';
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://carecircle.app'),
   title: {
     default: 'CareCircle - Family Caregiving Coordination',
     template: '%s | CareCircle',

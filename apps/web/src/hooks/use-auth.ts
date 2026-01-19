@@ -20,6 +20,11 @@ interface AuthState {
   resendVerification: (data: ResendVerificationInput) => Promise<void>;
   logout: () => Promise<void>;
   fetchUser: () => Promise<void>;
+  /**
+   * Force refresh user profile from server
+   * Use after actions that modify user data (e.g., accepting invitation)
+   */
+  refetchUser: () => Promise<void>;
   updateUser: (data: Partial<User>) => Promise<void>;
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
@@ -142,6 +147,18 @@ export const useAuth = create<AuthState>()(
           await fetchUserPromise;
         } finally {
           fetchUserPromise = null;
+        }
+      },
+
+      refetchUser: async () => {
+        // Force refresh user profile from server (bypasses sessionChecked)
+        set({ isLoading: true });
+        try {
+          const user = await authApi.getProfile();
+          set({ user, isAuthenticated: true, isLoading: false });
+        } catch {
+          // If profile fetch fails, don't clear auth - user might still be authenticated
+          set({ isLoading: false });
         }
       },
 

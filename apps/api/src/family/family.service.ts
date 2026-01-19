@@ -205,11 +205,16 @@ export class FamilyService {
       throw new ForbiddenException('This invitation is for a different email address');
     }
 
-    // Create membership in transaction
-    const [_, family] = await this.prisma.$transaction([
+    // Create membership in transaction and mark onboarding as complete
+    // (invited users don't need onboarding - they're joining an existing family)
+    const [_, __, family] = await this.prisma.$transaction([
       this.prisma.familyInvitation.update({
         where: { id: invitation.id },
         data: { status: 'ACCEPTED' },
+      }),
+      this.prisma.user.update({
+        where: { id: userId },
+        data: { onboardingCompleted: true },
       }),
       this.prisma.familyMember.create({
         data: {
