@@ -152,12 +152,24 @@ export const useAuth = create<AuthState>()(
 
       refetchUser: async () => {
         // Force refresh user profile from server (bypasses sessionChecked)
+        console.log('refetchUser - Starting...');
         set({ isLoading: true });
         try {
           const user = await authApi.getProfile();
+          console.log('refetchUser - Got user:', {
+            id: user.id,
+            email: user.email,
+            familiesCount: user.families?.length || 0,
+            families: user.families?.map((f: any) => ({
+              id: f.id,
+              name: f.name,
+              careRecipientsCount: f.careRecipients?.length || 0,
+            })),
+          });
           set({ user, isAuthenticated: true, isLoading: false });
-        } catch {
+        } catch (err) {
           // If profile fetch fails, don't clear auth - user might still be authenticated
+          console.error('refetchUser - Error:', err);
           set({ isLoading: false });
         }
       },

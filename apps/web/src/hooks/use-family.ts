@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { familyApi, CreateFamilyInput, InviteMemberInput } from '@/lib/api';
 import { toast } from 'react-hot-toast';
+import { useAuth } from './use-auth';
 
 export function useFamilies() {
   return useQuery({
@@ -37,21 +38,43 @@ export function usePendingInvitations(familyId: string) {
 
 export function useCreateFamily() {
   const queryClient = useQueryClient();
+  const refetchUser = useAuth((state) => state.refetchUser);
 
   return useMutation({
     mutationFn: (data: CreateFamilyInput) => familyApi.create(data),
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['families'] });
-      toast.success('Family created');
+      await refetchUser(); // Refetch user to get updated families in Zustand
+      toast.success('Family space created');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to create family');
+      toast.error(error.message || 'Failed to create family space');
+    },
+  });
+}
+
+export function useUpdateFamily() {
+  const queryClient = useQueryClient();
+  const refetchUser = useAuth((state) => state.refetchUser);
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<CreateFamilyInput> }) =>
+      familyApi.update(id, data),
+    onSuccess: async (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['families'] });
+      queryClient.invalidateQueries({ queryKey: ['families', variables.id] });
+      await refetchUser(); // Refetch user to get updated families in Zustand
+      toast.success('Family space updated');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update family space');
     },
   });
 }
 
 export function useInviteMember(familyId?: string) {
   const queryClient = useQueryClient();
+  const refetchUser = useAuth((state) => state.refetchUser);
 
   return useMutation({
     mutationFn: (data: InviteMemberInput & { familyId?: string }) => {
@@ -63,10 +86,10 @@ export function useInviteMember(familyId?: string) {
       const { familyId: _, ...inviteData } = data;
       return familyApi.invite(targetFamilyId, inviteData);
     },
-    onSuccess: (_, variables) => {
+    onSuccess: async (_, variables) => {
       const targetFamilyId = variables.familyId || familyId;
       queryClient.invalidateQueries({ queryKey: ['families', targetFamilyId] });
-      queryClient.invalidateQueries({ queryKey: ['auth'] });
+      await refetchUser();
       toast.success('Invitation sent');
     },
     onError: (error: Error) => {
@@ -77,12 +100,14 @@ export function useInviteMember(familyId?: string) {
 
 export function useUpdateMemberRole(familyId: string) {
   const queryClient = useQueryClient();
+  const refetchUser = useAuth((state) => state.refetchUser);
 
   return useMutation({
     mutationFn: ({ memberId, role }: { memberId: string; role: string }) =>
       familyApi.updateMemberRole(familyId, memberId, role),
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['families', familyId] });
+      await refetchUser();
       toast.success('Role updated');
     },
     onError: (error: Error) => {
@@ -93,11 +118,13 @@ export function useUpdateMemberRole(familyId: string) {
 
 export function useRemoveMember(familyId: string) {
   const queryClient = useQueryClient();
+  const refetchUser = useAuth((state) => state.refetchUser);
 
   return useMutation({
     mutationFn: (memberId: string) => familyApi.removeMember(familyId, memberId),
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['families', familyId] });
+      await refetchUser();
       toast.success('Member removed');
     },
     onError: (error: Error) => {
@@ -108,11 +135,13 @@ export function useRemoveMember(familyId: string) {
 
 export function useCancelInvitation(familyId: string) {
   const queryClient = useQueryClient();
+  const refetchUser = useAuth((state) => state.refetchUser);
 
   return useMutation({
     mutationFn: (invitationId: string) => familyApi.cancelInvitation(familyId, invitationId),
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['families', familyId] });
+      await refetchUser();
       toast.success('Invitation cancelled');
     },
     onError: (error: Error) => {
@@ -138,11 +167,13 @@ export function useResendInvitation(familyId: string) {
 
 export function useAcceptInvitation() {
   const queryClient = useQueryClient();
+  const refetchUser = useAuth((state) => state.refetchUser);
 
   return useMutation({
     mutationFn: (token: string) => familyApi.acceptInvitation(token),
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['families'] });
+      await refetchUser();
       toast.success('Welcome to the family!');
     },
     onError: (error: Error) => {
@@ -162,6 +193,23 @@ export function useResetMemberPassword(familyId: string) {
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to reset password');
+    },
+  });
+}
+
+export function useDeleteFamily() {
+  const queryClient = useQueryClient();
+  const refetchUser = useAuth((state) => state.refetchUser);
+
+  return useMutation({
+    mutationFn: (familyId: string) => familyApi.delete(familyId),
+    onSuccess: async () => {
+      queryClient.invalidateQueries({ queryKey: ['families'] });
+      await refetchUser();
+      toast.success('Family deleted successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete family');
     },
   });
 }

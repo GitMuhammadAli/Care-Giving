@@ -42,6 +42,7 @@ import { ChatModule } from './chat/chat.module';
 import { GatewayModule } from './gateway/gateway.module';
 import { HealthModule } from './health/health.module';
 import { MetricsModule } from './metrics/metrics.module';
+import { EventsModule } from './events/events.module';
 
 @Module({
   imports: [
@@ -123,6 +124,7 @@ import { MetricsModule } from './metrics/metrics.module';
 
     // Core modules
     SystemModule,
+    EventsModule,
     HealthModule,
     MetricsModule,
     AuthModule,

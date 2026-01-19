@@ -22,10 +22,11 @@ import {
 
 const mainNavItems = [
   { href: '/dashboard', icon: Home, label: 'Home' },
+  { href: '/care-recipients', icon: Heart, label: 'Loved Ones' },
   { href: '/calendar', icon: Calendar, label: 'Calendar' },
   { href: '/medications', icon: Pill, label: 'Medications' },
   { href: '/documents', icon: FileText, label: 'Documents' },
-  { href: '/timeline', icon: Activity, label: 'Timeline' },
+  { href: '/timeline', icon: Activity, label: 'Activity' },
   { href: '/chat', icon: MessageCircle, label: 'Family Chat' },
   { href: '/caregivers', icon: Users, label: 'Caregivers' },
 ];

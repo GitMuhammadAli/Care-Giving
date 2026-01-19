@@ -307,10 +307,12 @@ export class AuthService {
 
   async getProfile(userId: string) {
     const cacheKey = CACHE_KEYS.USER_PROFILE(userId);
+    console.log('getProfile called for user:', userId, 'cacheKey:', cacheKey);
 
     return this.cacheService.getOrSet(
       cacheKey,
       async () => {
+        console.log('getProfile - Cache MISS, fetching from database for user:', userId);
         const user = await this.prisma.user.findUnique({
           where: { id: userId },
           include: {

@@ -2,6 +2,8 @@ import { Injectable, NotFoundException, ForbiddenException, Inject, forwardRef }
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheService, CACHE_KEYS, CACHE_TTL } from '../system/module/cache';
+import { EventPublisherService } from '../events/publishers/event-publisher.service';
+import { ROUTING_KEYS } from '../events/events.constants';
 import { CreateMedicationDto } from './dto/create-medication.dto';
 import { LogMedicationDto } from './dto/log-medication.dto';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -12,6 +14,7 @@ export class MedicationsService {
     private prisma: PrismaService,
     private cacheService: CacheService,
     private eventEmitter: EventEmitter2,
+    private eventPublisher: EventPublisherService,
     @Inject(forwardRef(() => NotificationsService))
     private notifications: NotificationsService,
   ) {}
@@ -191,6 +194,64 @@ export class MedicationsService {
     await this.invalidateMedicationCache(medication.careRecipientId, id);
 
     return updated;
+  }
+
+  async delete(id: string, userId: string) {
+    const medication = await this.prisma.medication.findUnique({
+      where: { id },
+      include: {
+        careRecipient: {
+          select: { id: true, fullName: true, preferredName: true, familyId: true },
+        },
+      },
+    });
+
+    if (!medication) {
+      throw new NotFoundException('Medication not found');
+    }
+
+    const { membership } = await this.verifyAccess(medication.careRecipientId, userId);
+
+    if (membership.role !== 'ADMIN') {
+      throw new ForbiddenException('Only admins can delete medications');
+    }
+
+    // Get admin info and family members before deletion
+    const admin = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { fullName: true },
+    });
+
+    const familyMembers = await this.prisma.familyMember.findMany({
+      where: { familyId: medication.careRecipient.familyId },
+      select: { userId: true },
+    });
+
+    // Publish event BEFORE deletion
+    await this.eventPublisher.publish(
+      ROUTING_KEYS.MEDICATION_DELETED,
+      {
+        medicationId: id,
+        medicationName: medication.name,
+        careRecipientId: medication.careRecipientId,
+        careRecipientName: medication.careRecipient.preferredName || medication.careRecipient.fullName,
+        familyId: medication.careRecipient.familyId,
+        deletedById: userId,
+        deletedByName: admin?.fullName || 'Admin',
+        affectedUserIds: familyMembers.map((m) => m.userId).filter((uid) => uid !== userId),
+      },
+      { aggregateType: 'Medication', aggregateId: id },
+      { familyId: medication.careRecipient.familyId, careRecipientId: medication.careRecipientId, causedBy: userId },
+    );
+
+    await this.prisma.medication.delete({
+      where: { id },
+    });
+
+    // Invalidate cache
+    await this.invalidateMedicationCache(medication.careRecipientId, id);
+
+    return { success: true };
   }
 
   /**

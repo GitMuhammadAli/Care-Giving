@@ -202,6 +202,101 @@ export interface FamilyMemberJoinedPayload {
   familyId: string;
 }
 
+export interface FamilyMemberRemovedPayload {
+  memberId: string;
+  memberName: string;
+  memberEmail: string;
+  removedUserId: string;
+  familyId: string;
+  familyName: string;
+  removedById: string;
+  removedByName: string;
+  remainingMemberIds: string[];
+}
+
+export interface FamilyMemberRoleUpdatedPayload {
+  memberId: string;
+  memberUserId: string;
+  memberName: string;
+  familyId: string;
+  familyName: string;
+  oldRole: string;
+  newRole: string;
+  updatedById: string;
+  updatedByName: string;
+}
+
+export interface FamilyInvitationCancelledPayload {
+  invitationId: string;
+  email: string;
+  familyId: string;
+  familyName: string;
+  cancelledById: string;
+  cancelledByName: string;
+}
+
+export interface FamilyDeletedPayload {
+  familyId: string;
+  familyName: string;
+  deletedById: string;
+  deletedByName: string;
+  affectedUserIds: string[];
+}
+
+// ============================================================================
+// CARE RECIPIENT ADMIN EVENTS
+// ============================================================================
+
+export interface CareRecipientDeletedPayload {
+  careRecipientId: string;
+  careRecipientName: string;
+  familyId: string;
+  deletedById: string;
+  deletedByName: string;
+  affectedUserIds: string[];
+}
+
+export interface CareRecipientUpdatedPayload {
+  careRecipientId: string;
+  careRecipientName: string;
+  familyId: string;
+  updatedById: string;
+  updatedByName: string;
+  changes: string[];
+  affectedUserIds: string[];
+}
+
+// ============================================================================
+// MEDICATION ADMIN EVENTS
+// ============================================================================
+
+export interface MedicationDeletedPayload {
+  medicationId: string;
+  medicationName: string;
+  careRecipientId: string;
+  careRecipientName: string;
+  familyId: string;
+  deletedById: string;
+  deletedByName: string;
+  affectedUserIds: string[];
+}
+
+// ============================================================================
+// APPOINTMENT ADMIN EVENTS
+// ============================================================================
+
+export interface AppointmentDeletedPayload {
+  appointmentId: string;
+  appointmentTitle: string;
+  careRecipientId: string;
+  careRecipientName: string;
+  familyId: string;
+  deletedById: string;
+  deletedByName: string;
+  originalDateTime: string;
+  affectedUserIds: string[];
+}
+
 // ============================================================================
 // TIMELINE EVENTS
 // ============================================================================
@@ -268,6 +363,16 @@ export type ShiftHandoffEvent = BaseEvent<ShiftHandoffPayload>;
 
 export type FamilyMemberInvitedEvent = BaseEvent<FamilyMemberInvitedPayload>;
 export type FamilyMemberJoinedEvent = BaseEvent<FamilyMemberJoinedPayload>;
+export type FamilyMemberRemovedEvent = BaseEvent<FamilyMemberRemovedPayload>;
+export type FamilyMemberRoleUpdatedEvent = BaseEvent<FamilyMemberRoleUpdatedPayload>;
+export type FamilyInvitationCancelledEvent = BaseEvent<FamilyInvitationCancelledPayload>;
+export type FamilyDeletedEvent = BaseEvent<FamilyDeletedPayload>;
+
+export type CareRecipientDeletedEvent = BaseEvent<CareRecipientDeletedPayload>;
+export type CareRecipientUpdatedEvent = BaseEvent<CareRecipientUpdatedPayload>;
+
+export type MedicationDeletedEvent = BaseEvent<MedicationDeletedPayload>;
+export type AppointmentDeletedEvent = BaseEvent<AppointmentDeletedPayload>;
 
 export type TimelineEntryCreatedEvent = BaseEvent<TimelineEntryCreatedPayload>;
 

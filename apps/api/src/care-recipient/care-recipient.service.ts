@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheService, CACHE_KEYS, CACHE_TTL } from '../system/module/cache';
+import { EventPublisherService } from '../events/publishers/event-publisher.service';
+import { ROUTING_KEYS } from '../events/events.constants';
 import { CreateCareRecipientDto } from './dto/create-care-recipient.dto';
 import { CreateDoctorDto } from './dto/create-doctor.dto';
 import { CreateEmergencyContactDto } from './dto/create-emergency-contact.dto';
@@ -10,6 +12,7 @@ export class CareRecipientService {
   constructor(
     private prisma: PrismaService,
     private cacheService: CacheService,
+    private eventPublisher: EventPublisherService,
   ) {}
 
   private async verifyFamilyAccess(familyId: string, userId: string) {
@@ -122,13 +125,26 @@ export class CareRecipientService {
   }
 
   async update(id: string, userId: string, dto: Partial<CreateCareRecipientDto>) {
-    const { membership } = await this.verifyCareRecipientAccess(id, userId);
+    const { careRecipient, membership } = await this.verifyCareRecipientAccess(id, userId);
 
     if (membership.role === 'VIEWER') {
       throw new ForbiddenException('Viewers cannot update care recipients');
     }
 
-    return this.prisma.careRecipient.update({
+    // Track what fields are being changed
+    const changes: string[] = [];
+    if (dto.fullName && dto.fullName !== careRecipient.fullName) changes.push('name');
+    if (dto.preferredName !== undefined && dto.preferredName !== careRecipient.preferredName) changes.push('preferred name');
+    if (dto.dateOfBirth) changes.push('date of birth');
+    if (dto.bloodType && dto.bloodType !== careRecipient.bloodType) changes.push('blood type');
+    if (dto.allergies) changes.push('allergies');
+    if (dto.conditions) changes.push('conditions');
+    if (dto.notes !== undefined && dto.notes !== careRecipient.notes) changes.push('notes');
+    if (dto.preferredHospital && dto.preferredHospital !== careRecipient.primaryHospital) changes.push('hospital');
+    if (dto.insuranceProvider && dto.insuranceProvider !== careRecipient.insuranceProvider) changes.push('insurance');
+    if (dto.avatarUrl) changes.push('photo');
+
+    const updated = await this.prisma.careRecipient.update({
       where: { id },
       data: {
         fullName: dto.fullName,
@@ -145,18 +161,80 @@ export class CareRecipientService {
         photoUrl: dto.avatarUrl,
       },
     });
+
+    // Publish update event if there were changes
+    if (changes.length > 0) {
+      const admin = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { fullName: true },
+      });
+
+      const familyMembers = await this.prisma.familyMember.findMany({
+        where: { familyId: careRecipient.familyId },
+        select: { userId: true },
+      });
+
+      await this.eventPublisher.publish(
+        ROUTING_KEYS.CARE_RECIPIENT_UPDATED,
+        {
+          careRecipientId: id,
+          careRecipientName: updated.preferredName || updated.fullName,
+          familyId: careRecipient.familyId,
+          updatedById: userId,
+          updatedByName: admin?.fullName || 'Unknown',
+          changes,
+          affectedUserIds: familyMembers.map((m) => m.userId).filter((uid) => uid !== userId),
+        },
+        { aggregateType: 'CareRecipient', aggregateId: id },
+        { familyId: careRecipient.familyId, careRecipientId: id, causedBy: userId },
+      );
+    }
+
+    return updated;
   }
 
   async delete(id: string, userId: string) {
-    const { membership } = await this.verifyCareRecipientAccess(id, userId);
+    const { careRecipient, membership } = await this.verifyCareRecipientAccess(id, userId);
 
     if (membership.role !== 'ADMIN') {
       throw new ForbiddenException('Only admins can delete care recipients');
     }
 
+    // Get admin info and family members before deletion
+    const admin = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { fullName: true },
+    });
+
+    const familyMembers = await this.prisma.familyMember.findMany({
+      where: { familyId: careRecipient.familyId },
+      select: { userId: true },
+    });
+
+    // Publish event BEFORE deletion
+    await this.eventPublisher.publish(
+      ROUTING_KEYS.CARE_RECIPIENT_DELETED,
+      {
+        careRecipientId: id,
+        careRecipientName: careRecipient.preferredName || careRecipient.fullName,
+        familyId: careRecipient.familyId,
+        deletedById: userId,
+        deletedByName: admin?.fullName || 'Admin',
+        affectedUserIds: familyMembers.map((m) => m.userId).filter((uid) => uid !== userId),
+      },
+      { aggregateType: 'CareRecipient', aggregateId: id },
+      { familyId: careRecipient.familyId, careRecipientId: id, causedBy: userId },
+    );
+
     await this.prisma.careRecipient.delete({
       where: { id },
     });
+
+    // Invalidate cache
+    await this.cacheService.del([
+      CACHE_KEYS.CARE_RECIPIENT(id),
+      CACHE_KEYS.CARE_RECIPIENTS(careRecipient.familyId),
+    ]);
 
     return { success: true };
   }

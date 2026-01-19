@@ -14,6 +14,14 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Heart,
   Calendar,
   Pill,
@@ -24,11 +32,16 @@ import {
   Clock,
   CheckCircle2,
   ChevronRight,
+  ChevronDown,
   Camera,
   Settings,
   RefreshCw,
   X,
   Mail,
+  Pencil,
+  UserPlus,
+  Home,
+  Check,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -40,6 +53,8 @@ import { MedicationTracker } from '@/components/dashboard/medication-tracker';
 import { ContactsDirectory } from '@/components/dashboard/contacts-directory';
 import { DocumentsVault } from '@/components/dashboard/documents-vault';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AddCareRecipientModal } from '@/components/modals/add-care-recipient-modal';
+import { EditCareRecipientModal } from '@/components/modals/edit-care-recipient-modal';
 
 // Hooks
 import { useAuth } from '@/hooks/use-auth';
@@ -62,11 +77,65 @@ const Dashboard = () => {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
 
-  // Get family and care recipient info from user
-  const familyId = user?.families?.[0]?.id;
-  const careRecipientFromUser = user?.families?.[0]?.careRecipients?.[0];
+  // Get all families from user data
+  const families = user?.families || [];
+
+  // State for selected family and care recipient (persisted to localStorage)
+  const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(null);
+  const [selectedCareRecipientId, setSelectedCareRecipientId] = useState<string | null>(null);
+
+  // Initialize from localStorage on mount
+  useEffect(() => {
+    const storedFamilyId = localStorage.getItem('selectedFamilyId');
+    const storedCareRecipientId = localStorage.getItem('selectedCareRecipientId');
+    if (storedFamilyId) setSelectedFamilyId(storedFamilyId);
+    if (storedCareRecipientId) setSelectedCareRecipientId(storedCareRecipientId);
+  }, []);
+
+  // Auto-select first family if none selected or invalid
+  useEffect(() => {
+    if (families.length > 0) {
+      const validFamily = families.find(f => f.id === selectedFamilyId);
+      if (!validFamily) {
+        setSelectedFamilyId(families[0].id);
+        localStorage.setItem('selectedFamilyId', families[0].id);
+      }
+    }
+  }, [families, selectedFamilyId]);
+
+  // Get current family and its care recipients
+  const currentFamily = families.find(f => f.id === selectedFamilyId) || families[0];
+  const familyId = currentFamily?.id;
+  const careRecipientsInFamily = currentFamily?.careRecipients || [];
+
+  // Auto-select first care recipient if none selected or invalid
+  useEffect(() => {
+    if (careRecipientsInFamily.length > 0 && familyId) {
+      const validCareRecipient = careRecipientsInFamily.find(cr => cr.id === selectedCareRecipientId);
+      if (!validCareRecipient) {
+        setSelectedCareRecipientId(careRecipientsInFamily[0].id);
+        localStorage.setItem('selectedCareRecipientId', careRecipientsInFamily[0].id);
+      }
+    }
+  }, [careRecipientsInFamily, selectedCareRecipientId, familyId]);
+
+  const careRecipientFromUser = careRecipientsInFamily.find(cr => cr.id === selectedCareRecipientId) || careRecipientsInFamily[0];
   const careRecipientId = careRecipientFromUser?.id;
 
+  // Handle family switch
+  const handleFamilySwitch = (newFamilyId: string) => {
+    setSelectedFamilyId(newFamilyId);
+    localStorage.setItem('selectedFamilyId', newFamilyId);
+    // Reset care recipient selection when switching families
+    setSelectedCareRecipientId(null);
+    localStorage.removeItem('selectedCareRecipientId');
+  };
+
+  // Handle care recipient switch
+  const handleCareRecipientSwitch = (newCareRecipientId: string) => {
+    setSelectedCareRecipientId(newCareRecipientId);
+    localStorage.setItem('selectedCareRecipientId', newCareRecipientId);
+  };
 
   // Redirect to onboarding if user hasn't completed onboarding
   useEffect(() => {
@@ -112,6 +181,8 @@ const Dashboard = () => {
   const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [postUpdateOpen, setPostUpdateOpen] = useState(false);
+  const [addCareRecipientOpen, setAddCareRecipientOpen] = useState(false);
+  const [editCareRecipientOpen, setEditCareRecipientOpen] = useState(false);
 
   // Form states
   const [newTask, setNewTask] = useState({ title: '', time: '', type: 'appointment' });
@@ -372,6 +443,100 @@ const Dashboard = () => {
         onAcknowledge={handleAcknowledgeAlert}
       />
 
+      {/* Family Space Selector */}
+      {families.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 mb-6 animate-fade">
+          {/* Family Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="h-10 px-4 rounded-xl border-border/60 hover:bg-accent">
+                <Home className="w-4 h-4 mr-2 text-primary" />
+                <span className="font-medium">{currentFamily?.name || 'Select Family'}</span>
+                <ChevronDown className="w-4 h-4 ml-2 text-muted-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56 rounded-xl">
+              <DropdownMenuLabel className="text-xs text-muted-foreground uppercase tracking-wide">
+                Your Family Spaces
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {families.map((family) => (
+                <DropdownMenuItem
+                  key={family.id}
+                  onClick={() => handleFamilySwitch(family.id)}
+                  className="cursor-pointer rounded-lg"
+                >
+                  <Home className="w-4 h-4 mr-2 text-muted-foreground" />
+                  <span className="flex-1">{family.name}</span>
+                  {family.id === familyId && (
+                    <Check className="w-4 h-4 text-primary" />
+                  )}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild className="cursor-pointer rounded-lg">
+                <Link href="/care-recipients">
+                  <Home className="w-4 h-4 mr-2 text-muted-foreground" />
+                  Manage Spaces
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="cursor-pointer rounded-lg">
+                <Link href="/family">
+                  <Users className="w-4 h-4 mr-2 text-muted-foreground" />
+                  Manage Members
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Loved Ones Pills */}
+          {careRecipientsInFamily.length > 0 && (
+            <>
+              <span className="text-muted-foreground text-sm">•</span>
+              <div className="flex items-center gap-2 flex-wrap">
+                {careRecipientsInFamily.map((cr) => (
+                  <button
+                    key={cr.id}
+                    onClick={() => handleCareRecipientSwitch(cr.id)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                      cr.id === careRecipientId
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
+                    }`}
+                  >
+                    <Heart className="w-3.5 h-3.5" />
+                    {cr.preferredName || cr.fullName?.split(' ')[0] || 'Unknown'}
+                  </button>
+                ))}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setAddCareRecipientOpen(true)}
+                  className="h-8 px-2 rounded-full text-muted-foreground hover:text-foreground"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            </>
+          )}
+
+          {careRecipientsInFamily.length === 0 && (
+            <>
+              <span className="text-muted-foreground text-sm">•</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setAddCareRecipientOpen(true)}
+                className="h-8 px-3 rounded-full text-primary hover:text-primary hover:bg-primary/10"
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Add Loved One
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Welcome Header - Enhanced */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8 animate-fade">
         <div className="space-y-1">
@@ -512,27 +677,59 @@ const Dashboard = () => {
                     <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/30 to-secondary/20 flex items-center justify-center shadow-inner">
                       <Heart className="w-9 h-9 text-primary" />
                     </div>
-                    <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-card status-pulse" title="Status: Stable" />
+                    {careRecipientId && (
+                      <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-card status-pulse" title="Status: Stable" />
+                    )}
                   </div>
                   <div className="space-y-1">
                     <p className="label-caps text-muted-foreground">Your Loved One</p>
-                    <h2 className="font-serif text-2xl text-foreground">
-                      {careRecipient?.fullName || careRecipientFromUser?.fullName || 'No care recipient'}
-                    </h2>
-                    <p className="text-muted-foreground">
-                      {careRecipientAge ? `${careRecipientAge} years old` : ''}
-                      {careRecipient?.conditions?.length ? ` • ${careRecipient.conditions[0]}` : ''}
-                    </p>
+                    {careRecipientId ? (
+                      <>
+                        <h2 className="font-serif text-2xl text-foreground">
+                          {careRecipient?.fullName || careRecipientFromUser?.fullName || 'Loading...'}
+                        </h2>
+                        <p className="text-muted-foreground">
+                          {careRecipientAge ? `${careRecipientAge} years old` : ''}
+                          {careRecipient?.conditions?.length ? ` • ${careRecipient.conditions[0]}` : ''}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <h2 className="font-serif text-2xl text-foreground">No care recipient yet</h2>
+                        <p className="text-muted-foreground">Add someone you care for to get started</p>
+                      </>
+                    )}
                   </div>
                 </div>
-                {careRecipientId && (
-                  <Link href={`/care-recipients/${careRecipientId}`}>
-                    <Button variant="outline" size="sm" className="text-primary hover:text-primary hover:bg-primary/10 rounded-xl border-primary/20">
-                      View Profile
-                      <ChevronRight className="w-4 h-4 ml-1" />
+                <div className="flex items-center gap-2">
+                  {careRecipientId ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditCareRecipientOpen(true)}
+                        className="text-muted-foreground hover:text-foreground hover:bg-accent rounded-xl"
+                      >
+                        <Pencil className="w-4 h-4 mr-1.5" />
+                        Edit
+                      </Button>
+                      <Link href={`/care-recipients/${careRecipientId}`}>
+                        <Button variant="outline" size="sm" className="text-primary hover:text-primary hover:bg-primary/10 rounded-xl border-primary/20">
+                          View Profile
+                          <ChevronRight className="w-4 h-4 ml-1" />
+                        </Button>
+                      </Link>
+                    </>
+                  ) : familyId ? (
+                    <Button
+                      onClick={() => setAddCareRecipientOpen(true)}
+                      className="rounded-xl"
+                    >
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      Add Care Recipient
                     </Button>
-                  </Link>
-                )}
+                  ) : null}
+                </div>
               </div>
 
               {/* Quick Actions - Enhanced */}
@@ -871,9 +1068,16 @@ const Dashboard = () => {
           {careRecipientId ? (
             <MedicationTracker careRecipientId={careRecipientId} />
           ) : (
-            <div className="dashboard-card">
-              <h2 className="font-serif text-xl text-foreground mb-4">Medication Tracker</h2>
-              <p className="text-muted-foreground">Please add a care recipient first to track medications.</p>
+            <div className="dashboard-card text-center py-12">
+              <Pill className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
+              <h2 className="font-serif text-xl text-foreground mb-2">Medication Tracker</h2>
+              <p className="text-muted-foreground mb-6">Add a care recipient to start tracking medications.</p>
+              {familyId && (
+                <Button onClick={() => setAddCareRecipientOpen(true)} className="rounded-xl">
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Add Care Recipient
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -884,9 +1088,16 @@ const Dashboard = () => {
           {careRecipientId && familyId ? (
             <ContactsDirectory careRecipientId={careRecipientId} familyId={familyId} />
           ) : (
-            <div className="dashboard-card">
-              <h2 className="font-serif text-xl text-foreground mb-4">Contacts Directory</h2>
-              <p className="text-muted-foreground">Please add a care recipient first to manage contacts.</p>
+            <div className="dashboard-card text-center py-12">
+              <Users className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
+              <h2 className="font-serif text-xl text-foreground mb-2">Contacts Directory</h2>
+              <p className="text-muted-foreground mb-6">Add a care recipient to manage their contacts.</p>
+              {familyId && (
+                <Button onClick={() => setAddCareRecipientOpen(true)} className="rounded-xl">
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Add Care Recipient
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -897,12 +1108,39 @@ const Dashboard = () => {
           {careRecipientId ? (
             <DocumentsVault careRecipientId={careRecipientId} />
           ) : (
-            <div className="dashboard-card">
-              <h2 className="font-serif text-xl text-foreground mb-4">Documents Vault</h2>
-              <p className="text-muted-foreground">Please add a care recipient first to manage documents.</p>
+            <div className="dashboard-card text-center py-12">
+              <Calendar className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
+              <h2 className="font-serif text-xl text-foreground mb-2">Documents Vault</h2>
+              <p className="text-muted-foreground mb-6">Add a care recipient to store and manage their documents.</p>
+              {familyId && (
+                <Button onClick={() => setAddCareRecipientOpen(true)} className="rounded-xl">
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Add Care Recipient
+                </Button>
+              )}
             </div>
           )}
         </div>
+      )}
+
+      {/* Care Recipient Modals */}
+      {familyId && (
+        <AddCareRecipientModal
+          isOpen={addCareRecipientOpen}
+          onClose={() => setAddCareRecipientOpen(false)}
+          familyId={familyId}
+          onSuccess={() => {
+            // The modal already shows toast, just close
+          }}
+        />
+      )}
+
+      {careRecipient && (
+        <EditCareRecipientModal
+          isOpen={editCareRecipientOpen}
+          onClose={() => setEditCareRecipientOpen(false)}
+          careRecipient={careRecipient}
+        />
       )}
     </div>
   );

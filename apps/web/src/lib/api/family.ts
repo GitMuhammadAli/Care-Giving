@@ -60,6 +60,10 @@ export const familyApi = {
     return api.patch<Family>(`/families/${id}`, data);
   },
 
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/families/${id}`);
+  },
+
   // Members
   getMembers: async (familyId: string): Promise<FamilyMember[]> => {
     return api.get<FamilyMember[]>(`/families/${familyId}/members`);

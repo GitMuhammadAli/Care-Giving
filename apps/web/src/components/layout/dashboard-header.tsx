@@ -7,7 +7,6 @@ import { useRouter, usePathname } from 'next/navigation';
 import {
   Menu,
   X,
-  Bell,
   Settings,
   User,
   LogOut,
@@ -24,6 +23,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
+import { NotificationBell } from '@/components/notifications';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -48,7 +48,6 @@ export function DashboardHeader({ className, currentUser, careRecipient }: Dashb
   const { user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [userMenuOpen, setUserMenuOpen] = React.useState(false);
-  const [notificationsOpen, setNotificationsOpen] = React.useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -68,12 +67,12 @@ export function DashboardHeader({ className, currentUser, careRecipient }: Dashb
 
   const mainNavLinks = [
     { label: 'Home', href: '/dashboard', icon: Home },
+    { label: 'Loved Ones', href: '/care-recipients', icon: Heart },
     { label: 'Calendar', href: '/calendar', icon: Calendar },
     { label: 'Medications', href: '/medications', icon: Pill },
     { label: 'Documents', href: '/documents', icon: FileText },
-    { label: 'Timeline', href: '/timeline', icon: Activity },
+    { label: 'Activity', href: '/timeline', icon: Activity },
     { label: 'Chat', href: '/chat', icon: MessageCircle },
-    { label: 'Caregivers', href: '/caregivers', icon: Users },
   ];
 
   const secondaryNavLinks = [
@@ -118,29 +117,8 @@ export function DashboardHeader({ className, currentUser, careRecipient }: Dashb
           {/* Right Side Actions */}
           <div className="flex items-center gap-1 md:gap-2 shrink-0">
             {/* Notifications */}
-            <div className="relative hidden md:block">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative rounded-xl h-9 w-9"
-                onClick={() => {
-                  setNotificationsOpen(!notificationsOpen);
-                  setUserMenuOpen(false);
-                }}
-              >
-                <Bell className="w-4 h-4" />
-                {/* Notification badge - uncomment when needed */}
-                {/* <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive rounded-full text-[10px] flex items-center justify-center text-destructive-foreground font-semibold">
-                  3
-                </span> */}
-              </Button>
-
-              {notificationsOpen && (
-                <div className="absolute right-0 top-12 w-80 bg-card border border-border rounded-xl shadow-lg z-50 p-4 animate-fade">
-                  <h3 className="font-serif text-lg text-primary mb-3 font-bold">Notifications</h3>
-                  <p className="text-sm text-muted-foreground text-center py-4">No new notifications</p>
-                </div>
-              )}
+            <div className="hidden md:block">
+              <NotificationBell />
             </div>
 
             {/* Settings */}
@@ -157,10 +135,7 @@ export function DashboardHeader({ className, currentUser, careRecipient }: Dashb
             {/* User Menu */}
             <div className="relative">
               <button
-                onClick={() => {
-                  setUserMenuOpen(!userMenuOpen);
-                  setNotificationsOpen(false);
-                }}
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
                 className="flex items-center gap-1.5 p-1 rounded-xl hover:bg-accent transition-colors"
               >
                 {/* Avatar */}
@@ -372,14 +347,11 @@ export function DashboardHeader({ className, currentUser, careRecipient }: Dashb
         )}
       </div>
 
-      {/* Click outside to close menus */}
-      {(userMenuOpen || notificationsOpen) && (
+      {/* Click outside to close user menu */}
+      {userMenuOpen && (
         <div
           className="fixed inset-0 z-40"
-          onClick={() => {
-            setUserMenuOpen(false);
-            setNotificationsOpen(false);
-          }}
+          onClick={() => setUserMenuOpen(false)}
         />
       )}
     </header>

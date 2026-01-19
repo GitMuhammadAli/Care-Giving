@@ -140,7 +140,7 @@ export class WebSocketConsumer {
   async handleTimelineEvent(event: BaseEvent): Promise<void | Nack> {
     try {
       this.logger.debug(`Received timeline event: ${event.type}`);
-      
+
       this.eventEmitter.emit('ws.broadcast', {
         event: event.type,
         data: event.data,
@@ -148,6 +148,64 @@ export class WebSocketConsumer {
       });
     } catch (error) {
       this.logger.error(`Error handling timeline event: ${error}`);
+      return new Nack(true);
+    }
+  }
+
+  /**
+   * Listen to family admin events (member removed, role updated, deleted)
+   */
+  @RabbitSubscribe({
+    exchange: EXCHANGES.DOMAIN_EVENTS,
+    routingKey: 'family.*',
+    queue: QUEUES.WEBSOCKET_UPDATES,
+    queueOptions: {
+      durable: true,
+    },
+  })
+  async handleFamilyAdminEvent(event: BaseEvent): Promise<void | Nack> {
+    try {
+      this.logger.debug(`Received family admin event: ${event.type}`);
+
+      // Convert routing key to websocket event name (e.g., family.member.removed -> family_member_removed)
+      const wsEventName = event.type.replace(/\./g, '_');
+
+      this.eventEmitter.emit('ws.broadcast', {
+        event: wsEventName,
+        data: event.data,
+        rooms: this.getRoomsForEvent(event),
+      });
+    } catch (error) {
+      this.logger.error(`Error handling family admin event: ${error}`);
+      return new Nack(true);
+    }
+  }
+
+  /**
+   * Listen to care recipient events (created, updated, deleted)
+   */
+  @RabbitSubscribe({
+    exchange: EXCHANGES.DOMAIN_EVENTS,
+    routingKey: 'care_recipient.*',
+    queue: QUEUES.WEBSOCKET_UPDATES,
+    queueOptions: {
+      durable: true,
+    },
+  })
+  async handleCareRecipientEvent(event: BaseEvent): Promise<void | Nack> {
+    try {
+      this.logger.debug(`Received care recipient event: ${event.type}`);
+
+      // Convert routing key to websocket event name (e.g., care_recipient.deleted -> care_recipient_deleted)
+      const wsEventName = event.type.replace(/\./g, '_');
+
+      this.eventEmitter.emit('ws.broadcast', {
+        event: wsEventName,
+        data: event.data,
+        rooms: this.getRoomsForEvent(event),
+      });
+    } catch (error) {
+      this.logger.error(`Error handling care recipient event: ${error}`);
       return new Nack(true);
     }
   }

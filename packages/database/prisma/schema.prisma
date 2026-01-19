@@ -586,6 +586,14 @@ enum NotificationType {
   REFILL_NEEDED
   REFILL_ALERT
   GENERAL
+  // Admin action notifications
+  CARE_RECIPIENT_DELETED
+  CARE_RECIPIENT_UPDATED
+  MEDICATION_DELETED
+  APPOINTMENT_DELETED
+  FAMILY_MEMBER_REMOVED
+  FAMILY_MEMBER_ROLE_CHANGED
+  FAMILY_DELETED
 }
 
 // ============================================

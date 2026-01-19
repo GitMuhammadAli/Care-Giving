@@ -46,6 +46,14 @@ export class FamilyController {
     return this.familyService.getFamily(familyId, user.id);
   }
 
+  @Delete(':familyId')
+  @ApiOperation({ summary: 'Delete a family (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Family deleted successfully' })
+  @ApiResponse({ status: 403, description: 'Only admins can delete the family' })
+  deleteFamily(@Param('familyId') familyId: string, @CurrentUser() user: CurrentUserPayload) {
+    return this.familyService.deleteFamily(familyId, user.id);
+  }
+
   @Post(':familyId/invite')
   @ApiOperation({ summary: 'Invite a member to family (Admin only)' })
   @ApiResponse({ status: 201, description: 'Invitation sent' })

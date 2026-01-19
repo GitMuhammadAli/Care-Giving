@@ -191,6 +191,96 @@ export function useWebSocket(familyId?: string) {
     };
 
     // ============================================================================
+    // ADMIN ACTION EVENTS
+    // ============================================================================
+
+    const handleCareRecipientDeleted = (data: any) => {
+      console.log('🗑️ Care recipient deleted:', data);
+      toast.error(`${data.deletedBy} removed ${data.careRecipientName}`, {
+        duration: 8000,
+      });
+      queryClient.invalidateQueries({ queryKey: ['care-recipients'] });
+      queryClient.invalidateQueries({ queryKey: ['family'] });
+    };
+
+    const handleCareRecipientUpdated = (data: any) => {
+      console.log('✏️ Care recipient updated:', data);
+      toast(`${data.updatedBy} updated ${data.careRecipientName}'s profile`, {
+        icon: '✏️',
+        duration: 5000,
+      });
+      queryClient.invalidateQueries({ queryKey: ['care-recipients'] });
+      queryClient.invalidateQueries({ queryKey: ['care-recipient', data.careRecipientId] });
+    };
+
+    const handleFamilyMemberRemoved = (data: any) => {
+      console.log('👋 Family member removed:', data);
+      toast(`${data.removedBy} removed ${data.memberName} from the family`, {
+        icon: '👋',
+        duration: 6000,
+      });
+      queryClient.invalidateQueries({ queryKey: ['family'] });
+    };
+
+    const handleYouWereRemoved = (data: any) => {
+      console.warn('⚠️ You were removed from family:', data);
+      toast.error(`You have been removed from ${data.familyName} by ${data.removedBy}`, {
+        duration: Infinity, // Don't auto-dismiss - this is important
+      });
+      // Force refresh to update user data
+      queryClient.invalidateQueries({ queryKey: ['family'] });
+      queryClient.invalidateQueries({ queryKey: ['families'] });
+      queryClient.invalidateQueries({ queryKey: ['me'] });
+    };
+
+    const handleFamilyMemberRoleUpdated = (data: any) => {
+      console.log('🔄 Family member role updated:', data);
+      toast(`${data.memberName}'s role changed to ${data.newRole}`, {
+        icon: '🔄',
+        duration: 5000,
+      });
+      queryClient.invalidateQueries({ queryKey: ['family'] });
+    };
+
+    const handleYourRoleChanged = (data: any) => {
+      console.log('🎭 Your role was changed:', data);
+      toast(`Your role in ${data.familyName} is now ${data.newRole}`, {
+        icon: '🎭',
+        duration: 8000,
+      });
+      queryClient.invalidateQueries({ queryKey: ['family'] });
+      queryClient.invalidateQueries({ queryKey: ['me'] });
+    };
+
+    const handleMedicationDeleted = (data: any) => {
+      console.log('💊 Medication deleted:', data);
+      toast(`${data.deletedBy} removed ${data.medicationName}`, {
+        icon: '💊',
+        duration: 6000,
+      });
+      queryClient.invalidateQueries({ queryKey: ['medications'] });
+    };
+
+    const handleAppointmentDeleted = (data: any) => {
+      console.log('📅 Appointment deleted:', data);
+      toast(`${data.deletedBy} deleted "${data.appointmentTitle}"`, {
+        icon: '📅',
+        duration: 6000,
+      });
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+    };
+
+    const handleFamilyDeleted = (data: any) => {
+      console.warn('🗑️ Family was deleted:', data);
+      toast.error(`${data.deletedBy} deleted the family "${data.familyName}"`, {
+        duration: Infinity,
+      });
+      queryClient.invalidateQueries({ queryKey: ['families'] });
+      queryClient.invalidateQueries({ queryKey: ['family'] });
+      queryClient.invalidateQueries({ queryKey: ['me'] });
+    };
+
+    // ============================================================================
     // GENERIC EVENTS
     // ============================================================================
 
@@ -227,6 +317,17 @@ export function useWebSocket(familyId?: string) {
     wsClient.on(WS_EVENTS.WS_BROADCAST, handleBroadcast);
     wsClient.on(WS_EVENTS.EMERGENCY_NOTIFICATION, handleEmergencyNotification);
 
+    // Admin action events
+    wsClient.on(WS_EVENTS.CARE_RECIPIENT_DELETED, handleCareRecipientDeleted);
+    wsClient.on(WS_EVENTS.CARE_RECIPIENT_UPDATED, handleCareRecipientUpdated);
+    wsClient.on(WS_EVENTS.FAMILY_MEMBER_REMOVED, handleFamilyMemberRemoved);
+    wsClient.on(WS_EVENTS.YOU_WERE_REMOVED, handleYouWereRemoved);
+    wsClient.on(WS_EVENTS.FAMILY_MEMBER_ROLE_UPDATED, handleFamilyMemberRoleUpdated);
+    wsClient.on(WS_EVENTS.YOUR_ROLE_CHANGED, handleYourRoleChanged);
+    wsClient.on(WS_EVENTS.MEDICATION_DELETED, handleMedicationDeleted);
+    wsClient.on(WS_EVENTS.APPOINTMENT_DELETED, handleAppointmentDeleted);
+    wsClient.on(WS_EVENTS.FAMILY_DELETED, handleFamilyDeleted);
+
     // Cleanup
     return () => {
       wsClient.off(WS_EVENTS.EMERGENCY_ALERT, handleEmergencyAlert);
@@ -242,6 +343,17 @@ export function useWebSocket(familyId?: string) {
       wsClient.off(WS_EVENTS.NOTIFICATION, handleNotification);
       wsClient.off(WS_EVENTS.WS_BROADCAST, handleBroadcast);
       wsClient.off(WS_EVENTS.EMERGENCY_NOTIFICATION, handleEmergencyNotification);
+
+      // Admin action events cleanup
+      wsClient.off(WS_EVENTS.CARE_RECIPIENT_DELETED, handleCareRecipientDeleted);
+      wsClient.off(WS_EVENTS.CARE_RECIPIENT_UPDATED, handleCareRecipientUpdated);
+      wsClient.off(WS_EVENTS.FAMILY_MEMBER_REMOVED, handleFamilyMemberRemoved);
+      wsClient.off(WS_EVENTS.YOU_WERE_REMOVED, handleYouWereRemoved);
+      wsClient.off(WS_EVENTS.FAMILY_MEMBER_ROLE_UPDATED, handleFamilyMemberRoleUpdated);
+      wsClient.off(WS_EVENTS.YOUR_ROLE_CHANGED, handleYourRoleChanged);
+      wsClient.off(WS_EVENTS.MEDICATION_DELETED, handleMedicationDeleted);
+      wsClient.off(WS_EVENTS.APPOINTMENT_DELETED, handleAppointmentDeleted);
+      wsClient.off(WS_EVENTS.FAMILY_DELETED, handleFamilyDeleted);
     };
   }, [isConnected, queryClient]);
 

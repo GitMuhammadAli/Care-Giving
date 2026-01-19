@@ -13,10 +13,10 @@ interface CareRecipient {
   id: string;
   fullName: string;
   preferredName?: string;
-  dateOfBirth: string;
+  dateOfBirth?: string;
   bloodType?: string;
-  allergies: string[];
-  conditions: string[];
+  allergies?: string[];
+  conditions?: string[];
   notes?: string;
   insuranceProvider?: string;
   insurancePolicyNumber?: string;
@@ -54,10 +54,15 @@ export function EditCareRecipientModal({ isOpen, onClose, careRecipient }: Props
   const [newCondition, setNewCondition] = useState('');
 
   const mutation = useMutation({
-    mutationFn: (data: typeof formData) => 
+    mutationFn: (data: typeof formData) =>
       api.patch(`/care-recipients/${careRecipient.id}`, data),
     onSuccess: () => {
+      // Invalidate all related queries for consistent updates
       queryClient.invalidateQueries({ queryKey: ['care-recipient', careRecipient.id] });
+      queryClient.invalidateQueries({ queryKey: ['careRecipient', careRecipient.id] });
+      queryClient.invalidateQueries({ queryKey: ['care-recipients'] });
+      queryClient.invalidateQueries({ queryKey: ['user'] });
+      queryClient.invalidateQueries({ queryKey: ['families'] });
       toast.success('Care recipient updated successfully');
       onClose();
     },

@@ -116,15 +116,28 @@ export const WS_EVENTS = {
   EMERGENCY_RESOLVED: 'emergency_resolved',
   MEDICATION_LOGGED: 'medication_logged',
   MEDICATION_REMINDER: 'medication_reminder',
+  MEDICATION_DELETED: 'medication_deleted',
   APPOINTMENT_CREATED: 'appointment_created',
   APPOINTMENT_UPDATED: 'appointment_updated',
   APPOINTMENT_REMINDER: 'appointment_reminder',
+  APPOINTMENT_DELETED: 'appointment_deleted',
   TIMELINE_ENTRY: 'timeline_entry',
   SHIFT_UPDATE: 'shift_update',
   SHIFT_CHECKED_IN: 'shift_checked_in',
   SHIFT_CHECKED_OUT: 'shift_checked_out',
   FAMILY_MEMBER_JOINED: 'family_member_joined',
   NOTIFICATION: 'notification',
+
+  // Admin action events
+  CARE_RECIPIENT_DELETED: 'care_recipient_deleted',
+  CARE_RECIPIENT_UPDATED: 'care_recipient_updated',
+  FAMILY_MEMBER_REMOVED: 'family_member_removed',
+  FAMILY_MEMBER_ROLE_UPDATED: 'family_member_role_updated',
+  FAMILY_DELETED: 'family_deleted',
+
+  // User-specific events (sent directly to affected user)
+  YOU_WERE_REMOVED: 'you_were_removed',
+  YOUR_ROLE_CHANGED: 'your_role_changed',
 
   // Broadcast events
   WS_BROADCAST: 'ws_broadcast',

@@ -72,10 +72,18 @@ export const ROUTING_KEYS = {
   FAMILY_MEMBER_INVITED: 'family.member.invited',
   FAMILY_MEMBER_JOINED: 'family.member.joined',
   FAMILY_MEMBER_LEFT: 'family.member.left',
+  FAMILY_MEMBER_REMOVED: 'family.member.removed',
+  FAMILY_MEMBER_ROLE_UPDATED: 'family.member.role_updated',
+  FAMILY_INVITATION_CANCELLED: 'family.invitation.cancelled',
+  FAMILY_DELETED: 'family.deleted',
 
   // Care recipient events
   CARE_RECIPIENT_CREATED: 'care_recipient.created',
   CARE_RECIPIENT_UPDATED: 'care_recipient.updated',
+  CARE_RECIPIENT_DELETED: 'care_recipient.deleted',
+
+  // Appointment delete event
+  APPOINTMENT_DELETED: 'appointment.deleted',
 
   // Timeline events
   TIMELINE_ENTRY_CREATED: 'timeline.entry.created',

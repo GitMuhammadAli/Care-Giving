@@ -3,14 +3,14 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Home, Calendar, Pill, MessageCircle, Users } from 'lucide-react';
+import { Home, Calendar, Pill, MessageCircle, Heart } from 'lucide-react';
 
 const navItems = [
   { href: '/dashboard', icon: Home, label: 'Home' },
+  { href: '/care-recipients', icon: Heart, label: 'Loved Ones' },
   { href: '/medications', icon: Pill, label: 'Meds' },
   { href: '/chat', icon: MessageCircle, label: 'Chat' },
   { href: '/calendar', icon: Calendar, label: 'Calendar' },
-  { href: '/caregivers', icon: Users, label: 'Care' },
 ];
 
 export function MobileNav() {

@@ -6,6 +6,13 @@ import {
   BaseEvent,
   PushNotificationPayload,
   EmailNotificationPayload,
+  CareRecipientDeletedPayload,
+  CareRecipientUpdatedPayload,
+  FamilyMemberRemovedPayload,
+  FamilyMemberRoleUpdatedPayload,
+  MedicationDeletedPayload,
+  AppointmentDeletedPayload,
+  FamilyDeletedPayload,
 } from '../dto/events.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -323,6 +330,287 @@ export class NotificationConsumer {
       this.logger.log(`Medication reminder sent to ${data.familyMemberIds.length} users`);
     } catch (error) {
       this.logger.error(`Failed to send medication reminder: ${error}`);
+      return new Nack(this.isTransientError(error));
+    }
+  }
+
+  // ============================================================================
+  // ADMIN ACTION EVENT HANDLERS
+  // ============================================================================
+
+  /**
+   * Handle care recipient deleted event
+   */
+  @RabbitSubscribe({
+    exchange: EXCHANGES.DOMAIN_EVENTS,
+    routingKey: ROUTING_KEYS.CARE_RECIPIENT_DELETED,
+    queue: QUEUES.PUSH_NOTIFICATIONS,
+    queueOptions: { durable: true },
+  })
+  async handleCareRecipientDeleted(event: BaseEvent<CareRecipientDeletedPayload>): Promise<void | Nack> {
+    try {
+      const data = event.data;
+
+      if (data.affectedUserIds.length > 0) {
+        await this.prisma.notification.createMany({
+          data: data.affectedUserIds.map((userId) => ({
+            userId,
+            type: 'CARE_RECIPIENT_DELETED' as const,
+            title: 'Care Recipient Removed',
+            body: `${data.deletedByName} removed ${data.careRecipientName} from the family.`,
+            data: {
+              careRecipientId: data.careRecipientId,
+              careRecipientName: data.careRecipientName,
+              actionBy: data.deletedByName,
+            },
+          })),
+        });
+      }
+
+      this.logger.log(`Care recipient deleted notification sent to ${data.affectedUserIds.length} users`);
+    } catch (error) {
+      this.logger.error(`Failed to handle care recipient deleted: ${error}`);
+      return new Nack(this.isTransientError(error));
+    }
+  }
+
+  /**
+   * Handle care recipient updated event
+   */
+  @RabbitSubscribe({
+    exchange: EXCHANGES.DOMAIN_EVENTS,
+    routingKey: ROUTING_KEYS.CARE_RECIPIENT_UPDATED,
+    queue: QUEUES.PUSH_NOTIFICATIONS,
+    queueOptions: { durable: true },
+  })
+  async handleCareRecipientUpdated(event: BaseEvent<CareRecipientUpdatedPayload>): Promise<void | Nack> {
+    try {
+      const data = event.data;
+
+      if (data.affectedUserIds.length > 0) {
+        const changesText = data.changes.join(', ');
+        await this.prisma.notification.createMany({
+          data: data.affectedUserIds.map((userId) => ({
+            userId,
+            type: 'CARE_RECIPIENT_UPDATED' as const,
+            title: 'Care Recipient Updated',
+            body: `${data.updatedByName} updated ${data.careRecipientName}'s information (${changesText}).`,
+            data: {
+              careRecipientId: data.careRecipientId,
+              careRecipientName: data.careRecipientName,
+              changes: data.changes,
+              actionBy: data.updatedByName,
+            },
+          })),
+        });
+      }
+
+      this.logger.log(`Care recipient updated notification sent`);
+    } catch (error) {
+      this.logger.error(`Failed to handle care recipient updated: ${error}`);
+      return new Nack(this.isTransientError(error));
+    }
+  }
+
+  /**
+   * Handle family member removed - notify both removed user AND remaining members
+   */
+  @RabbitSubscribe({
+    exchange: EXCHANGES.DOMAIN_EVENTS,
+    routingKey: ROUTING_KEYS.FAMILY_MEMBER_REMOVED,
+    queue: QUEUES.PUSH_NOTIFICATIONS,
+    queueOptions: { durable: true },
+  })
+  async handleFamilyMemberRemoved(event: BaseEvent<FamilyMemberRemovedPayload>): Promise<void | Nack> {
+    try {
+      const data = event.data;
+
+      // Notify the removed user
+      await this.prisma.notification.create({
+        data: {
+          userId: data.removedUserId,
+          type: 'FAMILY_MEMBER_REMOVED' as const,
+          title: 'Removed from Family',
+          body: `You have been removed from ${data.familyName} by ${data.removedByName}.`,
+          data: {
+            familyId: data.familyId,
+            familyName: data.familyName,
+            removedBy: data.removedByName,
+          },
+        },
+      });
+
+      // Notify remaining family members (except the admin who did it)
+      const membersToNotify = data.remainingMemberIds.filter((id) => id !== data.removedById);
+      if (membersToNotify.length > 0) {
+        await this.prisma.notification.createMany({
+          data: membersToNotify.map((userId) => ({
+            userId,
+            type: 'FAMILY_MEMBER_REMOVED' as const,
+            title: 'Family Member Removed',
+            body: `${data.removedByName} removed ${data.memberName} from ${data.familyName}.`,
+            data: {
+              familyId: data.familyId,
+              memberName: data.memberName,
+              removedBy: data.removedByName,
+            },
+          })),
+        });
+      }
+
+      this.logger.log(`Family member removed notification sent`);
+    } catch (error) {
+      this.logger.error(`Failed to handle family member removed: ${error}`);
+      return new Nack(this.isTransientError(error));
+    }
+  }
+
+  /**
+   * Handle family member role updated - notify affected user
+   */
+  @RabbitSubscribe({
+    exchange: EXCHANGES.DOMAIN_EVENTS,
+    routingKey: ROUTING_KEYS.FAMILY_MEMBER_ROLE_UPDATED,
+    queue: QUEUES.PUSH_NOTIFICATIONS,
+    queueOptions: { durable: true },
+  })
+  async handleFamilyMemberRoleUpdated(event: BaseEvent<FamilyMemberRoleUpdatedPayload>): Promise<void | Nack> {
+    try {
+      const data = event.data;
+
+      // Notify the affected user (whose role changed)
+      await this.prisma.notification.create({
+        data: {
+          userId: data.memberUserId,
+          type: 'FAMILY_MEMBER_ROLE_CHANGED' as const,
+          title: 'Role Updated',
+          body: `Your role in ${data.familyName} has been changed from ${data.oldRole} to ${data.newRole} by ${data.updatedByName}.`,
+          data: {
+            familyId: data.familyId,
+            familyName: data.familyName,
+            oldRole: data.oldRole,
+            newRole: data.newRole,
+            changedBy: data.updatedByName,
+          },
+        },
+      });
+
+      this.logger.log(`Role change notification sent to user ${data.memberUserId}`);
+    } catch (error) {
+      this.logger.error(`Failed to handle role update: ${error}`);
+      return new Nack(this.isTransientError(error));
+    }
+  }
+
+  /**
+   * Handle medication deleted
+   */
+  @RabbitSubscribe({
+    exchange: EXCHANGES.DOMAIN_EVENTS,
+    routingKey: ROUTING_KEYS.MEDICATION_DELETED,
+    queue: QUEUES.PUSH_NOTIFICATIONS,
+    queueOptions: { durable: true },
+  })
+  async handleMedicationDeleted(event: BaseEvent<MedicationDeletedPayload>): Promise<void | Nack> {
+    try {
+      const data = event.data;
+
+      if (data.affectedUserIds.length > 0) {
+        await this.prisma.notification.createMany({
+          data: data.affectedUserIds.map((userId) => ({
+            userId,
+            type: 'MEDICATION_DELETED' as const,
+            title: 'Medication Removed',
+            body: `${data.deletedByName} removed ${data.medicationName} from ${data.careRecipientName}'s medications.`,
+            data: {
+              medicationId: data.medicationId,
+              medicationName: data.medicationName,
+              careRecipientName: data.careRecipientName,
+              deletedBy: data.deletedByName,
+            },
+          })),
+        });
+      }
+
+      this.logger.log(`Medication deleted notification sent`);
+    } catch (error) {
+      this.logger.error(`Failed to handle medication deleted: ${error}`);
+      return new Nack(this.isTransientError(error));
+    }
+  }
+
+  /**
+   * Handle appointment deleted
+   */
+  @RabbitSubscribe({
+    exchange: EXCHANGES.DOMAIN_EVENTS,
+    routingKey: ROUTING_KEYS.APPOINTMENT_DELETED,
+    queue: QUEUES.PUSH_NOTIFICATIONS,
+    queueOptions: { durable: true },
+  })
+  async handleAppointmentDeleted(event: BaseEvent<AppointmentDeletedPayload>): Promise<void | Nack> {
+    try {
+      const data = event.data;
+
+      if (data.affectedUserIds.length > 0) {
+        await this.prisma.notification.createMany({
+          data: data.affectedUserIds.map((userId) => ({
+            userId,
+            type: 'APPOINTMENT_DELETED' as const,
+            title: 'Appointment Deleted',
+            body: `${data.deletedByName} deleted "${data.appointmentTitle}" for ${data.careRecipientName}.`,
+            data: {
+              appointmentId: data.appointmentId,
+              appointmentTitle: data.appointmentTitle,
+              careRecipientName: data.careRecipientName,
+              originalDateTime: data.originalDateTime,
+              deletedBy: data.deletedByName,
+            },
+          })),
+        });
+      }
+
+      this.logger.log(`Appointment deleted notification sent`);
+    } catch (error) {
+      this.logger.error(`Failed to handle appointment deleted: ${error}`);
+      return new Nack(this.isTransientError(error));
+    }
+  }
+
+  /**
+   * Handle family deleted
+   */
+  @RabbitSubscribe({
+    exchange: EXCHANGES.DOMAIN_EVENTS,
+    routingKey: ROUTING_KEYS.FAMILY_DELETED,
+    queue: QUEUES.PUSH_NOTIFICATIONS,
+    queueOptions: { durable: true },
+  })
+  async handleFamilyDeleted(event: BaseEvent<FamilyDeletedPayload>): Promise<void | Nack> {
+    try {
+      const data = event.data;
+
+      // Notify all affected users except the one who deleted
+      const usersToNotify = data.affectedUserIds.filter((id) => id !== data.deletedById);
+
+      if (usersToNotify.length > 0) {
+        await this.prisma.notification.createMany({
+          data: usersToNotify.map((userId) => ({
+            userId,
+            type: 'FAMILY_DELETED' as const,
+            title: 'Family Deleted',
+            body: `${data.deletedByName} has deleted the family "${data.familyName}". All associated data has been removed.`,
+            data: {
+              familyName: data.familyName,
+              deletedBy: data.deletedByName,
+            },
+          })),
+        });
+      }
+
+      this.logger.log(`Family deleted notification sent to ${usersToNotify.length} users`);
+    } catch (error) {
+      this.logger.error(`Failed to handle family deleted: ${error}`);
       return new Nack(this.isTransientError(error));
     }
   }

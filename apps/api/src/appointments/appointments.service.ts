@@ -2,6 +2,8 @@ import { Injectable, NotFoundException, ForbiddenException, Inject, forwardRef }
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheService, CACHE_KEYS, CACHE_TTL } from '../system/module/cache';
+import { EventPublisherService } from '../events/publishers/event-publisher.service';
+import { ROUTING_KEYS } from '../events/events.constants';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
 import { AssignTransportDto } from './dto/assign-transport.dto';
@@ -14,6 +16,7 @@ export class AppointmentsService {
     private prisma: PrismaService,
     private cacheService: CacheService,
     private eventEmitter: EventEmitter2,
+    private eventPublisher: EventPublisherService,
     @Inject(forwardRef(() => NotificationsService))
     private notifications: NotificationsService,
   ) {}
@@ -254,6 +257,65 @@ export class AppointmentsService {
     await this.invalidateAppointmentCache(appointment.careRecipientId, id);
 
     return cancelled;
+  }
+
+  async delete(id: string, userId: string) {
+    const appointment = await this.prisma.appointment.findUnique({
+      where: { id },
+      include: {
+        careRecipient: {
+          select: { id: true, fullName: true, preferredName: true, familyId: true },
+        },
+      },
+    });
+
+    if (!appointment) {
+      throw new NotFoundException('Appointment not found');
+    }
+
+    const { membership } = await this.verifyAccess(appointment.careRecipientId, userId);
+
+    if (membership.role !== 'ADMIN') {
+      throw new ForbiddenException('Only admins can delete appointments');
+    }
+
+    // Get admin info and family members before deletion
+    const admin = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { fullName: true },
+    });
+
+    const familyMembers = await this.prisma.familyMember.findMany({
+      where: { familyId: appointment.careRecipient.familyId },
+      select: { userId: true },
+    });
+
+    // Publish event BEFORE deletion
+    await this.eventPublisher.publish(
+      ROUTING_KEYS.APPOINTMENT_DELETED,
+      {
+        appointmentId: id,
+        appointmentTitle: appointment.title,
+        careRecipientId: appointment.careRecipientId,
+        careRecipientName: appointment.careRecipient.preferredName || appointment.careRecipient.fullName,
+        familyId: appointment.careRecipient.familyId,
+        deletedById: userId,
+        deletedByName: admin?.fullName || 'Admin',
+        originalDateTime: appointment.startTime.toISOString(),
+        affectedUserIds: familyMembers.map((m) => m.userId).filter((uid) => uid !== userId),
+      },
+      { aggregateType: 'Appointment', aggregateId: id },
+      { familyId: appointment.careRecipient.familyId, careRecipientId: appointment.careRecipientId, causedBy: userId },
+    );
+
+    await this.prisma.appointment.delete({
+      where: { id },
+    });
+
+    // Invalidate cache
+    await this.invalidateAppointmentCache(appointment.careRecipientId, id);
+
+    return { success: true };
   }
 
   /**

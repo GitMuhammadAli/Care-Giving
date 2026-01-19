@@ -2,6 +2,8 @@ import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/commo
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../system/module/mail/mail.service';
 import { CacheService, CACHE_KEYS, CACHE_TTL } from '../system/module/cache';
+import { EventPublisherService } from '../events/publishers/event-publisher.service';
+import { ROUTING_KEYS } from '../events/events.constants';
 import { CreateFamilyDto } from './dto/create-family.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { randomBytes } from 'crypto';
@@ -12,6 +14,7 @@ export class FamilyService {
     private prisma: PrismaService,
     private mailService: MailService,
     private cacheService: CacheService,
+    private eventPublisher: EventPublisherService,
   ) {}
 
   async createFamily(userId: string, dto: CreateFamilyDto) {
@@ -236,9 +239,14 @@ export class FamilyService {
       }),
     ]);
 
-    // Invalidate caches
+    // Invalidate ALL related caches to ensure fresh data
+    console.log('AcceptInvitation - Invalidating caches for user:', userId, 'family:', invitation.familyId);
     await this.invalidateUserFamiliesCache(userId);
     await this.invalidateFamilyCache(invitation.familyId);
+    // Also use pattern-based invalidation for thorough cleanup
+    await this.cacheService.delPattern(`user:*${userId}*`);
+
+    console.log('AcceptInvitation - Complete. Family joined:', invitation.family.name);
 
     return family.family;
   }
@@ -311,6 +319,7 @@ export class FamilyService {
   async updateMemberRole(familyId: string, memberId: string, adminId: string, role: 'ADMIN' | 'CAREGIVER' | 'VIEWER') {
     const admin = await this.prisma.familyMember.findUnique({
       where: { familyId_userId: { familyId, userId: adminId } },
+      include: { user: { select: { fullName: true } } },
     });
 
     if (!admin || admin.role !== 'ADMIN') {
@@ -319,11 +328,14 @@ export class FamilyService {
 
     const member = await this.prisma.familyMember.findFirst({
       where: { id: memberId, familyId },
+      include: { user: { select: { id: true, fullName: true } } },
     });
 
     if (!member) {
       throw new NotFoundException('Member not found');
     }
+
+    const oldRole = member.role;
 
     // Prevent removing the last admin
     if (member.role === 'ADMIN' && role !== 'ADMIN') {
@@ -336,10 +348,33 @@ export class FamilyService {
       }
     }
 
+    const family = await this.prisma.family.findUnique({
+      where: { id: familyId },
+      select: { name: true },
+    });
+
     const result = await this.prisma.familyMember.update({
       where: { id: memberId },
       data: { role },
     });
+
+    // Publish role updated event
+    await this.eventPublisher.publish(
+      ROUTING_KEYS.FAMILY_MEMBER_ROLE_UPDATED,
+      {
+        memberId,
+        memberUserId: member.userId,
+        memberName: member.user?.fullName || 'Unknown',
+        familyId,
+        familyName: family?.name || 'Unknown',
+        oldRole,
+        newRole: role,
+        updatedById: adminId,
+        updatedByName: admin.user?.fullName || 'Admin',
+      },
+      { aggregateType: 'FamilyMember', aggregateId: memberId },
+      { familyId, causedBy: adminId },
+    );
 
     // Invalidate family cache
     await this.invalidateFamilyCache(familyId);
@@ -350,6 +385,7 @@ export class FamilyService {
   async removeMember(familyId: string, memberId: string, adminId: string) {
     const admin = await this.prisma.familyMember.findUnique({
       where: { familyId_userId: { familyId, userId: adminId } },
+      include: { user: { select: { fullName: true } } },
     });
 
     if (!admin || admin.role !== 'ADMIN') {
@@ -358,7 +394,7 @@ export class FamilyService {
 
     const member = await this.prisma.familyMember.findFirst({
       where: { id: memberId, familyId },
-      include: { user: { select: { id: true } } },
+      include: { user: { select: { id: true, fullName: true, email: true } } },
     });
 
     if (!member) {
@@ -375,9 +411,38 @@ export class FamilyService {
       }
     }
 
+    // Get family info and remaining members for notifications
+    const family = await this.prisma.family.findUnique({
+      where: { id: familyId },
+      select: { name: true },
+    });
+
+    const remainingMembers = await this.prisma.familyMember.findMany({
+      where: { familyId, id: { not: memberId } },
+      select: { userId: true },
+    });
+
     await this.prisma.familyMember.delete({
       where: { id: memberId },
     });
+
+    // Publish member removed event
+    await this.eventPublisher.publish(
+      ROUTING_KEYS.FAMILY_MEMBER_REMOVED,
+      {
+        memberId,
+        memberName: member.user?.fullName || 'Unknown',
+        memberEmail: member.user?.email || '',
+        removedUserId: member.userId,
+        familyId,
+        familyName: family?.name || 'Unknown',
+        removedById: adminId,
+        removedByName: admin.user?.fullName || 'Admin',
+        remainingMemberIds: remainingMembers.map((m) => m.userId),
+      },
+      { aggregateType: 'FamilyMember', aggregateId: memberId },
+      { familyId, causedBy: adminId },
+    );
 
     // Invalidate caches
     await this.invalidateFamilyCache(familyId);
@@ -391,6 +456,7 @@ export class FamilyService {
   async cancelInvitation(invitationId: string, adminId: string) {
     const invitation = await this.prisma.familyInvitation.findUnique({
       where: { id: invitationId },
+      include: { family: { select: { name: true } } },
     });
 
     if (!invitation) {
@@ -399,6 +465,7 @@ export class FamilyService {
 
     const admin = await this.prisma.familyMember.findUnique({
       where: { familyId_userId: { familyId: invitation.familyId, userId: adminId } },
+      include: { user: { select: { fullName: true } } },
     });
 
     if (!admin || admin.role !== 'ADMIN') {
@@ -409,6 +476,21 @@ export class FamilyService {
       where: { id: invitationId },
       data: { status: 'CANCELLED' },
     });
+
+    // Publish invitation cancelled event (for audit purposes)
+    await this.eventPublisher.publish(
+      ROUTING_KEYS.FAMILY_INVITATION_CANCELLED,
+      {
+        invitationId,
+        email: invitation.email,
+        familyId: invitation.familyId,
+        familyName: invitation.family?.name || 'Unknown',
+        cancelledById: adminId,
+        cancelledByName: admin.user?.fullName || 'Admin',
+      },
+      { aggregateType: 'FamilyInvitation', aggregateId: invitationId },
+      { familyId: invitation.familyId, causedBy: adminId },
+    );
 
     return { success: true };
   }
@@ -454,6 +536,57 @@ export class FamilyService {
     );
 
     return { success: true };
+  }
+
+  async deleteFamily(familyId: string, adminId: string) {
+    // Verify user is admin of this family
+    const admin = await this.prisma.familyMember.findUnique({
+      where: { familyId_userId: { familyId, userId: adminId } },
+      include: { user: { select: { fullName: true } } },
+    });
+
+    if (!admin || admin.role !== 'ADMIN') {
+      throw new ForbiddenException('Only admins can delete the family');
+    }
+
+    // Get family info
+    const family = await this.prisma.family.findUnique({
+      where: { id: familyId },
+      select: { name: true },
+    });
+
+    // Get all member IDs for cache invalidation and notifications
+    const members = await this.prisma.familyMember.findMany({
+      where: { familyId },
+      select: { userId: true },
+    });
+
+    // Publish family deleted event BEFORE deletion (so we have the data)
+    await this.eventPublisher.publish(
+      ROUTING_KEYS.FAMILY_DELETED,
+      {
+        familyId,
+        familyName: family?.name || 'Unknown',
+        deletedById: adminId,
+        deletedByName: admin.user?.fullName || 'Admin',
+        affectedUserIds: members.map((m) => m.userId),
+      },
+      { aggregateType: 'Family', aggregateId: familyId },
+      { familyId, causedBy: adminId },
+    );
+
+    // Delete family and all related data (cascade should handle it)
+    await this.prisma.family.delete({
+      where: { id: familyId },
+    });
+
+    // Invalidate caches for all members
+    await this.invalidateFamilyCache(familyId);
+    for (const member of members) {
+      await this.invalidateUserFamiliesCache(member.userId);
+    }
+
+    return { success: true, message: 'Family deleted successfully' };
   }
 
   // Cache invalidation helpers

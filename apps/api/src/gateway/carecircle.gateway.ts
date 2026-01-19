@@ -203,6 +203,115 @@ export class CareCircleGateway implements OnGatewayConnection, OnGatewayDisconne
     });
   }
 
+  // ============================================================================
+  // ADMIN ACTION EVENT HANDLERS
+  // These events need special handling (e.g., notifying specific users)
+  // ============================================================================
+
+  @OnEvent('family.member.removed')
+  handleFamilyMemberRemoved(payload: any) {
+    // Notify the family room
+    if (payload.familyId) {
+      this.server.to(`family:${payload.familyId}`).emit('family_member_removed', {
+        memberId: payload.memberId,
+        memberName: payload.memberName,
+        removedBy: payload.removedByName,
+      });
+    }
+
+    // Also directly notify the removed user
+    if (payload.removedUserId) {
+      this.sendToUser(payload.removedUserId, 'you_were_removed', {
+        familyId: payload.familyId,
+        familyName: payload.familyName,
+        removedBy: payload.removedByName,
+      });
+    }
+  }
+
+  @OnEvent('family.member.role_updated')
+  handleFamilyMemberRoleUpdated(payload: any) {
+    // Notify the family room
+    if (payload.familyId) {
+      this.server.to(`family:${payload.familyId}`).emit('family_member_role_updated', {
+        memberId: payload.memberId,
+        memberName: payload.memberName,
+        oldRole: payload.oldRole,
+        newRole: payload.newRole,
+        updatedBy: payload.updatedByName,
+      });
+    }
+
+    // Directly notify the affected user
+    if (payload.memberUserId) {
+      this.sendToUser(payload.memberUserId, 'your_role_changed', {
+        familyId: payload.familyId,
+        familyName: payload.familyName,
+        newRole: payload.newRole,
+        changedBy: payload.updatedByName,
+      });
+    }
+  }
+
+  @OnEvent('family.deleted')
+  handleFamilyDeleted(payload: any) {
+    // Emit to family room before it's gone
+    if (payload.familyId) {
+      this.server.to(`family:${payload.familyId}`).emit('family_deleted', {
+        familyId: payload.familyId,
+        familyName: payload.familyName,
+        deletedBy: payload.deletedByName,
+      });
+    }
+  }
+
+  @OnEvent('care_recipient.deleted')
+  handleCareRecipientDeleted(payload: any) {
+    if (payload.familyId) {
+      this.server.to(`family:${payload.familyId}`).emit('care_recipient_deleted', {
+        careRecipientId: payload.careRecipientId,
+        careRecipientName: payload.careRecipientName,
+        deletedBy: payload.deletedByName,
+      });
+    }
+  }
+
+  @OnEvent('care_recipient.updated')
+  handleCareRecipientUpdated(payload: any) {
+    if (payload.familyId) {
+      this.server.to(`family:${payload.familyId}`).emit('care_recipient_updated', {
+        careRecipientId: payload.careRecipientId,
+        careRecipientName: payload.careRecipientName,
+        changes: payload.changes,
+        updatedBy: payload.updatedByName,
+      });
+    }
+  }
+
+  @OnEvent('medication.deleted')
+  handleMedicationDeleted(payload: any) {
+    if (payload.familyId) {
+      this.server.to(`family:${payload.familyId}`).emit('medication_deleted', {
+        medicationId: payload.medicationId,
+        medicationName: payload.medicationName,
+        careRecipientName: payload.careRecipientName,
+        deletedBy: payload.deletedByName,
+      });
+    }
+  }
+
+  @OnEvent('appointment.deleted')
+  handleAppointmentDeleted(payload: any) {
+    if (payload.familyId) {
+      this.server.to(`family:${payload.familyId}`).emit('appointment_deleted', {
+        appointmentId: payload.appointmentId,
+        appointmentTitle: payload.appointmentTitle,
+        careRecipientName: payload.careRecipientName,
+        deletedBy: payload.deletedByName,
+      });
+    }
+  }
+
   // Send notification to specific user
   sendToUser(userId: string, event: string, data: any) {
     const sockets = this.userSocketMap.get(userId);

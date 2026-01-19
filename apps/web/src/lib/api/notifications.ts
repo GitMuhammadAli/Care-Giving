@@ -1,11 +1,25 @@
 import { api } from './client';
 
+export type NotificationType =
+  | 'MEDICATION_REMINDER'
+  | 'APPOINTMENT_REMINDER'
+  | 'EMERGENCY_ALERT'
+  | 'FAMILY_UPDATE'
+  | 'SYSTEM'
+  | 'CARE_RECIPIENT_DELETED'
+  | 'CARE_RECIPIENT_UPDATED'
+  | 'MEDICATION_DELETED'
+  | 'APPOINTMENT_DELETED'
+  | 'FAMILY_MEMBER_REMOVED'
+  | 'FAMILY_MEMBER_ROLE_CHANGED'
+  | 'FAMILY_DELETED';
+
 export interface Notification {
   id: string;
   userId: string;
   title: string;
   body: string;
-  type: 'MEDICATION_REMINDER' | 'APPOINTMENT_REMINDER' | 'EMERGENCY_ALERT' | 'FAMILY_UPDATE' | 'SYSTEM';
+  type: NotificationType;
   read: boolean;
   data?: Record<string, any>;
   createdAt: string;
