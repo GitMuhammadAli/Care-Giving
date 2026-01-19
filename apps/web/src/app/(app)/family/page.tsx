@@ -26,7 +26,8 @@ import {
   Trash2,
   Shield,
 } from 'lucide-react';
-import { useFamilyMembers, usePendingInvitations, useInviteMember, useResetMemberPassword, useRemoveMember, useCancelInvitation } from '@/hooks/use-family';
+import { useFamilyMembers, usePendingInvitations, useInviteMember, useResetMemberPassword, useRemoveMember, useCancelInvitation, useResendInvitation } from '@/hooks/use-family';
+import { useAuthContext } from '@/components/providers/auth-provider';
 import { toast } from 'react-hot-toast';
 
 const roleConfig = {
@@ -63,10 +64,12 @@ export default function FamilyPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Mock familyId for now - in real app, get from context or URL
-  const familyId = 'family-123';
-  const currentUserRole = 'ADMIN'; // Get from auth context
-  const currentUserId = 'u-1'; // Get from auth context
+  // Get user and family info from auth context
+  const { user } = useAuthContext();
+  const userFamily = user?.families?.[0]; // Get first family
+  const familyId = userFamily?.id || '';
+  const currentUserRole = userFamily?.role || 'VIEWER';
+  const currentUserId = user?.id || '';
 
   // Hooks
   const { data: members = [], isLoading: membersLoading } = useFamilyMembers(familyId);
@@ -75,6 +78,7 @@ export default function FamilyPage() {
   const resetPassword = useResetMemberPassword(familyId);
   const removeMember = useRemoveMember(familyId);
   const cancelInvitation = useCancelInvitation(familyId);
+  const resendInvitation = useResendInvitation(familyId);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -122,8 +126,7 @@ export default function FamilyPage() {
   };
 
   const handleResendInvitation = async (invitationId: string) => {
-    // TODO: Implement resend
-    toast.success('Invitation resent');
+    await resendInvitation.mutateAsync(invitationId);
   };
 
   const openResetPasswordModal = (member: { id: string; name: string; email: string }) => {
@@ -165,19 +168,14 @@ export default function FamilyPage() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {members.map((member, index) => {
+              {members.map((member) => {
                 const role = roleConfig[member.role as keyof typeof roleConfig];
                 const RoleIcon = role.icon;
                 const isCurrentUser = member.userId === currentUserId;
                 const isMenuOpen = openMenuId === member.id;
 
                 return (
-                  <motion.div
-                    key={member.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                  >
+                  <div key={member.id}>
                     <Card variant="interactive">
                       <div className="flex items-center gap-4">
                         <Avatar
@@ -260,7 +258,7 @@ export default function FamilyPage() {
                         </div>
                       </div>
                     </Card>
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>
@@ -294,8 +292,9 @@ export default function FamilyPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        leftIcon={<RefreshCw className="w-4 h-4" />}
+                        leftIcon={<RefreshCw className={cn("w-4 h-4", resendInvitation.isPending && "animate-spin")} />}
                         onClick={() => handleResendInvitation(invite.id)}
+                        disabled={resendInvitation.isPending || cancelInvitation.isPending}
                       >
                         Resend
                       </Button>
@@ -304,6 +303,7 @@ export default function FamilyPage() {
                         size="sm"
                         leftIcon={<X className="w-4 h-4" />}
                         onClick={() => handleCancelInvitation(invite.id)}
+                        disabled={resendInvitation.isPending || cancelInvitation.isPending}
                       >
                         Cancel
                       </Button>

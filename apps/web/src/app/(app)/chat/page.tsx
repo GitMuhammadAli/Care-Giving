@@ -1,12 +1,28 @@
 'use client';
 
 import { useState } from 'react';
-import { FamilyChat } from '@/components/chat';
+import dynamic from 'next/dynamic';
 import { PageHeader } from '@/components/layout/page-header';
 import { useFamilies } from '@/hooks/use-family';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { MessageCircle, Users, AlertCircle } from 'lucide-react';
+
+// Lazy load heavy chat component (includes stream-chat-react ~300KB)
+const FamilyChat = dynamic(
+  () => import('@/components/chat/family-chat').then((mod) => mod.FamilyChat),
+  {
+    loading: () => (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <MessageCircle className="w-12 h-12 text-text-tertiary mx-auto mb-3 animate-pulse" />
+          <p className="text-sm text-text-secondary">Loading chat...</p>
+        </div>
+      </div>
+    ),
+    ssr: false,
+  }
+);
 
 export default function ChatPage() {
   const { data: families = [], isLoading } = useFamilies();

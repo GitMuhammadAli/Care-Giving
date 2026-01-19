@@ -14,10 +14,10 @@ const config: Config = {
     },
     extend: {
       fontFamily: {
-        editorial: ['Libre Baskerville', 'Georgia', 'serif'],
-        body: ['Source Sans 3', 'system-ui', 'sans-serif'],
-        sans: ['Source Sans 3', 'system-ui', 'sans-serif'],
-        serif: ['Libre Baskerville', 'Georgia', 'serif'],
+        editorial: ['var(--font-libre-baskerville)', 'Georgia', 'serif'],
+        body: ['var(--font-source-sans-3)', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-source-sans-3)', 'system-ui', 'sans-serif'],
+        serif: ['var(--font-libre-baskerville)', 'Georgia', 'serif'],
       },
       colors: {
         border: 'hsl(var(--border))',

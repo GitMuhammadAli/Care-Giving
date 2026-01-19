@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
 export interface AvatarProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -16,6 +17,13 @@ const sizeClasses = {
   md: 'w-10 h-10 text-sm',
   lg: 'w-12 h-12 text-base',
   xl: 'w-16 h-16 text-lg',
+};
+
+const sizePixels = {
+  sm: 32,
+  md: 40,
+  lg: 48,
+  xl: 64,
 };
 
 const statusSizeClasses = {
@@ -68,9 +76,11 @@ const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
     return (
       <div ref={ref} className={cn('relative inline-flex', className)} {...props}>
         {src && !imageError ? (
-          <img
+          <Image
             src={src}
             alt={displayName}
+            width={sizePixels[size]}
+            height={sizePixels[size]}
             className={cn(
               'rounded-full object-cover',
               sizeClasses[size]

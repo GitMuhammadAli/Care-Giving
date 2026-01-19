@@ -23,7 +23,15 @@ interface AuthState {
   updateUser: (data: Partial<User>) => Promise<void>;
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
+  /**
+   * Clear auth state without calling logout API
+   * Used after password reset when backend has already invalidated sessions
+   */
+  clearAuth: () => void;
 }
+
+// Module-level promise to prevent concurrent fetchUser calls
+let fetchUserPromise: Promise<void> | null = null;
 
 export const useAuth = create<AuthState>()(
   persist(
@@ -87,40 +95,53 @@ export const useAuth = create<AuthState>()(
       logout: async () => {
         try {
           await authApi.logout();
+        } catch {
+          // Ignore logout errors - we still want to clear local state
         } finally {
+          api.clearTokens();
           // Reset sessionChecked so next login attempt will check for session
-          set({ user: null, token: null, isAuthenticated: false, sessionChecked: false });
+          set({ user: null, token: null, isAuthenticated: false, sessionChecked: false, isLoading: false });
         }
       },
 
       fetchUser: async () => {
-        const { sessionChecked } = get();
+        const { sessionChecked, isAuthenticated } = get();
 
-        // If we've already checked the session and there's no valid session, don't retry
-        // This prevents repeated 401 errors when visiting public pages
-        if (sessionChecked && !get().isAuthenticated) {
+        // If we've already checked the session, don't check again
+        if (sessionChecked) {
           set({ isLoading: false });
           return;
         }
 
-        set({ isLoading: true });
-        try {
-          // Try to refresh access token from httpOnly cookie
+        // If there's already a fetchUser in progress, wait for it
+        if (fetchUserPromise) {
+          await fetchUserPromise;
+          return;
+        }
+
+        // Create the promise for this fetch
+        fetchUserPromise = (async () => {
+          set({ isLoading: true });
           try {
+            // Try to refresh access token from httpOnly cookie
             const refreshResult = await authApi.refresh();
             set({ token: refreshResult.accessToken, sessionChecked: true });
-          } catch (refreshError) {
+
+            // Now fetch user profile with the new access token
+            const user = await authApi.getProfile();
+            set({ user, isAuthenticated: true, isLoading: false, sessionChecked: true });
+          } catch {
             // No valid refresh token (cookie expired or user not logged in)
             // Mark session as checked so we don't retry on subsequent calls
+            api.clearTokens();
             set({ user: null, token: null, isAuthenticated: false, isLoading: false, sessionChecked: true });
-            return;
           }
+        })();
 
-          // Now fetch user profile with the new access token
-          const user = await authApi.getProfile();
-          set({ user, isAuthenticated: true, isLoading: false, sessionChecked: true });
-        } catch (error) {
-          set({ user: null, token: null, isAuthenticated: false, isLoading: false, sessionChecked: true });
+        try {
+          await fetchUserPromise;
+        } finally {
+          fetchUserPromise = null;
         }
       },
 
@@ -136,6 +157,19 @@ export const useAuth = create<AuthState>()(
       setToken: (token) => {
         set({ token });
       },
+
+      clearAuth: () => {
+        // Clear tokens from API client
+        api.clearTokens();
+        // Reset state - sessionChecked true so we don't auto-refresh
+        set({
+          user: null,
+          token: null,
+          isAuthenticated: false,
+          sessionChecked: true,
+          isLoading: false,
+        });
+      },
     }),
     {
       name: 'auth-storage',
@@ -148,4 +182,3 @@ export const useAuth = create<AuthState>()(
     }
   )
 );
-

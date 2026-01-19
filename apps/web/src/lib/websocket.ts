@@ -109,25 +109,25 @@ class WebSocketClient {
 // Singleton instance
 export const wsClient = new WebSocketClient();
 
-// Event types matching backend
+// Event types matching backend - MUST match what backend emits!
 export const WS_EVENTS = {
-  // Incoming events from backend
+  // Incoming events from backend (backend uses underscores)
   EMERGENCY_ALERT: 'emergency_alert',
   EMERGENCY_RESOLVED: 'emergency_resolved',
-  MEDICATION_LOGGED: 'medication.logged',
-  MEDICATION_REMINDER: 'medication.reminder',
-  APPOINTMENT_CREATED: 'appointment.created',
-  APPOINTMENT_UPDATED: 'appointment.updated',
-  APPOINTMENT_REMINDER: 'appointment.reminder',
-  TIMELINE_ENTRY: 'timeline.entry.created',
+  MEDICATION_LOGGED: 'medication_logged',
+  MEDICATION_REMINDER: 'medication_reminder',
+  APPOINTMENT_CREATED: 'appointment_created',
+  APPOINTMENT_UPDATED: 'appointment_updated',
+  APPOINTMENT_REMINDER: 'appointment_reminder',
+  TIMELINE_ENTRY: 'timeline_entry',
   SHIFT_UPDATE: 'shift_update',
-  SHIFT_CHECKED_IN: 'shift.checkedIn',
-  SHIFT_CHECKED_OUT: 'shift.checkedOut',
+  SHIFT_CHECKED_IN: 'shift_checked_in',
+  SHIFT_CHECKED_OUT: 'shift_checked_out',
   FAMILY_MEMBER_JOINED: 'family_member_joined',
   NOTIFICATION: 'notification',
 
   // Broadcast events
-  WS_BROADCAST: 'ws.broadcast',
+  WS_BROADCAST: 'ws_broadcast',
   EMERGENCY_NOTIFICATION: 'emergency_notification',
 
   // Outgoing events

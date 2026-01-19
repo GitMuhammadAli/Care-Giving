@@ -22,16 +22,40 @@ export default function ForgotPasswordPage() {
     setIsLoading(true);
     setError('');
 
+    // Basic email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address');
+      toast.error('Please enter a valid email address');
+      setIsLoading(false);
+      return;
+    }
+
     try {
       await authApi.forgotPassword(email);
+      // Show success toast - don't reveal if email exists (security)
+      toast.success('Request received! Check your inbox.', {
+        duration: 4000,
+        icon: '📧',
+      });
       setIsSubmitted(true);
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(err.message);
-        toast.error(err.message);
+        // Rate limit or server errors - show specific message
+        if (err.status === 429) {
+          setError('Too many requests. Please wait a few minutes before trying again.');
+          toast.error('Too many requests. Please try again later.');
+        } else {
+          setError(err.message);
+          toast.error(err.message);
+        }
       } else {
         // Network or unexpected error - still show success for security
         // (don't let attackers know if the request failed)
+        toast.success('Request received! Check your inbox.', {
+          duration: 4000,
+          icon: '📧',
+        });
         setIsSubmitted(true);
       }
     } finally {
@@ -51,14 +75,29 @@ export default function ForgotPasswordPage() {
             <CheckCircle2 className="w-8 h-8 text-success" />
           </div>
           <h1 className="text-2xl font-semibold text-text-primary mb-2">Check your email</h1>
-          <p className="text-text-secondary mb-6">
-            We've sent password reset instructions to <strong>{email}</strong>
+          <p className="text-text-secondary mb-4">
+            If <strong>{email}</strong> is registered with CareCircle, you'll receive password reset instructions shortly.
           </p>
-          <Link href="/login">
-            <Button variant="secondary" size="lg" fullWidth leftIcon={<ArrowLeft className="w-5 h-5" />}>
-              Back to Sign In
-            </Button>
-          </Link>
+          <p className="text-sm text-text-tertiary mb-6">
+            Didn't receive an email? Check your spam folder or make sure you entered the email address associated with your CareCircle account.
+          </p>
+          <div className="space-y-3">
+            <Link href="/login">
+              <Button variant="primary" size="lg" fullWidth leftIcon={<ArrowLeft className="w-5 h-5" />}>
+                Back to Sign In
+              </Button>
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                setIsSubmitted(false);
+                setEmail('');
+              }}
+              className="text-sm text-text-link hover:underline"
+            >
+              Try a different email
+            </button>
+          </div>
         </Card>
       </motion.div>
     );
@@ -112,6 +151,10 @@ export default function ForgotPasswordPage() {
           >
             Send Reset Link
           </Button>
+
+          <p className="text-xs text-text-tertiary text-center mt-4">
+            For security reasons, we'll only send a reset link if the email is registered with CareCircle.
+          </p>
         </form>
 
         <div className="mt-6 pt-6 border-t border-border-subtle text-center">

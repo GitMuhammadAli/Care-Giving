@@ -1,7 +1,14 @@
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+});
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
+  experimental: {
+    instrumentationHook: true,
+  },
   images: {
     remotePatterns: [
       {
@@ -71,4 +78,4 @@ if (process.env.NODE_ENV !== 'production') {
   console.log('');
 }
 
-module.exports = nextConfig;
+module.exports = withBundleAnalyzer(nextConfig);

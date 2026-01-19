@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheService, CACHE_KEYS, CACHE_TTL } from '../system/module/cache';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
@@ -12,6 +13,7 @@ export class AppointmentsService {
   constructor(
     private prisma: PrismaService,
     private cacheService: CacheService,
+    private eventEmitter: EventEmitter2,
     @Inject(forwardRef(() => NotificationsService))
     private notifications: NotificationsService,
   ) {}
@@ -66,6 +68,9 @@ export class AppointmentsService {
 
     // Invalidate cache
     await this.invalidateAppointmentCache(careRecipientId);
+
+    // Emit event for WebSocket broadcast
+    this.eventEmitter.emit('appointment.created', appointment);
 
     return appointment;
   }
@@ -218,6 +223,9 @@ export class AppointmentsService {
 
     // Invalidate cache
     await this.invalidateAppointmentCache(appointment.careRecipientId, id);
+
+    // Emit event for WebSocket broadcast
+    this.eventEmitter.emit('appointment.updated', updated);
 
     return updated;
   }

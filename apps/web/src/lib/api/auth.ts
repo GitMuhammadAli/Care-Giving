@@ -74,7 +74,8 @@ export const authApi = {
   logout: async (): Promise<void> => {
     try {
       // Send empty body - refresh token comes from httpOnly cookie
-      await api.post('/auth/logout', {});
+      // skipAuth: true to prevent refresh attempts during logout
+      await api.post('/auth/logout', {}, { skipAuth: true });
     } finally {
       api.clearTokens();
     }
@@ -82,7 +83,8 @@ export const authApi = {
 
   refresh: async (): Promise<{ accessToken: string }> => {
     // Send empty body - refresh token comes from httpOnly cookie
-    const response = await api.post<{ accessToken: string }>('/auth/refresh', {});
+    // IMPORTANT: skipAuth prevents infinite loop - refresh shouldn't trigger another refresh on 401
+    const response = await api.post<{ accessToken: string }>('/auth/refresh', {}, { skipAuth: true });
     api.setAccessToken(response.accessToken);
     return response;
   },
@@ -95,8 +97,12 @@ export const authApi = {
     return api.patch<User>('/auth/me', data);
   },
 
-  forgotPassword: async (email: string): Promise<void> => {
-    await api.post('/auth/forgot-password', { email }, { skipAuth: true });
+  forgotPassword: async (email: string): Promise<{ message: string }> => {
+    return api.post('/auth/forgot-password', { email }, { skipAuth: true });
+  },
+
+  verifyResetToken: async (token: string): Promise<{ valid: boolean; email: string }> => {
+    return api.get(`/auth/verify-reset-token/${token}`, { skipAuth: true });
   },
 
   resetPassword: async (token: string, newPassword: string): Promise<void> => {

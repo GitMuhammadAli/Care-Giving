@@ -2,22 +2,31 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
-import { Eye, EyeOff, Lock, CheckCircle2, XCircle, ArrowLeft, Shield } from 'lucide-react';
+import { Eye, EyeOff, Lock, CheckCircle2, XCircle, ArrowLeft, Shield, Loader2 } from 'lucide-react';
 import { authApi } from '@/lib/api';
 import { ApiError } from '@/lib/api/client';
+import { useAuth } from '@/hooks/use-auth';
+
+type TokenStatus = 'verifying' | 'valid' | 'invalid' | 'missing';
 
 function ResetPasswordForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
+  const { clearAuth, isAuthenticated } = useAuth();
 
+  // Token verification state
+  const [tokenStatus, setTokenStatus] = useState<TokenStatus>(token ? 'verifying' : 'missing');
+  const [maskedEmail, setMaskedEmail] = useState<string>('');
+  const [tokenError, setTokenError] = useState<string>('');
+
+  // Form state
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -36,6 +45,36 @@ function ResetPasswordForm() {
     hasNumber: false,
     hasSpecial: false,
   });
+
+  // Verify token on mount
+  useEffect(() => {
+    if (!token) {
+      setTokenStatus('missing');
+      return;
+    }
+
+    const verifyToken = async () => {
+      try {
+        const result = await authApi.verifyResetToken(token);
+        if (result.valid) {
+          setTokenStatus('valid');
+          setMaskedEmail(result.email);
+        } else {
+          setTokenStatus('invalid');
+          setTokenError('This reset link is invalid.');
+        }
+      } catch (err) {
+        setTokenStatus('invalid');
+        if (err instanceof ApiError) {
+          setTokenError(err.message || 'Invalid or expired reset link');
+        } else {
+          setTokenError('Invalid or expired reset link');
+        }
+      }
+    };
+
+    verifyToken();
+  }, [token]);
 
   // Validate password as user types
   useEffect(() => {
@@ -58,8 +97,30 @@ function ResetPasswordForm() {
   const passwordsMatch =
     formData.password === formData.confirmPassword && formData.confirmPassword.length > 0;
 
-  // If no token, show error
-  if (!token) {
+  // Loading state - verifying token
+  if (tokenStatus === 'verifying') {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="w-full max-w-md mx-auto"
+      >
+        <Card padding="spacious" className="shadow-lg text-center">
+          <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-sage/10 flex items-center justify-center">
+            <Loader2 className="w-8 h-8 text-sage animate-spin" />
+          </div>
+          <h1 className="text-2xl font-semibold text-foreground mb-2">Verifying Link</h1>
+          <p className="text-muted-foreground">
+            Please wait while we verify your reset link...
+          </p>
+        </Card>
+      </motion.div>
+    );
+  }
+
+  // Invalid or missing token
+  if (tokenStatus === 'invalid' || tokenStatus === 'missing') {
     return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -73,7 +134,7 @@ function ResetPasswordForm() {
           </div>
           <h1 className="text-2xl font-semibold text-foreground mb-2">Invalid Reset Link</h1>
           <p className="text-muted-foreground mb-6">
-            This password reset link is invalid or has expired. Please request a new one.
+            {tokenError || 'This password reset link is invalid or has expired. Please request a new one.'}
           </p>
           <Link href="/forgot-password">
             <Button variant="primary" size="lg" fullWidth>
@@ -122,6 +183,11 @@ function ResetPasswordForm() {
     e.preventDefault();
     setError('');
 
+    if (!token) {
+      setError('Reset token is missing');
+      return;
+    }
+
     // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
@@ -140,6 +206,10 @@ function ResetPasswordForm() {
 
     try {
       await authApi.resetPassword(token, formData.password);
+      // Clear frontend auth state since backend invalidated all sessions
+      if (isAuthenticated) {
+        clearAuth();
+      }
       setIsSuccess(true);
       toast.success('Password reset successful!');
     } catch (err) {
@@ -168,6 +238,7 @@ function ResetPasswordForm() {
     </div>
   );
 
+  // Valid token - show reset form
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -181,7 +252,9 @@ function ResetPasswordForm() {
           <Shield className="w-8 h-8 text-sage" />
         </div>
         <h1 className="font-serif text-3xl md:text-4xl text-foreground mb-2">Reset Password</h1>
-        <p className="text-muted-foreground">Create a new secure password for your account</p>
+        <p className="text-muted-foreground">
+          Create a new secure password for <span className="font-medium text-foreground">{maskedEmail}</span>
+        </p>
       </div>
 
       {/* Form Card */}
@@ -269,7 +342,7 @@ function ResetPasswordForm() {
             </div>
             {formData.confirmPassword.length > 0 && (
               <p className={`text-sm ${passwordsMatch ? 'text-green-600' : 'text-destructive'}`}>
-                {passwordsMatch ? '✓ Passwords match' : '✗ Passwords do not match'}
+                {passwordsMatch ? 'Passwords match' : 'Passwords do not match'}
               </p>
             )}
           </div>
@@ -296,7 +369,7 @@ function ResetPasswordForm() {
 
       {/* Security message */}
       <p className="text-center text-sm text-muted-foreground mt-6">
-        🔒 Your password is encrypted and stored securely
+        Your password is encrypted and stored securely
       </p>
     </motion.div>
   );
@@ -319,4 +392,3 @@ export default function ResetPasswordPage() {
     </Suspense>
   );
 }
-

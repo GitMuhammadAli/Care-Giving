@@ -217,12 +217,16 @@ export class MailService {
             <div style="background: #fff; padding: 30px; border: 1px solid #E8E7E3; border-top: none; border-radius: 0 0 12px 12px;">
               <p style="font-size: 16px; color: #5C5C58;"><strong>${ctx.inviterName}</strong> has invited you to join <strong>${ctx.familyName}</strong> on CareCircle.</p>
               <a href="${ctx.inviteUrl}" style="display: inline-block; background: #2D5A4A; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">Accept Invitation</a>
+              <div style="margin-top: 25px; padding: 15px; background: #F5F5F4; border-radius: 8px;">
+                <p style="color: #5C5C58; font-size: 13px; margin: 0 0 8px 0;">Or copy and paste this link:</p>
+                <p style="color: #2D5A4A; font-size: 12px; word-break: break-all; margin: 0; font-family: monospace; background: #E8F5EF; padding: 10px; border-radius: 4px;">${ctx.inviteUrl}</p>
+              </div>
               <p style="color: #8A8A86; font-size: 14px; margin-top: 20px;">This invitation expires in 7 days.</p>
             </div>
           </body>
           </html>
         `,
-        text: `${ctx.inviterName} has invited you to join ${ctx.familyName} on CareCircle. Accept here: ${ctx.inviteUrl}`,
+        text: `${ctx.inviterName} has invited you to join ${ctx.familyName} on CareCircle.\n\nAccept here: ${ctx.inviteUrl}\n\nThis invitation expires in 7 days.`,
       }),
     };
 

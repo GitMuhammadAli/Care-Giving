@@ -108,10 +108,8 @@ class ApiClient {
           credentials: 'include', // CRITICAL: Include httpOnly cookies
         });
       } catch {
-        // Refresh failed, redirect to login
-        if (typeof window !== 'undefined') {
-          window.location.href = '/login';
-        }
+        // Refresh failed - don't hard redirect, let the app handle auth state
+        // The auth provider will update state and protected routes will redirect as needed
         throw new ApiError(401, { message: 'Session expired' });
       }
     }

@@ -17,6 +17,7 @@ export default function VerifyEmailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const emailParam = searchParams.get('email');
+  const returnUrl = searchParams.get('returnUrl');
   const { verifyEmail, resendVerification } = useAuth();
 
   const [email, setEmail] = useState(emailParam || '');
@@ -93,9 +94,10 @@ export default function VerifyEmailPage() {
       setSuccess(true);
       toast.success('Email verified successfully! Redirecting...');
 
-      // Redirect to onboarding for new users (they don't have a family yet)
+      // Redirect to returnUrl if present (e.g., invitation flow), otherwise to onboarding
       setTimeout(() => {
-        router.push('/onboarding');
+        const destination = returnUrl ? decodeURIComponent(returnUrl) : '/onboarding';
+        router.push(destination);
       }, 1500);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -172,7 +174,7 @@ export default function VerifyEmailPage() {
               Email Verified!
             </h2>
             <p className="text-muted-foreground">
-              Redirecting you to dashboard...
+              {returnUrl ? 'Redirecting you back...' : 'Redirecting to get you started...'}
             </p>
           </div>
         ) : (

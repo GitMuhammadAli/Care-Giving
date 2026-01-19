@@ -59,10 +59,11 @@ export default function AcceptInvitePage() {
     if (!isInitialized) return;
 
     if (!isAuthenticated) {
-      // Store token and redirect to login with returnUrl
+      // Store token and redirect to register (new users) with returnUrl
       localStorage.setItem('pendingInviteToken', token);
       const returnUrl = encodeURIComponent(`/accept-invite/${token}`);
-      router.push(`/login?returnUrl=${returnUrl}`);
+      // Redirect to register by default since invited users likely don't have an account
+      router.push(`/register?returnUrl=${returnUrl}&email=${encodeURIComponent(invitation?.email || '')}`);
       return;
     }
 
@@ -209,9 +210,12 @@ export default function AcceptInvitePage() {
           </div>
 
           {!isAuthenticated && (
-            <div className="bg-terracotta/10 border border-terracotta/30 rounded-lg p-4 mb-6">
-              <p className="text-sm text-foreground">
-                You&apos;ll need to sign in or create an account to accept this invitation.
+            <div className="bg-sage-100 border border-sage-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-foreground mb-2">
+                Create an account to join this care circle, or sign in if you already have one.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Invitation sent to: <strong>{invitation?.email}</strong>
               </p>
             </div>
           )}
@@ -236,8 +240,18 @@ export default function AcceptInvitePage() {
               {isProcessing ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : null}
-              {isAuthenticated ? 'Accept Invitation' : 'Sign In to Accept'}
+              {isAuthenticated ? 'Accept Invitation' : 'Create Account to Accept'}
             </Button>
+            {!isAuthenticated && (
+              <Link
+                href={`/login?returnUrl=${encodeURIComponent(`/accept-invite/${token}`)}`}
+                className="block"
+              >
+                <Button variant="secondary" size="lg" className="w-full">
+                  Already have an account? Sign In
+                </Button>
+              </Link>
+            )}
             <Button
               variant="ghost"
               size="lg"

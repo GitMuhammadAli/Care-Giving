@@ -110,7 +110,8 @@ export class AuthService {
     await this.logAudit(user.id, 'LOGIN', 'user', user.id);
 
     return {
-      tokens,
+      tokens, // Used by controller to set httpOnly cookie
+      accessToken: tokens.accessToken, // Returned to frontend
       user: this.sanitizeUser(user),
     };
   }
@@ -185,6 +186,39 @@ export class AuthService {
     await this.mailService.sendPasswordReset(user.email, token, user.fullName);
 
     return { message: 'If the email exists, a reset link has been sent' };
+  }
+
+  async verifyResetToken(token: string) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        passwordResetToken: token,
+        passwordResetExpiresAt: { gt: new Date() },
+      },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+      },
+    });
+
+    if (!user) {
+      throw new BadRequestException('Invalid or expired reset token');
+    }
+
+    // Return minimal info - just enough to show the user's masked email
+    const maskedEmail = this.maskEmail(user.email);
+    return {
+      valid: true,
+      email: maskedEmail,
+    };
+  }
+
+  private maskEmail(email: string): string {
+    const [local, domain] = email.split('@');
+    if (local.length <= 2) {
+      return `${local[0]}***@${domain}`;
+    }
+    return `${local[0]}${local[1]}***@${domain}`;
   }
 
   async resetPassword(token: string, newPassword: string) {
@@ -391,7 +425,8 @@ export class AuthService {
 
     return {
       message: 'Email verified successfully',
-      tokens,
+      tokens, // Used by controller to set httpOnly cookie
+      accessToken: tokens.accessToken, // Returned to frontend
       user: this.sanitizeUser({
         ...user,
         emailVerified: true,

@@ -83,7 +83,22 @@ async function bootstrap() {
     setupSwagger(app);
   }
 
+  // Enable graceful shutdown
+  app.enableShutdownHooks();
+
   await app.listen(port);
+
+  // Handle graceful shutdown on Windows and Unix
+  const shutdown = async (signal: string) => {
+    logger.log(`Received ${signal}, shutting down gracefully...`);
+    await app.close();
+    process.exit(0);
+  };
+
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  // Windows-specific signal
+  process.on('SIGBREAK', () => shutdown('SIGBREAK'));
 
   // Pretty startup logs
   console.log('');

@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Body,
+  Param,
   HttpCode,
   HttpStatus,
   UseGuards,
@@ -80,8 +81,11 @@ export class AuthController {
   @ApiResponse({ status: 400, description: 'Invalid or expired OTP', type: ErrorResponseDto })
   @ApiResponse({ status: 404, description: 'User not found', type: ErrorResponseDto })
   @HttpCode(HttpStatus.OK)
-  async verifyEmail(@Body() dto: VerifyEmailDto) {
-    return this.authService.verifyEmail(dto.email, dto.otp);
+  async verifyEmail(@Body() dto: VerifyEmailDto, @Res() res: Response) {
+    const result = await this.authService.verifyEmail(dto.email, dto.otp);
+    // Set httpOnly cookie for refresh token (same as login)
+    this.setTokenCookies(res, result.tokens, false);
+    return res.json(result);
   }
 
   @Post('resend-verification')
@@ -187,6 +191,16 @@ Now all protected endpoints will use this token automatically.
   @HttpCode(HttpStatus.OK)
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto.email);
+  }
+
+  @Get('verify-reset-token/:token')
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @ApiOperation({ summary: 'Verify password reset token is valid' })
+  @ApiResponse({ status: 200, description: 'Token is valid' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired token', type: ErrorResponseDto })
+  async verifyResetToken(@Param('token') token: string) {
+    return this.authService.verifyResetToken(token);
   }
 
   @Post('reset-password')

@@ -26,6 +26,9 @@ import {
   ChevronRight,
   Camera,
   Settings,
+  RefreshCw,
+  X,
+  Mail,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -40,7 +43,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 // Hooks
 import { useAuth } from '@/hooks/use-auth';
-import { useFamilyMembers, useFamilies, useInviteMember, usePendingInvitations } from '@/hooks/use-family';
+import { useFamilyMembers, useFamilies, useInviteMember, usePendingInvitations, useCancelInvitation, useResendInvitation } from '@/hooks/use-family';
 import { useActiveAlerts, useResolveAlert } from '@/hooks/use-emergency';
 import { useTimeline, useCreateTimelineEntry } from '@/hooks/use-timeline';
 import { useUpcomingAppointments, useCreateAppointment } from '@/hooks/use-appointments';
@@ -83,6 +86,8 @@ const Dashboard = () => {
   const { data: familyMembers, isLoading: membersLoading } = useFamilyMembers(familyId || '');
   const { data: pendingInvitations } = usePendingInvitations(familyId || '');
   const inviteMember = useInviteMember(familyId || '');
+  const cancelInvitation = useCancelInvitation(familyId || '');
+  const resendInvitation = useResendInvitation(familyId || '');
 
 
   // Fetch active alerts
@@ -217,7 +222,7 @@ const Dashboard = () => {
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMember.email) return;
-    
+
     // Validate familyId exists before inviting
     if (!familyId) {
       toast.error('No family found. Please create a family first.');
@@ -232,6 +237,22 @@ const Dashboard = () => {
       });
       setNewMember({ name: '', email: '', role: 'CAREGIVER' });
       setAddMemberOpen(false);
+    } catch (error) {
+      // Error handled by mutation
+    }
+  };
+
+  const handleCancelInvitation = async (invitationId: string) => {
+    try {
+      await cancelInvitation.mutateAsync(invitationId);
+    } catch (error) {
+      // Error handled by mutation
+    }
+  };
+
+  const handleResendInvitation = async (invitationId: string) => {
+    try {
+      await resendInvitation.mutateAsync(invitationId);
     } catch (error) {
       // Error handled by mutation
     }
@@ -759,41 +780,87 @@ const Dashboard = () => {
                 </Dialog>
               </div>
 
+              {/* Active Members */}
               <div className="space-y-2">
-                {circleMembers.length === 0 ? (
+                {(familyMembers || []).length === 0 && (pendingInvitations || []).length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">No circle members yet</p>
                 ) : (
-                  circleMembers.map((member) => (
-                    <div
-                      key={member.id}
-                      className="flex items-center gap-3 p-3 rounded-xl bg-background/50 hover:bg-accent/50 transition-all border border-transparent hover:border-border/50"
-                    >
-                      <div className="relative">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/25 to-secondary/15 flex items-center justify-center">
-                          <span className="text-sm font-semibold text-primary">
-                            {member.name.split(' ').map(n => n[0]).join('')}
-                          </span>
-                        </div>
-                        {member.status === 'active' && (
+                  <>
+                    {/* Active members */}
+                    {(familyMembers || []).map((member) => (
+                      <div
+                        key={member.id}
+                        className="flex items-center gap-3 p-3 rounded-xl bg-background/50 hover:bg-accent/50 transition-all border border-transparent hover:border-border/50"
+                      >
+                        <div className="relative">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/25 to-secondary/15 flex items-center justify-center">
+                            <span className="text-sm font-semibold text-primary">
+                              {(member.user?.fullName || member.user?.email || 'U').split(' ').map(n => n[0]).join('')}
+                            </span>
+                          </div>
                           <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-card" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-foreground text-sm truncate">{member.name}</p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>{member.role}</span>
-                          <span>• {member.timezone}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-foreground text-sm truncate">
+                            {member.user?.fullName || member.user?.email || 'Unknown'}
+                          </p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>{member.role === 'ADMIN' ? 'Admin' : member.role === 'CAREGIVER' ? 'Caregiver' : 'Viewer'}</span>
+                          </div>
                         </div>
                       </div>
-                      {member.status === 'pending' && (
-                        <span className="text-xs bg-secondary/20 text-secondary-foreground px-2.5 py-1 rounded-full font-medium">
-                          Pending
-                        </span>
-                      )}
-                    </div>
-                  ))
+                    ))}
+                  </>
                 )}
               </div>
+
+              {/* Pending Invitations */}
+              {(pendingInvitations || []).length > 0 && (
+                <div className="mt-4 pt-4 border-t border-border/50">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Mail className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Pending Invitations ({pendingInvitations?.length})
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {pendingInvitations?.map((invitation) => (
+                      <div
+                        key={invitation.id}
+                        className="flex items-center gap-3 p-3 rounded-xl bg-secondary/10 border border-secondary/20"
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-secondary/20 flex items-center justify-center">
+                          <Mail className="w-4 h-4 text-secondary-foreground" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-foreground text-sm truncate">{invitation.email}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {invitation.role === 'ADMIN' ? 'Admin' : invitation.role === 'CAREGIVER' ? 'Caregiver' : 'Viewer'}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleResendInvitation(invitation.id)}
+                            disabled={resendInvitation.isPending}
+                            className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors"
+                            title="Resend invitation"
+                          >
+                            <RefreshCw className={`w-4 h-4 ${resendInvitation.isPending ? 'animate-spin' : ''}`} />
+                          </button>
+                          <button
+                            onClick={() => handleCancelInvitation(invitation.id)}
+                            disabled={cancelInvitation.isPending}
+                            className="p-1.5 rounded-lg hover:bg-destructive/10 text-destructive transition-colors"
+                            title="Cancel invitation"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

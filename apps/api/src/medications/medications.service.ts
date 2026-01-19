@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheService, CACHE_KEYS, CACHE_TTL } from '../system/module/cache';
 import { CreateMedicationDto } from './dto/create-medication.dto';
@@ -10,6 +11,7 @@ export class MedicationsService {
   constructor(
     private prisma: PrismaService,
     private cacheService: CacheService,
+    private eventEmitter: EventEmitter2,
     @Inject(forwardRef(() => NotificationsService))
     private notifications: NotificationsService,
   ) {}
@@ -253,6 +255,13 @@ export class MedicationsService {
         );
       }
     }
+
+    // Emit event for WebSocket broadcast
+    this.eventEmitter.emit('medication.logged', {
+      log,
+      medication,
+      loggedBy: log.givenBy,
+    });
 
     return log;
   }

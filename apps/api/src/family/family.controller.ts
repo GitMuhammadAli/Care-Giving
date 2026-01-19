@@ -86,6 +86,10 @@ export class FamilyController {
   }
 
   @Patch(':familyId/members/:memberId/role')
+  @ApiOperation({ summary: 'Update member role (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Member role updated successfully' })
+  @ApiResponse({ status: 403, description: 'Only admins can update member roles' })
+  @ApiResponse({ status: 404, description: 'Member not found' })
   updateMemberRole(
     @Param('familyId') familyId: string,
     @Param('memberId') memberId: string,
@@ -96,6 +100,10 @@ export class FamilyController {
   }
 
   @Delete(':familyId/members/:memberId')
+  @ApiOperation({ summary: 'Remove member from family (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Member removed successfully' })
+  @ApiResponse({ status: 403, description: 'Only admins can remove members' })
+  @ApiResponse({ status: 404, description: 'Member not found' })
   removeMember(
     @Param('familyId') familyId: string,
     @Param('memberId') memberId: string,
@@ -105,6 +113,10 @@ export class FamilyController {
   }
 
   @Delete('invitations/:invitationId')
+  @ApiOperation({ summary: 'Cancel pending invitation (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Invitation cancelled successfully' })
+  @ApiResponse({ status: 403, description: 'Only admins can cancel invitations' })
+  @ApiResponse({ status: 404, description: 'Invitation not found' })
   cancelInvitation(
     @Param('invitationId') invitationId: string,
     @CurrentUser() user: CurrentUserPayload,
@@ -113,6 +125,10 @@ export class FamilyController {
   }
 
   @Post('invitations/:invitationId/resend')
+  @ApiOperation({ summary: 'Resend invitation email (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Invitation resent successfully' })
+  @ApiResponse({ status: 403, description: 'Only admins can resend invitations' })
+  @ApiResponse({ status: 404, description: 'Invitation not found' })
   resendInvitation(
     @Param('invitationId') invitationId: string,
     @CurrentUser() user: CurrentUserPayload,

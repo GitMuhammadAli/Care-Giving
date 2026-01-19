@@ -121,6 +121,21 @@ export function useCancelInvitation(familyId: string) {
   });
 }
 
+export function useResendInvitation(familyId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (invitationId: string) => familyApi.resendInvitation(familyId, invitationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['families', familyId] });
+      toast.success('Invitation resent');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to resend invitation');
+    },
+  });
+}
+
 export function useAcceptInvitation() {
   const queryClient = useQueryClient();
 

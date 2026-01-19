@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
@@ -23,7 +23,13 @@ const benefits = [
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { register } = useAuth();
+
+  // Get email and returnUrl from query params (for invitation flow)
+  const emailParam = searchParams.get('email');
+  const returnUrl = searchParams.get('returnUrl');
+
   const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -31,9 +37,16 @@ export default function RegisterPage() {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    email: '',
+    email: emailParam || '',
     password: '',
   });
+
+  // Update email if param changes (e.g., after client-side navigation)
+  useEffect(() => {
+    if (emailParam && !formData.email) {
+      setFormData(prev => ({ ...prev, email: emailParam }));
+    }
+  }, [emailParam]);
 
   const passwordStrength = useMemo(() => {
     const { password } = formData;
@@ -75,8 +88,11 @@ export default function RegisterPage() {
       });
       // Show success toast
       toast.success('Account created! Please check your email to verify your account.');
-      // Redirect to email verification page
-      router.push(`/verify-email?email=${encodeURIComponent(formData.email)}`);
+      // Redirect to email verification page, passing returnUrl if present (for invitation flow)
+      const verifyUrl = returnUrl
+        ? `/verify-email?email=${encodeURIComponent(formData.email)}&returnUrl=${encodeURIComponent(returnUrl)}`
+        : `/verify-email?email=${encodeURIComponent(formData.email)}`;
+      router.push(verifyUrl);
     } catch (err) {
       if (err instanceof ApiError) {
         const errorMsg = err.message || 'Failed to create account. Please try again.';
