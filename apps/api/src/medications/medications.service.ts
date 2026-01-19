@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CacheService, CACHE_KEYS, CACHE_TTL } from '../system/module/cache';
 import { CreateMedicationDto } from './dto/create-medication.dto';
 import { LogMedicationDto } from './dto/log-medication.dto';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -8,6 +9,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 export class MedicationsService {
   constructor(
     private prisma: PrismaService,
+    private cacheService: CacheService,
     @Inject(forwardRef(() => NotificationsService))
     private notifications: NotificationsService,
   ) {}
@@ -39,7 +41,7 @@ export class MedicationsService {
       throw new ForbiddenException('Viewers cannot add medications');
     }
 
-    return this.prisma.medication.create({
+    const medication = await this.prisma.medication.create({
       data: {
         careRecipientId,
         name: dto.name,
@@ -60,36 +62,57 @@ export class MedicationsService {
         notes: dto.notes,
       },
     });
+
+    // Invalidate cache
+    await this.invalidateMedicationCache(careRecipientId);
+
+    return medication;
   }
 
   async findAll(careRecipientId: string, userId: string, activeOnly: boolean = true) {
     await this.verifyAccess(careRecipientId, userId);
 
-    return this.prisma.medication.findMany({
-      where: {
-        careRecipientId,
-        ...(activeOnly && { isActive: true }),
-      },
-      orderBy: [{ isActive: 'desc' }, { name: 'asc' }],
-    });
+    const cacheKey = CACHE_KEYS.MEDICATIONS(careRecipientId);
+
+    return this.cacheService.getOrSet(
+      cacheKey,
+      () =>
+        this.prisma.medication.findMany({
+          where: {
+            careRecipientId,
+            ...(activeOnly && { isActive: true }),
+          },
+          orderBy: [{ isActive: 'desc' }, { name: 'asc' }],
+        }),
+      CACHE_TTL.MEDICATIONS,
+    );
   }
 
   async findOne(id: string, userId: string) {
-    const medication = await this.prisma.medication.findUnique({
-      where: { id },
-      include: {
-        careRecipient: true,
-        logs: {
-          orderBy: { scheduledTime: 'desc' },
-          take: 10,
+    const cacheKey = CACHE_KEYS.MEDICATION(id);
+
+    const medication = await this.cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const med = await this.prisma.medication.findUnique({
+          where: { id },
           include: {
-            givenBy: {
-              select: { id: true, fullName: true },
+            careRecipient: true,
+            logs: {
+              orderBy: { scheduledTime: 'desc' },
+              take: 10,
+              include: {
+                givenBy: {
+                  select: { id: true, fullName: true },
+                },
+              },
             },
           },
-        },
+        });
+        return med;
       },
-    });
+      CACHE_TTL.MEDICATION,
+    );
 
     if (!medication) {
       throw new NotFoundException('Medication not found');
@@ -115,7 +138,7 @@ export class MedicationsService {
       throw new ForbiddenException('Viewers cannot update medications');
     }
 
-    return this.prisma.medication.update({
+    const updated = await this.prisma.medication.update({
       where: { id },
       data: {
         name: dto.name,
@@ -135,6 +158,11 @@ export class MedicationsService {
         notes: dto.notes,
       },
     });
+
+    // Invalidate cache
+    await this.invalidateMedicationCache(medication.careRecipientId, id);
+
+    return updated;
   }
 
   async deactivate(id: string, userId: string) {
@@ -152,10 +180,26 @@ export class MedicationsService {
       throw new ForbiddenException('Viewers cannot deactivate medications');
     }
 
-    return this.prisma.medication.update({
+    const updated = await this.prisma.medication.update({
       where: { id },
       data: { isActive: false, endDate: new Date() },
     });
+
+    // Invalidate cache
+    await this.invalidateMedicationCache(medication.careRecipientId, id);
+
+    return updated;
+  }
+
+  /**
+   * Invalidate medication caches
+   */
+  private async invalidateMedicationCache(careRecipientId: string, medicationId?: string): Promise<void> {
+    const keys = [CACHE_KEYS.MEDICATIONS(careRecipientId)];
+    if (medicationId) {
+      keys.push(CACHE_KEYS.MEDICATION(medicationId));
+    }
+    await this.cacheService.del(keys);
   }
 
   async logMedication(id: string, userId: string, dto: LogMedicationDto) {

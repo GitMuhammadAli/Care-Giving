@@ -22,7 +22,7 @@ interface CurrentUserPayload {
 }
 
 @ApiTags("Appointments")
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @Controller("care-recipients/:careRecipientId/appointments")
 export class AppointmentsController {
   constructor(private readonly appointmentsService: AppointmentsService) {}

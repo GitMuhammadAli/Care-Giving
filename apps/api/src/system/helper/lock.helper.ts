@@ -1,29 +1,40 @@
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import Redis from 'ioredis';
+import { REDIS_CLIENT, isRedisReady } from '../module/cache/redis.provider';
 
 @Injectable()
 export class LockHelper {
-  private redis: Redis;
+  private readonly logger = new Logger(LockHelper.name);
   private readonly LOCK_PREFIX = 'lock:';
 
-  constructor(private configService: ConfigService) {
-    this.redis = new Redis({
-      host: this.configService.get('redis.host'),
-      port: this.configService.get('redis.port'),
-      password: this.configService.get('redis.password'),
-    });
+  constructor(@Inject(REDIS_CLIENT) private readonly redis: Redis | null) {
+    if (isRedisReady(this.redis)) {
+      this.logger.log('LockHelper using shared Redis connection');
+    } else {
+      this.logger.warn('LockHelper disabled (Redis unavailable) - locks will be no-ops');
+    }
+  }
+
+  private isRedisAvailable(): boolean {
+    return isRedisReady(this.redis);
   }
 
   async acquire(key: string, ttlSeconds = 30): Promise<boolean> {
+    if (!this.isRedisAvailable()) {
+      // In development without Redis, always return true (no locking)
+      return true;
+    }
     const lockKey = `${this.LOCK_PREFIX}${key}`;
-    const result = await this.redis.set(lockKey, '1', 'EX', ttlSeconds, 'NX');
+    const result = await this.redis!.set(lockKey, '1', 'EX', ttlSeconds, 'NX');
     return result === 'OK';
   }
 
   async release(key: string): Promise<void> {
+    if (!this.isRedisAvailable()) {
+      return;
+    }
     const lockKey = `${this.LOCK_PREFIX}${key}`;
-    await this.redis.del(lockKey);
+    await this.redis!.del(lockKey);
   }
 
   async withLock<T>(
@@ -31,6 +42,11 @@ export class LockHelper {
     fn: () => Promise<T>,
     options: { ttlSeconds?: number; waitMs?: number; maxAttempts?: number } = {}
   ): Promise<T> {
+    if (!this.isRedisAvailable()) {
+      // In development without Redis, just run the function (no locking)
+      return fn();
+    }
+
     const { ttlSeconds = 30, waitMs = 100, maxAttempts = 50 } = options;
     
     let attempts = 0;

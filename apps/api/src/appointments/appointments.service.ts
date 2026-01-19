@@ -1,15 +1,17 @@
 import { Injectable, NotFoundException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CacheService, CACHE_KEYS, CACHE_TTL } from '../system/module/cache';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
 import { AssignTransportDto } from './dto/assign-transport.dto';
 import { NotificationsService } from '../notifications/notifications.service';
-import { addMonths, startOfDay, endOfDay } from 'date-fns';
+import { addMonths, startOfDay, endOfDay, format } from 'date-fns';
 
 @Injectable()
 export class AppointmentsService {
   constructor(
     private prisma: PrismaService,
+    private cacheService: CacheService,
     @Inject(forwardRef(() => NotificationsService))
     private notifications: NotificationsService,
   ) {}
@@ -41,7 +43,7 @@ export class AppointmentsService {
       throw new ForbiddenException('Viewers cannot create appointments');
     }
 
-    return this.prisma.appointment.create({
+    const appointment = await this.prisma.appointment.create({
       data: {
         careRecipientId,
         doctorId: dto.doctorId,
@@ -61,6 +63,11 @@ export class AppointmentsService {
         transportAssignment: true,
       },
     });
+
+    // Invalidate cache
+    await this.invalidateAppointmentCache(careRecipientId);
+
+    return appointment;
   }
 
   async findAll(careRecipientId: string, userId: string, options?: {
@@ -99,48 +106,71 @@ export class AppointmentsService {
   async findUpcoming(careRecipientId: string, userId: string, days: number = 30) {
     await this.verifyAccess(careRecipientId, userId);
 
-    const now = new Date();
-    const endDate = addMonths(now, 1);
+    const cacheKey = CACHE_KEYS.APPOINTMENTS_UPCOMING(careRecipientId);
 
-    return this.prisma.appointment.findMany({
-      where: {
-        careRecipientId,
-        startTime: { gte: now, lte: endDate },
-        status: { in: ['SCHEDULED', 'CONFIRMED'] },
+    return this.cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const now = new Date();
+        const endDate = addMonths(now, 1);
+
+        return this.prisma.appointment.findMany({
+          where: {
+            careRecipientId,
+            startTime: { gte: now, lte: endDate },
+            status: { in: ['SCHEDULED', 'CONFIRMED'] },
+          },
+          include: {
+            doctor: true,
+            transportAssignment: true,
+          },
+          orderBy: { startTime: 'asc' },
+        });
       },
-      include: {
-        doctor: true,
-        transportAssignment: true,
-      },
-      orderBy: { startTime: 'asc' },
-    });
+      CACHE_TTL.APPOINTMENTS_UPCOMING,
+    );
   }
 
   async findForDay(careRecipientId: string, userId: string, date: Date) {
     await this.verifyAccess(careRecipientId, userId);
 
-    return this.prisma.appointment.findMany({
-      where: {
-        careRecipientId,
-        startTime: { gte: startOfDay(date), lte: endOfDay(date) },
-      },
-      include: {
-        doctor: true,
-        transportAssignment: true,
-      },
-      orderBy: { startTime: 'asc' },
-    });
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const cacheKey = CACHE_KEYS.APPOINTMENTS_DAY(careRecipientId, dateStr);
+
+    return this.cacheService.getOrSet(
+      cacheKey,
+      () =>
+        this.prisma.appointment.findMany({
+          where: {
+            careRecipientId,
+            startTime: { gte: startOfDay(date), lte: endOfDay(date) },
+          },
+          include: {
+            doctor: true,
+            transportAssignment: true,
+          },
+          orderBy: { startTime: 'asc' },
+        }),
+      CACHE_TTL.APPOINTMENTS_DAY,
+    );
   }
 
   async findOne(id: string, userId: string) {
-    const appointment = await this.prisma.appointment.findUnique({
-      where: { id },
-      include: {
-        careRecipient: true,
-        doctor: true,
-        transportAssignment: true,
-      },
-    });
+    const cacheKey = CACHE_KEYS.APPOINTMENT(id);
+
+    const appointment = await this.cacheService.getOrSet(
+      cacheKey,
+      () =>
+        this.prisma.appointment.findUnique({
+          where: { id },
+          include: {
+            careRecipient: true,
+            doctor: true,
+            transportAssignment: true,
+          },
+        }),
+      CACHE_TTL.APPOINTMENT,
+    );
 
     if (!appointment) {
       throw new NotFoundException('Appointment not found');
@@ -166,7 +196,7 @@ export class AppointmentsService {
       throw new ForbiddenException('Viewers cannot update appointments');
     }
 
-    return this.prisma.appointment.update({
+    const updated = await this.prisma.appointment.update({
       where: { id },
       data: {
         doctorId: dto.doctorId,
@@ -185,6 +215,11 @@ export class AppointmentsService {
         transportAssignment: true,
       },
     });
+
+    // Invalidate cache
+    await this.invalidateAppointmentCache(appointment.careRecipientId, id);
+
+    return updated;
   }
 
   async cancel(id: string, userId: string) {
@@ -202,10 +237,28 @@ export class AppointmentsService {
       throw new ForbiddenException('Viewers cannot cancel appointments');
     }
 
-    return this.prisma.appointment.update({
+    const cancelled = await this.prisma.appointment.update({
       where: { id },
       data: { status: 'CANCELLED' },
     });
+
+    // Invalidate cache
+    await this.invalidateAppointmentCache(appointment.careRecipientId, id);
+
+    return cancelled;
+  }
+
+  /**
+   * Invalidate appointment caches
+   */
+  private async invalidateAppointmentCache(careRecipientId: string, appointmentId?: string): Promise<void> {
+    const keys = [CACHE_KEYS.APPOINTMENTS_UPCOMING(careRecipientId)];
+    if (appointmentId) {
+      keys.push(CACHE_KEYS.APPOINTMENT(appointmentId));
+    }
+    await this.cacheService.del(keys);
+    // Also invalidate day cache patterns
+    await this.cacheService.delPattern(`recipient:appointments:${careRecipientId}:*`);
   }
 
   async assignTransport(id: string, userId: string, dto: AssignTransportDto) {

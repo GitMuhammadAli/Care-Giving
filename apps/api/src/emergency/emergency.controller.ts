@@ -19,7 +19,7 @@ interface CurrentUserPayload {
 }
 
 @ApiTags('Emergency')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @Controller('care-recipients/:careRecipientId/emergency')
 export class EmergencyController {
   constructor(private readonly emergencyService: EmergencyService) {}

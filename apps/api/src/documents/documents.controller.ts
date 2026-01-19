@@ -21,7 +21,7 @@ interface CurrentUserPayload {
 }
 
 @ApiTags('Documents')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @Controller('families/:familyId/documents')
 export class DocumentsController {
   constructor(private readonly documentsService: DocumentsService) {}

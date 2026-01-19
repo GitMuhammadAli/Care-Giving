@@ -19,7 +19,7 @@ interface CurrentUserPayload {
 }
 
 @ApiTags('Notifications')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @Controller('notifications')
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}

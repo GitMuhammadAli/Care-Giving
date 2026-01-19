@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CacheService, CACHE_KEYS, CACHE_TTL } from '../system/module/cache';
 import { CreateEmergencyAlertDto } from './dto/create-emergency-alert.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 
@@ -7,6 +8,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 export class EmergencyService {
   constructor(
     private prisma: PrismaService,
+    private cacheService: CacheService,
     @Inject(forwardRef(() => NotificationsService))
     private notifications: NotificationsService,
   ) {}
@@ -34,6 +36,16 @@ export class EmergencyService {
   async getEmergencyInfo(careRecipientId: string, userId: string) {
     await this.verifyAccess(careRecipientId, userId);
 
+    const cacheKey = CACHE_KEYS.EMERGENCY_INFO(careRecipientId);
+
+    return this.cacheService.getOrSet(
+      cacheKey,
+      async () => this.fetchEmergencyInfo(careRecipientId),
+      CACHE_TTL.EMERGENCY_INFO,
+    );
+  }
+
+  private async fetchEmergencyInfo(careRecipientId: string) {
     const fullInfo = await this.prisma.careRecipient.findUnique({
       where: { id: careRecipientId },
       include: {
@@ -222,4 +234,5 @@ export class EmergencyService {
     });
   }
 }
+
 

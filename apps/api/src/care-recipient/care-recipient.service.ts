@@ -1,12 +1,16 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CacheService, CACHE_KEYS, CACHE_TTL } from '../system/module/cache';
 import { CreateCareRecipientDto } from './dto/create-care-recipient.dto';
 import { CreateDoctorDto } from './dto/create-doctor.dto';
 import { CreateEmergencyContactDto } from './dto/create-emergency-contact.dto';
 
 @Injectable()
 export class CareRecipientService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private cacheService: CacheService,
+  ) {}
 
   private async verifyFamilyAccess(familyId: string, userId: string) {
     const membership = await this.prisma.familyMember.findUnique({
@@ -69,38 +73,52 @@ export class CareRecipientService {
   async findAll(familyId: string, userId: string) {
     await this.verifyFamilyAccess(familyId, userId);
 
-    return this.prisma.careRecipient.findMany({
-      where: { familyId },
-      include: {
-        _count: {
-          select: {
-            medications: { where: { isActive: true } },
-            appointments: { where: { status: 'SCHEDULED' } },
-            doctors: true,
+    const cacheKey = CACHE_KEYS.CARE_RECIPIENTS(familyId);
+
+    return this.cacheService.getOrSet(
+      cacheKey,
+      () =>
+        this.prisma.careRecipient.findMany({
+          where: { familyId },
+          include: {
+            _count: {
+              select: {
+                medications: { where: { isActive: true } },
+                appointments: { where: { status: 'SCHEDULED' } },
+                doctors: true,
+              },
+            },
           },
-        },
-      },
-      orderBy: { fullName: 'asc' },
-    });
+          orderBy: { fullName: 'asc' },
+        }),
+      CACHE_TTL.CARE_RECIPIENT,
+    );
   }
 
   async findOne(id: string, userId: string) {
     await this.verifyCareRecipientAccess(id, userId);
 
-    return this.prisma.careRecipient.findUnique({
-      where: { id },
-      include: {
-        doctors: true,
-        emergencyContacts: { orderBy: { isPrimary: 'desc' } },
-        medications: { where: { isActive: true } },
-        _count: {
-          select: {
-            appointments: { where: { status: 'SCHEDULED' } },
-            timelineEntries: true,
+    const cacheKey = CACHE_KEYS.CARE_RECIPIENT(id);
+
+    return this.cacheService.getOrSet(
+      cacheKey,
+      () =>
+        this.prisma.careRecipient.findUnique({
+          where: { id },
+          include: {
+            doctors: true,
+            emergencyContacts: { orderBy: { isPrimary: 'desc' } },
+            medications: { where: { isActive: true } },
+            _count: {
+              select: {
+                appointments: { where: { status: 'SCHEDULED' } },
+                timelineEntries: true,
+              },
+            },
           },
-        },
-      },
-    });
+        }),
+      CACHE_TTL.CARE_RECIPIENT,
+    );
   }
 
   async update(id: string, userId: string, dto: Partial<CreateCareRecipientDto>) {

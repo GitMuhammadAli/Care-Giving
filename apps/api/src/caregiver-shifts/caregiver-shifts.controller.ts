@@ -20,7 +20,7 @@ interface CurrentUserPayload {
 }
 
 @ApiTags('Caregiver Shifts')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @Controller('care-recipients/:careRecipientId/shifts')
 export class CaregiverShiftsController {
   constructor(private readonly shiftsService: CaregiverShiftsService) {}
@@ -102,7 +102,7 @@ export class CaregiverShiftsController {
 }
 
 @ApiTags('My Shifts')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @Controller('my-shifts')
 export class MyShiftsController {
   constructor(private readonly shiftsService: CaregiverShiftsService) {}

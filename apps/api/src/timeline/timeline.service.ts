@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CacheService, CACHE_KEYS, CACHE_TTL } from '../system/module/cache';
 import { CreateTimelineEntryDto } from './dto/create-timeline-entry.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 
@@ -7,6 +8,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 export class TimelineService {
   constructor(
     private prisma: PrismaService,
+    private cacheService: CacheService,
     @Inject(forwardRef(() => NotificationsService))
     private notifications: NotificationsService,
   ) {}
@@ -65,6 +67,9 @@ export class TimelineService {
         entry,
       );
     }
+
+    // Invalidate cache
+    await this.invalidateTimelineCache(careRecipientId);
 
     return entry;
   }
@@ -193,17 +198,35 @@ export class TimelineService {
   async getRecentVitals(careRecipientId: string, userId: string, days: number = 7) {
     await this.verifyAccess(careRecipientId, userId);
 
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
+    const cacheKey = CACHE_KEYS.VITALS_RECENT(careRecipientId, days);
 
-    return this.prisma.timelineEntry.findMany({
-      where: {
-        careRecipientId,
-        type: 'VITALS',
-        occurredAt: { gte: startDate },
+    return this.cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
+
+        return this.prisma.timelineEntry.findMany({
+          where: {
+            careRecipientId,
+            type: 'VITALS',
+            occurredAt: { gte: startDate },
+          },
+          orderBy: { occurredAt: 'desc' },
+        });
       },
-      orderBy: { occurredAt: 'desc' },
-    });
+      CACHE_TTL.VITALS,
+    );
+  }
+
+  /**
+   * Invalidate timeline caches
+   */
+  private async invalidateTimelineCache(careRecipientId: string): Promise<void> {
+    await this.cacheService.del(CACHE_KEYS.TIMELINE_RECENT(careRecipientId));
+    // Also invalidate vitals cache patterns
+    await this.cacheService.delPattern(`recipient:vitals:${careRecipientId}:*`);
   }
 }
+
 

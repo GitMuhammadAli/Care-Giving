@@ -1,63 +1,33 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import * as crypto from 'crypto';
+import { REDIS_CLIENT, isRedisReady } from '../module/cache/redis.provider';
 
 @Injectable()
 export class OtpHelper {
   private readonly logger = new Logger(OtpHelper.name);
-  private redis: Redis;
   private readonly OTP_PREFIX = 'otp:';
   private readonly expiresIn: number;
-  private redisConnected = false;
   // In-memory fallback for development when Redis is unavailable
   private inMemoryStore = new Map<string, { otp: string; expiresAt: number }>();
 
-  constructor(private configService: ConfigService) {
-    const redisConfig = this.configService.get('redis');
-    const host = redisConfig?.host || 'localhost';
-    const port = redisConfig?.port || 6379;
-    const password = redisConfig?.password;
-    const useTls = redisConfig?.tls === true;
-
-    const ioredisConfig: any = {
-      host,
-      port,
-      maxRetriesPerRequest: 3,
-      retryStrategy: (times: number) => {
-        if (times > 3) {
-          this.logger.warn('Redis connection failed, falling back to in-memory OTP storage');
-          return null;
-        }
-        return Math.min(times * 200, 1000);
-      },
-    };
-
-    // Only add password if it's set and not empty
-    if (password && password.trim() !== '') {
-      ioredisConfig.password = password;
-    }
-
-    // Add TLS if configured
-    if (useTls) {
-      ioredisConfig.tls = {};
-    }
-
-    this.logger.log(`Connecting to Redis at ${host}:${port} (TLS: ${useTls})`);
-    this.redis = new Redis(ioredisConfig);
-
-    this.redis.on('connect', () => {
-      this.redisConnected = true;
-      this.logger.log('Redis connected');
-    });
-
-    this.redis.on('error', (err) => {
-      this.redisConnected = false;
-      this.logger.warn(`Redis error: ${err.message}`);
-    });
-
+  constructor(
+    @Inject(REDIS_CLIENT) private readonly redis: Redis | null,
+    private configService: ConfigService,
+  ) {
     const securityConfig = this.configService.get('security');
     this.expiresIn = securityConfig?.otpExpiresIn || 300;
+
+    if (this.isRedisAvailable()) {
+      this.logger.log('OtpHelper using shared Redis connection');
+    } else {
+      this.logger.warn('OtpHelper using in-memory storage (Redis unavailable)');
+    }
+  }
+
+  private isRedisAvailable(): boolean {
+    return isRedisReady(this.redis);
   }
 
   async generate(identifier: string, purpose: string): Promise<string> {
@@ -65,11 +35,11 @@ export class OtpHelper {
     const key = `${this.OTP_PREFIX}${purpose}:${identifier}`;
 
     try {
-      if (this.redisConnected) {
-        await this.redis.setex(key, this.expiresIn, otp);
+      if (this.isRedisAvailable()) {
+        await this.redis!.setex(key, this.expiresIn, otp);
         this.logger.debug(`OTP stored in Redis for ${identifier}`);
       } else {
-        throw new Error('Redis not connected');
+        throw new Error('Redis not available');
       }
     } catch {
       // Fallback to in-memory storage
@@ -87,18 +57,18 @@ export class OtpHelper {
     const key = `${this.OTP_PREFIX}${purpose}:${identifier}`;
 
     try {
-      if (this.redisConnected) {
-        const storedOtp = await this.redis.get(key);
+      if (this.isRedisAvailable()) {
+        const storedOtp = await this.redis!.get(key);
 
         if (!storedOtp || storedOtp !== otp) {
           return false;
         }
 
         // Delete OTP after successful verification
-        await this.redis.del(key);
+        await this.redis!.del(key);
         return true;
       } else {
-        throw new Error('Redis not connected');
+        throw new Error('Redis not available');
       }
     } catch {
       // Fallback to in-memory storage
@@ -115,10 +85,10 @@ export class OtpHelper {
     const key = `${this.OTP_PREFIX}${purpose}:${identifier}`;
 
     try {
-      if (this.redisConnected) {
-        await this.redis.del(key);
+      if (this.isRedisAvailable()) {
+        await this.redis!.del(key);
       } else {
-        throw new Error('Redis not connected');
+        throw new Error('Redis not available');
       }
     } catch {
       this.inMemoryStore.delete(key);

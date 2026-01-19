@@ -15,6 +15,7 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiBody,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
@@ -26,6 +27,15 @@ import { LoginDto } from '../dto/login.dto';
 import { RefreshTokenDto } from '../dto/refresh-token.dto';
 import { VerifyEmailDto, ResendVerificationDto } from '../dto/verify-email.dto';
 import { ForgotPasswordDto, ResetPasswordDto, ChangePasswordDto } from '../dto/password-reset.dto';
+import {
+  LoginResponseDto,
+  RegisterResponseDto,
+  VerifyEmailResponseDto,
+  MessageResponseDto,
+  ErrorResponseDto,
+  AuthUserDto,
+  TokensDto,
+} from '../dto/auth-response.dto';
 
 import { Public } from '../../system/decorator/public.decorator';
 import { JwtAuthGuard } from '../../system/guard/jwt-auth.guard';
@@ -48,9 +58,13 @@ export class AuthController {
   @Post('register')
   @Public()
   @Throttle({ default: { limit: 5, ttl: 60000 } })
-  @ApiOperation({ summary: 'Register a new user' })
-  @ApiResponse({ status: 201, description: 'User registered successfully' })
-  @ApiResponse({ status: 409, description: 'Email already registered' })
+  @ApiOperation({
+    summary: 'Register a new user',
+    description: 'Creates a new user account. An email verification OTP will be sent to the provided email.',
+  })
+  @ApiResponse({ status: 201, description: 'User registered successfully', type: RegisterResponseDto })
+  @ApiResponse({ status: 409, description: 'Email already registered', type: ErrorResponseDto })
+  @ApiResponse({ status: 400, description: 'Validation error', type: ErrorResponseDto })
   async register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
@@ -58,10 +72,15 @@ export class AuthController {
   @Post('verify-email')
   @Public()
   @Throttle({ default: { limit: 5, ttl: 60000 } })
-  @ApiOperation({ summary: 'Verify email with OTP' })
+  @ApiOperation({
+    summary: 'Verify email with OTP',
+    description: 'Verifies user email with the 6-digit OTP sent during registration. Returns tokens for automatic login.',
+  })
+  @ApiResponse({ status: 200, description: 'Email verified successfully', type: VerifyEmailResponseDto })
+  @ApiResponse({ status: 400, description: 'Invalid or expired OTP', type: ErrorResponseDto })
+  @ApiResponse({ status: 404, description: 'User not found', type: ErrorResponseDto })
   @HttpCode(HttpStatus.OK)
   async verifyEmail(@Body() dto: VerifyEmailDto) {
-    // Email verification is currently a stub - returns error
     return this.authService.verifyEmail(dto.email, dto.otp);
   }
 
@@ -77,7 +96,31 @@ export class AuthController {
   @Post('login')
   @Public()
   @Throttle({ default: { limit: 10, ttl: 60000 } })
-  @ApiOperation({ summary: 'Login with email and password' })
+  @ApiOperation({
+    summary: 'Login with email and password',
+    description: `
+Authenticates user and returns JWT tokens.
+
+**How to use the token:**
+1. Copy the \`accessToken\` from the response
+2. Click the **Authorize** button (🔓) at the top of this page
+3. Paste the token in the input field
+4. Click **Authorize**
+
+Now all protected endpoints will use this token automatically.
+
+**Token expiration:**
+- Access token: 15 minutes
+- Refresh token: 7 days (30 days with rememberMe)
+    `,
+  })
+  @ApiBody({ type: LoginDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Login successful - copy the accessToken and use Authorize button',
+    type: LoginResponseDto,
+  })
+  @ApiResponse({ status: 401, description: 'Invalid credentials', type: ErrorResponseDto })
   @HttpCode(HttpStatus.OK)
   async login(@Body() dto: LoginDto, @Res() res: Response) {
     const result = await this.authService.login(dto);
@@ -87,7 +130,12 @@ export class AuthController {
 
   @Post('refresh')
   @Public()
-  @ApiOperation({ summary: 'Refresh access token' })
+  @ApiOperation({
+    summary: 'Refresh access token',
+    description: 'Get a new access token using a valid refresh token. Use this when your access token expires.',
+  })
+  @ApiResponse({ status: 200, description: 'New tokens generated', type: TokensDto })
+  @ApiResponse({ status: 401, description: 'Invalid or expired refresh token', type: ErrorResponseDto })
   @HttpCode(HttpStatus.OK)
   async refresh(@Body() dto: RefreshTokenDto, @Req() req: Request, @Res() res: Response) {
     const refreshToken = dto.refreshToken || req.cookies?.['refresh_token'];
@@ -103,8 +151,10 @@ export class AuthController {
 
   @Post('logout')
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Logout current session' })
+  @ApiResponse({ status: 200, description: 'Logged out successfully', type: MessageResponseDto })
+  @ApiResponse({ status: 401, description: 'Unauthorized', type: ErrorResponseDto })
   @HttpCode(HttpStatus.OK)
   async logout(@Body() dto: RefreshTokenDto, @Req() req: Request, @Res() res: Response) {
     const refreshToken = dto.refreshToken || req.cookies?.['refresh_token'];
@@ -119,8 +169,10 @@ export class AuthController {
 
   @Post('logout-all')
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Logout from all devices' })
+  @ApiResponse({ status: 200, description: 'Logged out from all devices', type: MessageResponseDto })
+  @ApiResponse({ status: 401, description: 'Unauthorized', type: ErrorResponseDto })
   @HttpCode(HttpStatus.OK)
   async logoutAll(@GetUser() user: CurrentUser, @Res() res: Response) {
     await this.authService.logoutAll(user.id);
@@ -148,8 +200,10 @@ export class AuthController {
 
   @Post('change-password')
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Change password (authenticated)' })
+  @ApiResponse({ status: 200, description: 'Password changed successfully', type: MessageResponseDto })
+  @ApiResponse({ status: 401, description: 'Invalid current password or unauthorized', type: ErrorResponseDto })
   @HttpCode(HttpStatus.OK)
   async changePassword(
     @GetUser() user: CurrentUser,
@@ -161,24 +215,33 @@ export class AuthController {
 
   @Get('sessions')
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Get active sessions' })
+  @ApiResponse({ status: 200, description: 'List of active sessions' })
+  @ApiResponse({ status: 401, description: 'Unauthorized', type: ErrorResponseDto })
   async getSessions(@GetUser() user: CurrentUser) {
     return this.authService.getSessions(user.id);
   }
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get current user profile' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Get current user profile',
+    description: 'Returns the authenticated user\'s profile including family memberships. Requires valid JWT token.',
+  })
+  @ApiResponse({ status: 200, description: 'User profile', type: AuthUserDto })
+  @ApiResponse({ status: 401, description: 'Unauthorized - invalid or missing token', type: ErrorResponseDto })
   async getProfile(@GetUser() user: CurrentUser) {
     return this.authService.getProfile(user.id);
   }
 
   @Post('complete-onboarding')
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Mark onboarding as completed' })
+  @ApiResponse({ status: 200, description: 'Onboarding completed', type: MessageResponseDto })
+  @ApiResponse({ status: 401, description: 'Unauthorized', type: ErrorResponseDto })
   @HttpCode(HttpStatus.OK)
   async completeOnboarding(@GetUser() user: CurrentUser) {
     return this.authService.completeOnboarding(user.id);

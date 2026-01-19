@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../system/module/mail/mail.service';
+import { CacheService, CACHE_KEYS, CACHE_TTL } from '../system/module/cache';
 import { CreateFamilyDto } from './dto/create-family.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { randomBytes } from 'crypto';
@@ -10,6 +11,7 @@ export class FamilyService {
   constructor(
     private prisma: PrismaService,
     private mailService: MailService,
+    private cacheService: CacheService,
   ) {}
 
   async createFamily(userId: string, dto: CreateFamilyDto) {
@@ -34,6 +36,9 @@ export class FamilyService {
         },
       },
     });
+
+    // Invalidate user's families cache
+    await this.invalidateUserFamiliesCache(userId);
 
     return family;
   }
@@ -226,33 +231,44 @@ export class FamilyService {
       }),
     ]);
 
+    // Invalidate caches
+    await this.invalidateUserFamiliesCache(userId);
+    await this.invalidateFamilyCache(invitation.familyId);
+
     return family.family;
   }
 
   async getMyFamilies(userId: string) {
-    return this.prisma.family.findMany({
-      where: {
-        members: { some: { userId } },
-      },
-      include: {
-        members: {
+    const cacheKey = CACHE_KEYS.USER_FAMILIES(userId);
+
+    return this.cacheService.getOrSet(
+      cacheKey,
+      () =>
+        this.prisma.family.findMany({
+          where: {
+            members: { some: { userId } },
+          },
           include: {
-            user: { select: { id: true, fullName: true, email: true, avatarUrl: true } },
+            members: {
+              include: {
+                user: { select: { id: true, fullName: true, email: true, avatarUrl: true } },
+              },
+            },
+            careRecipients: {
+              select: {
+                id: true,
+                fullName: true,
+                preferredName: true,
+                photoUrl: true,
+              },
+            },
+            _count: {
+              select: { documents: true },
+            },
           },
-        },
-        careRecipients: {
-          select: {
-            id: true,
-            fullName: true,
-            preferredName: true,
-            photoUrl: true,
-          },
-        },
-        _count: {
-          select: { documents: true },
-        },
-      },
-    });
+        }),
+      CACHE_TTL.FAMILY,
+    );
   }
 
   async getFamily(familyId: string, userId: string) {
@@ -264,20 +280,27 @@ export class FamilyService {
       throw new ForbiddenException('You are not a member of this family');
     }
 
-    return this.prisma.family.findUnique({
-      where: { id: familyId },
-      include: {
-        members: {
+    const cacheKey = CACHE_KEYS.FAMILY(familyId);
+
+    return this.cacheService.getOrSet(
+      cacheKey,
+      () =>
+        this.prisma.family.findUnique({
+          where: { id: familyId },
           include: {
-            user: { select: { id: true, fullName: true, email: true, avatarUrl: true, phone: true } },
+            members: {
+              include: {
+                user: { select: { id: true, fullName: true, email: true, avatarUrl: true, phone: true } },
+              },
+            },
+            careRecipients: true,
+            invitations: {
+              where: { status: 'PENDING' },
+            },
           },
-        },
-        careRecipients: true,
-        invitations: {
-          where: { status: 'PENDING' },
-        },
-      },
-    });
+        }),
+      CACHE_TTL.FAMILY,
+    );
   }
 
   async updateMemberRole(familyId: string, memberId: string, adminId: string, role: 'ADMIN' | 'CAREGIVER' | 'VIEWER') {
@@ -308,10 +331,15 @@ export class FamilyService {
       }
     }
 
-    return this.prisma.familyMember.update({
+    const result = await this.prisma.familyMember.update({
       where: { id: memberId },
       data: { role },
     });
+
+    // Invalidate family cache
+    await this.invalidateFamilyCache(familyId);
+
+    return result;
   }
 
   async removeMember(familyId: string, memberId: string, adminId: string) {
@@ -325,6 +353,7 @@ export class FamilyService {
 
     const member = await this.prisma.familyMember.findFirst({
       where: { id: memberId, familyId },
+      include: { user: { select: { id: true } } },
     });
 
     if (!member) {
@@ -344,6 +373,12 @@ export class FamilyService {
     await this.prisma.familyMember.delete({
       where: { id: memberId },
     });
+
+    // Invalidate caches
+    await this.invalidateFamilyCache(familyId);
+    if (member.user?.id) {
+      await this.invalidateUserFamiliesCache(member.user.id);
+    }
 
     return { success: true };
   }
@@ -415,5 +450,16 @@ export class FamilyService {
 
     return { success: true };
   }
-}
 
+  // Cache invalidation helpers
+  private async invalidateUserFamiliesCache(userId: string): Promise<void> {
+    await this.cacheService.del([
+      CACHE_KEYS.USER_FAMILIES(userId),
+      CACHE_KEYS.USER_PROFILE(userId),
+    ]);
+  }
+
+  private async invalidateFamilyCache(familyId: string): Promise<void> {
+    await this.cacheService.del(CACHE_KEYS.FAMILY(familyId));
+  }
+}

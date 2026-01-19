@@ -15,6 +15,7 @@ import { IsExistsConstraint } from './validator/is-exists.validator';
 // Submodules
 import { StorageModule } from './module/storage/storage.module';
 import { MailModule } from './module/mail/mail.module';
+import { CacheModule } from './module/cache';
 
 @Global()
 @Module({
@@ -27,6 +28,7 @@ import { MailModule } from './module/mail/mail.module';
         mount: true,
       },
     }),
+    CacheModule,
     StorageModule,
     MailModule,
   ],
@@ -38,6 +40,7 @@ import { MailModule } from './module/mail/mail.module';
   ],
   exports: [
     PrismaModule,
+    CacheModule,
     OtpHelper,
     LockHelper,
     IsUniqueConstraint,

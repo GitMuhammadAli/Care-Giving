@@ -21,7 +21,7 @@ interface CurrentUserPayload {
 }
 
 @ApiTags('Care Recipients')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @Controller()
 export class CareRecipientController {
   constructor(private readonly careRecipientService: CareRecipientService) {}

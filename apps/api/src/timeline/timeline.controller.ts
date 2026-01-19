@@ -20,7 +20,7 @@ interface CurrentUserPayload {
 }
 
 @ApiTags('Timeline')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @Controller('care-recipients/:careRecipientId/timeline')
 export class TimelineController {
   constructor(private readonly timelineService: TimelineService) {}

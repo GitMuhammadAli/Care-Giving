@@ -7,14 +7,16 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CacheService, CACHE_KEYS, CACHE_TTL } from '../system/module/cache';
 import { CreateShiftDto } from './dto/create-shift.dto';
 import { NotificationsService } from '../notifications/notifications.service';
-import { addDays, startOfDay, endOfDay } from 'date-fns';
+import { addDays, startOfDay, endOfDay, format } from 'date-fns';
 
 @Injectable()
 export class CaregiverShiftsService {
   constructor(
     private prisma: PrismaService,
+    private cacheService: CacheService,
     @Inject(forwardRef(() => NotificationsService))
     private notifications: NotificationsService,
   ) {}
@@ -94,61 +96,103 @@ export class CaregiverShiftsService {
     // Notify assigned caregiver
     await this.notifications.notifyShiftAssigned(shift);
 
+    // Invalidate cache
+    await this.invalidateShiftCache(careRecipientId);
+
     return shift;
   }
 
-  async getCurrentShift(careRecipientId: string) {
-    const now = new Date();
+  /**
+   * Invalidate shift caches
+   */
+  private async invalidateShiftCache(careRecipientId: string, shiftId?: string): Promise<void> {
+    const keys = [
+      CACHE_KEYS.SHIFT_CURRENT(careRecipientId),
+      CACHE_KEYS.SHIFTS_UPCOMING(careRecipientId),
+    ];
+    if (shiftId) {
+      keys.push(CACHE_KEYS.SHIFT(shiftId));
+    }
+    await this.cacheService.del(keys);
+    // Also invalidate day cache patterns
+    await this.cacheService.delPattern(`recipient:shifts:${careRecipientId}:*`);
+  }
 
-    return this.prisma.caregiverShift.findFirst({
-      where: {
-        careRecipientId,
-        startTime: { lte: now },
-        endTime: { gte: now },
-        status: { in: ['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS'] },
+  async getCurrentShift(careRecipientId: string) {
+    const cacheKey = CACHE_KEYS.SHIFT_CURRENT(careRecipientId);
+
+    return this.cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const now = new Date();
+
+        return this.prisma.caregiverShift.findFirst({
+          where: {
+            careRecipientId,
+            startTime: { lte: now },
+            endTime: { gte: now },
+            status: { in: ['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS'] },
+          },
+          include: {
+            caregiver: {
+              select: { id: true, fullName: true, phone: true },
+            },
+          },
+        });
       },
-      include: {
-        caregiver: {
-          select: { id: true, fullName: true, phone: true },
-        },
-      },
-    });
+      CACHE_TTL.SHIFT_CURRENT,
+    );
   }
 
   async getUpcoming(careRecipientId: string, userId: string, days: number = 7) {
     await this.verifyAccess(careRecipientId, userId);
 
-    return this.prisma.caregiverShift.findMany({
-      where: {
-        careRecipientId,
-        startTime: { gte: new Date(), lte: addDays(new Date(), days) },
-        status: { not: 'CANCELLED' },
-      },
-      include: {
-        caregiver: {
-          select: { id: true, fullName: true, phone: true },
-        },
-      },
-      orderBy: { startTime: 'asc' },
-    });
+    const cacheKey = CACHE_KEYS.SHIFTS_UPCOMING(careRecipientId);
+
+    return this.cacheService.getOrSet(
+      cacheKey,
+      () =>
+        this.prisma.caregiverShift.findMany({
+          where: {
+            careRecipientId,
+            startTime: { gte: new Date(), lte: addDays(new Date(), days) },
+            status: { not: 'CANCELLED' },
+          },
+          include: {
+            caregiver: {
+              select: { id: true, fullName: true, phone: true },
+            },
+          },
+          orderBy: { startTime: 'asc' },
+        }),
+      CACHE_TTL.SHIFTS_UPCOMING,
+    );
   }
 
   async getForDay(careRecipientId: string, userId: string, date: Date) {
     await this.verifyAccess(careRecipientId, userId);
 
-    return this.prisma.caregiverShift.findMany({
-      where: {
-        careRecipientId,
-        startTime: { gte: startOfDay(date), lte: endOfDay(date) },
-        status: { not: 'CANCELLED' },
-      },
-      include: {
-        caregiver: {
-          select: { id: true, fullName: true, phone: true },
-        },
-      },
-      orderBy: { startTime: 'asc' },
-    });
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const cacheKey = CACHE_KEYS.SHIFTS_DAY(careRecipientId, dateStr);
+
+    return this.cacheService.getOrSet(
+      cacheKey,
+      () =>
+        this.prisma.caregiverShift.findMany({
+          where: {
+            careRecipientId,
+            startTime: { gte: startOfDay(date), lte: endOfDay(date) },
+            status: { not: 'CANCELLED' },
+          },
+          include: {
+            caregiver: {
+              select: { id: true, fullName: true, phone: true },
+            },
+          },
+          orderBy: { startTime: 'asc' },
+        }),
+      CACHE_TTL.SHIFTS_DAY,
+    );
   }
 
   async getMyShifts(userId: string, upcoming: boolean = true) {
@@ -184,7 +228,7 @@ export class CaregiverShiftsService {
       throw new ForbiddenException('Shift cannot be checked into');
     }
 
-    return this.prisma.caregiverShift.update({
+    const updated = await this.prisma.caregiverShift.update({
       where: { id: shiftId },
       data: {
         status: 'IN_PROGRESS',
@@ -196,6 +240,11 @@ export class CaregiverShiftsService {
         },
       },
     });
+
+    // Invalidate cache
+    await this.invalidateShiftCache(shift.careRecipientId, shiftId);
+
+    return updated;
   }
 
   async checkOut(shiftId: string, userId: string, handoffNotes?: string) {
@@ -257,6 +306,9 @@ export class CaregiverShiftsService {
       );
     }
 
+    // Invalidate cache
+    await this.invalidateShiftCache(shift.careRecipientId, shiftId);
+
     return updated;
   }
 
@@ -273,10 +325,15 @@ export class CaregiverShiftsService {
       throw new ForbiddenException('This is not your shift');
     }
 
-    return this.prisma.caregiverShift.update({
+    const confirmed = await this.prisma.caregiverShift.update({
       where: { id: shiftId },
       data: { status: 'CONFIRMED' },
     });
+
+    // Invalidate cache
+    await this.invalidateShiftCache(shift.careRecipientId, shiftId);
+
+    return confirmed;
   }
 
   async cancelShift(shiftId: string, userId: string) {
@@ -295,10 +352,16 @@ export class CaregiverShiftsService {
       throw new ForbiddenException('You cannot cancel this shift');
     }
 
-    return this.prisma.caregiverShift.update({
+    const cancelled = await this.prisma.caregiverShift.update({
       where: { id: shiftId },
       data: { status: 'CANCELLED' },
     });
+
+    // Invalidate cache
+    await this.invalidateShiftCache(shift.careRecipientId, shiftId);
+
+    return cancelled;
   }
 }
+
 

@@ -22,7 +22,7 @@ interface CurrentUserPayload {
 }
 
 @ApiTags('Medications')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @Controller('care-recipients/:careRecipientId/medications')
 export class MedicationsController {
   constructor(private readonly medicationsService: MedicationsService) {}
@@ -102,7 +102,7 @@ export class MedicationsController {
 }
 
 @ApiTags('Medication Logs')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @Controller('medications')
 export class MedicationLogsController {
   constructor(private readonly medicationsService: MedicationsService) {}

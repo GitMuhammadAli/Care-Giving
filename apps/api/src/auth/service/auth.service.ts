@@ -11,6 +11,7 @@ import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MailService } from '../../system/module/mail/mail.service';
+import { CacheService, CACHE_KEYS, CACHE_TTL } from '../../system/module/cache';
 import { RegisterDto } from '../dto/register.dto';
 import { LoginDto } from '../dto/login.dto';
 
@@ -21,6 +22,7 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private mailService: MailService,
+    private cacheService: CacheService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -215,6 +217,9 @@ export class AuthService {
       data: { isActive: false },
     });
 
+    // Invalidate user cache
+    await this.invalidateUserCache(user.id);
+
     await this.logAudit(user.id, 'PASSWORD_RESET', 'user', user.id);
 
     return { message: 'Password reset successfully' };
@@ -244,6 +249,9 @@ export class AuthService {
       },
     });
 
+    // Invalidate user cache
+    await this.invalidateUserCache(userId);
+
     await this.logAudit(userId, 'PASSWORD_CHANGE', 'user', userId);
 
     return { message: 'Password changed successfully' };
@@ -264,34 +272,53 @@ export class AuthService {
   }
 
   async getProfile(userId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        familyMemberships: {
+    const cacheKey = CACHE_KEYS.USER_PROFILE(userId);
+
+    return this.cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const user = await this.prisma.user.findUnique({
+          where: { id: userId },
           include: {
-            family: {
+            familyMemberships: {
               include: {
-                careRecipients: {
-                  select: {
-                    id: true,
-                    fullName: true,
-                    preferredName: true,
-                    dateOfBirth: true,
-                    photoUrl: true,
+                family: {
+                  include: {
+                    careRecipients: {
+                      select: {
+                        id: true,
+                        fullName: true,
+                        preferredName: true,
+                        dateOfBirth: true,
+                        photoUrl: true,
+                      },
+                    },
                   },
                 },
               },
             },
           },
-        },
+        });
+
+        if (!user) {
+          throw new NotFoundException('User not found');
+        }
+
+        return this.sanitizeUser(user);
       },
-    });
+      CACHE_TTL.USER_PROFILE,
+    );
+  }
 
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    return this.sanitizeUser(user);
+  /**
+   * Invalidate user profile cache
+   * Call this when user data changes
+   */
+  async invalidateUserCache(userId: string): Promise<void> {
+    await this.cacheService.del([
+      CACHE_KEYS.USER_PROFILE(userId),
+      CACHE_KEYS.USER_FAMILIES(userId),
+    ]);
   }
 
   async validateUser(userId: string) {
@@ -351,6 +378,9 @@ export class AuthService {
         emailVerificationExpiresAt: null,
       },
     });
+
+    // Invalidate user cache (status changed)
+    await this.invalidateUserCache(user.id);
 
     // Generate tokens for automatic login
     const tokens = await this.generateTokens(user.id, user.email);

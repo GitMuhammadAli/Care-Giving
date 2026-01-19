@@ -4,7 +4,7 @@ import { ChatService } from '../service/chat.service';
 import { CurrentUser } from '../../system/decorator/current-user.decorator';
 
 @ApiTags('Chat')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @Controller('chat')
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
