@@ -40,6 +40,10 @@ export class NotificationConsumer {
     queue: QUEUES.PUSH_NOTIFICATIONS,
     queueOptions: {
       durable: true,
+      arguments: {
+        'x-dead-letter-exchange': EXCHANGES.DEAD_LETTER,
+        'x-dead-letter-routing-key': QUEUES.DLQ_NOTIFICATIONS,
+      },
     },
   })
   async handlePushNotification(
@@ -82,6 +86,10 @@ export class NotificationConsumer {
     queue: QUEUES.EMAIL_NOTIFICATIONS,
     queueOptions: {
       durable: true,
+      arguments: {
+        'x-dead-letter-exchange': EXCHANGES.DEAD_LETTER,
+        'x-dead-letter-routing-key': QUEUES.DLQ_NOTIFICATIONS,
+      },
     },
   })
   async handleEmailNotification(
@@ -162,6 +170,10 @@ export class NotificationConsumer {
     queue: QUEUES.PUSH_NOTIFICATIONS,
     queueOptions: {
       durable: true,
+      arguments: {
+        'x-dead-letter-exchange': EXCHANGES.DEAD_LETTER,
+        'x-dead-letter-routing-key': QUEUES.DLQ_NOTIFICATIONS,
+      },
     },
   })
   async handleMedicationLogged(event: BaseEvent): Promise<void | Nack> {
@@ -209,6 +221,10 @@ export class NotificationConsumer {
     queue: QUEUES.PUSH_NOTIFICATIONS,
     queueOptions: {
       durable: true,
+      arguments: {
+        'x-dead-letter-exchange': EXCHANGES.DEAD_LETTER,
+        'x-dead-letter-routing-key': QUEUES.DLQ_NOTIFICATIONS,
+      },
     },
   })
   async handleShiftEvent(event: BaseEvent): Promise<void | Nack> {
@@ -268,6 +284,10 @@ export class NotificationConsumer {
     queue: QUEUES.PUSH_NOTIFICATIONS,
     queueOptions: {
       durable: true,
+      arguments: {
+        'x-dead-letter-exchange': EXCHANGES.DEAD_LETTER,
+        'x-dead-letter-routing-key': QUEUES.DLQ_NOTIFICATIONS,
+      },
     },
   })
   async handleAppointmentReminder(event: BaseEvent): Promise<void | Nack> {
@@ -306,6 +326,10 @@ export class NotificationConsumer {
     queue: QUEUES.PUSH_NOTIFICATIONS,
     queueOptions: {
       durable: true,
+      arguments: {
+        'x-dead-letter-exchange': EXCHANGES.DEAD_LETTER,
+        'x-dead-letter-routing-key': QUEUES.DLQ_NOTIFICATIONS,
+      },
     },
   })
   async handleMedicationReminder(event: BaseEvent): Promise<void | Nack> {
@@ -345,7 +369,13 @@ export class NotificationConsumer {
     exchange: EXCHANGES.DOMAIN_EVENTS,
     routingKey: ROUTING_KEYS.CARE_RECIPIENT_DELETED,
     queue: QUEUES.PUSH_NOTIFICATIONS,
-    queueOptions: { durable: true },
+    queueOptions: {
+      durable: true,
+      arguments: {
+        'x-dead-letter-exchange': EXCHANGES.DEAD_LETTER,
+        'x-dead-letter-routing-key': QUEUES.DLQ_NOTIFICATIONS,
+      },
+    },
   })
   async handleCareRecipientDeleted(event: BaseEvent<CareRecipientDeletedPayload>): Promise<void | Nack> {
     try {
@@ -381,7 +411,13 @@ export class NotificationConsumer {
     exchange: EXCHANGES.DOMAIN_EVENTS,
     routingKey: ROUTING_KEYS.CARE_RECIPIENT_UPDATED,
     queue: QUEUES.PUSH_NOTIFICATIONS,
-    queueOptions: { durable: true },
+    queueOptions: {
+      durable: true,
+      arguments: {
+        'x-dead-letter-exchange': EXCHANGES.DEAD_LETTER,
+        'x-dead-letter-routing-key': QUEUES.DLQ_NOTIFICATIONS,
+      },
+    },
   })
   async handleCareRecipientUpdated(event: BaseEvent<CareRecipientUpdatedPayload>): Promise<void | Nack> {
     try {
@@ -419,7 +455,13 @@ export class NotificationConsumer {
     exchange: EXCHANGES.DOMAIN_EVENTS,
     routingKey: ROUTING_KEYS.FAMILY_MEMBER_REMOVED,
     queue: QUEUES.PUSH_NOTIFICATIONS,
-    queueOptions: { durable: true },
+    queueOptions: {
+      durable: true,
+      arguments: {
+        'x-dead-letter-exchange': EXCHANGES.DEAD_LETTER,
+        'x-dead-letter-routing-key': QUEUES.DLQ_NOTIFICATIONS,
+      },
+    },
   })
   async handleFamilyMemberRemoved(event: BaseEvent<FamilyMemberRemovedPayload>): Promise<void | Nack> {
     try {
@@ -472,7 +514,13 @@ export class NotificationConsumer {
     exchange: EXCHANGES.DOMAIN_EVENTS,
     routingKey: ROUTING_KEYS.FAMILY_MEMBER_ROLE_UPDATED,
     queue: QUEUES.PUSH_NOTIFICATIONS,
-    queueOptions: { durable: true },
+    queueOptions: {
+      durable: true,
+      arguments: {
+        'x-dead-letter-exchange': EXCHANGES.DEAD_LETTER,
+        'x-dead-letter-routing-key': QUEUES.DLQ_NOTIFICATIONS,
+      },
+    },
   })
   async handleFamilyMemberRoleUpdated(event: BaseEvent<FamilyMemberRoleUpdatedPayload>): Promise<void | Nack> {
     try {
@@ -509,7 +557,13 @@ export class NotificationConsumer {
     exchange: EXCHANGES.DOMAIN_EVENTS,
     routingKey: ROUTING_KEYS.MEDICATION_DELETED,
     queue: QUEUES.PUSH_NOTIFICATIONS,
-    queueOptions: { durable: true },
+    queueOptions: {
+      durable: true,
+      arguments: {
+        'x-dead-letter-exchange': EXCHANGES.DEAD_LETTER,
+        'x-dead-letter-routing-key': QUEUES.DLQ_NOTIFICATIONS,
+      },
+    },
   })
   async handleMedicationDeleted(event: BaseEvent<MedicationDeletedPayload>): Promise<void | Nack> {
     try {
@@ -546,7 +600,13 @@ export class NotificationConsumer {
     exchange: EXCHANGES.DOMAIN_EVENTS,
     routingKey: ROUTING_KEYS.APPOINTMENT_DELETED,
     queue: QUEUES.PUSH_NOTIFICATIONS,
-    queueOptions: { durable: true },
+    queueOptions: {
+      durable: true,
+      arguments: {
+        'x-dead-letter-exchange': EXCHANGES.DEAD_LETTER,
+        'x-dead-letter-routing-key': QUEUES.DLQ_NOTIFICATIONS,
+      },
+    },
   })
   async handleAppointmentDeleted(event: BaseEvent<AppointmentDeletedPayload>): Promise<void | Nack> {
     try {
@@ -584,7 +644,13 @@ export class NotificationConsumer {
     exchange: EXCHANGES.DOMAIN_EVENTS,
     routingKey: ROUTING_KEYS.FAMILY_DELETED,
     queue: QUEUES.PUSH_NOTIFICATIONS,
-    queueOptions: { durable: true },
+    queueOptions: {
+      durable: true,
+      arguments: {
+        'x-dead-letter-exchange': EXCHANGES.DEAD_LETTER,
+        'x-dead-letter-routing-key': QUEUES.DLQ_NOTIFICATIONS,
+      },
+    },
   })
   async handleFamilyDeleted(event: BaseEvent<FamilyDeletedPayload>): Promise<void | Nack> {
     try {

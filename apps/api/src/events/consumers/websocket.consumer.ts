@@ -28,6 +28,10 @@ export class WebSocketConsumer {
     queue: QUEUES.WEBSOCKET_UPDATES,
     queueOptions: {
       durable: true,
+      arguments: {
+        'x-dead-letter-exchange': EXCHANGES.DEAD_LETTER,
+        'x-dead-letter-routing-key': QUEUES.DLQ_PROCESSING,
+      },
     },
   })
   async handleMedicationEvent(event: BaseEvent): Promise<void | Nack> {
@@ -56,6 +60,10 @@ export class WebSocketConsumer {
     queue: QUEUES.WEBSOCKET_UPDATES,
     queueOptions: {
       durable: true,
+      arguments: {
+        'x-dead-letter-exchange': EXCHANGES.DEAD_LETTER,
+        'x-dead-letter-routing-key': QUEUES.DLQ_PROCESSING,
+      },
     },
   })
   async handleAppointmentEvent(event: BaseEvent): Promise<void | Nack> {
@@ -82,6 +90,10 @@ export class WebSocketConsumer {
     queue: QUEUES.WEBSOCKET_UPDATES,
     queueOptions: {
       durable: true,
+      arguments: {
+        'x-dead-letter-exchange': EXCHANGES.DEAD_LETTER,
+        'x-dead-letter-routing-key': QUEUES.DLQ_PROCESSING,
+      },
     },
   })
   async handleEmergencyEvent(event: BaseEvent): Promise<void | Nack> {
@@ -109,6 +121,10 @@ export class WebSocketConsumer {
     queue: QUEUES.WEBSOCKET_UPDATES,
     queueOptions: {
       durable: true,
+      arguments: {
+        'x-dead-letter-exchange': EXCHANGES.DEAD_LETTER,
+        'x-dead-letter-routing-key': QUEUES.DLQ_PROCESSING,
+      },
     },
   })
   async handleShiftEvent(event: BaseEvent): Promise<void | Nack> {
@@ -135,6 +151,10 @@ export class WebSocketConsumer {
     queue: QUEUES.WEBSOCKET_UPDATES,
     queueOptions: {
       durable: true,
+      arguments: {
+        'x-dead-letter-exchange': EXCHANGES.DEAD_LETTER,
+        'x-dead-letter-routing-key': QUEUES.DLQ_PROCESSING,
+      },
     },
   })
   async handleTimelineEvent(event: BaseEvent): Promise<void | Nack> {
@@ -161,6 +181,10 @@ export class WebSocketConsumer {
     queue: QUEUES.WEBSOCKET_UPDATES,
     queueOptions: {
       durable: true,
+      arguments: {
+        'x-dead-letter-exchange': EXCHANGES.DEAD_LETTER,
+        'x-dead-letter-routing-key': QUEUES.DLQ_PROCESSING,
+      },
     },
   })
   async handleFamilyAdminEvent(event: BaseEvent): Promise<void | Nack> {
@@ -190,6 +214,10 @@ export class WebSocketConsumer {
     queue: QUEUES.WEBSOCKET_UPDATES,
     queueOptions: {
       durable: true,
+      arguments: {
+        'x-dead-letter-exchange': EXCHANGES.DEAD_LETTER,
+        'x-dead-letter-routing-key': QUEUES.DLQ_PROCESSING,
+      },
     },
   })
   async handleCareRecipientEvent(event: BaseEvent): Promise<void | Nack> {
