@@ -131,7 +131,12 @@ export default function FamilyPage() {
   const removeMember = useRemoveMember(familyId);
   const cancelInvitation = useCancelInvitation(familyId);
   const resendInvitation = useResendInvitation(familyId);
-  const deleteFamily = useDeleteFamily();
+  const deleteFamily = useDeleteFamily({
+    onSuccessCallback: () => {
+      // Navigate BEFORE state updates to prevent page re-renders
+      router.replace('/dashboard');
+    },
+  });
   const updateMemberRole = useUpdateMemberRole(familyId);
 
   // Close menu when clicking outside
@@ -211,10 +216,12 @@ export default function FamilyPage() {
   const handleDeleteFamily = async () => {
     if (deleteConfirmText !== familyName) return;
 
-    await deleteFamily.mutateAsync(familyId);
+    // Close modal and reset state before mutation
+    // Navigation is handled by the onSuccessCallback in useDeleteFamily
     setIsDeleteFamilyModalOpen(false);
     setDeleteConfirmText('');
-    router.push('/dashboard');
+
+    await deleteFamily.mutateAsync(familyId);
   };
 
   return (

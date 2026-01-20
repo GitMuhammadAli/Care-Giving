@@ -13,6 +13,7 @@ import { FamilyService } from './family.service';
 import { JwtAuthGuard } from '../system/guard/jwt-auth.guard';
 import { CurrentUser, CurrentUserPayload } from '../common/decorators/current-user.decorator';
 import { CreateFamilyDto } from './dto/create-family.dto';
+import { UpdateFamilyDto } from './dto/update-family.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 import { Public } from '../system/decorator/public.decorator';
@@ -44,6 +45,18 @@ export class FamilyController {
   @ApiResponse({ status: 403, description: 'Not a member of this family' })
   getFamily(@Param('familyId') familyId: string, @CurrentUser() user: CurrentUserPayload) {
     return this.familyService.getFamily(familyId, user.id);
+  }
+
+  @Patch(':familyId')
+  @ApiOperation({ summary: 'Update a family (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Family updated successfully' })
+  @ApiResponse({ status: 403, description: 'Only admins can update the family' })
+  updateFamily(
+    @Param('familyId') familyId: string,
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: UpdateFamilyDto,
+  ) {
+    return this.familyService.updateFamily(familyId, user.id, dto);
   }
 
   @Delete(':familyId')
@@ -118,6 +131,19 @@ export class FamilyController {
     @CurrentUser() user: CurrentUserPayload,
   ) {
     return this.familyService.removeMember(familyId, memberId, user.id);
+  }
+
+  @Post(':familyId/members/:userId/reset-password')
+  @ApiOperation({ summary: 'Reset member password (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Password reset successfully' })
+  @ApiResponse({ status: 403, description: 'Only admins can reset passwords' })
+  @ApiResponse({ status: 404, description: 'Member not found' })
+  resetMemberPassword(
+    @Param('familyId') familyId: string,
+    @Param('userId') userId: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.familyService.resetMemberPassword(familyId, userId, user.id);
   }
 
   @Delete('invitations/:invitationId')

@@ -17,6 +17,11 @@ export class FamilyAccessGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    // Skip for non-HTTP contexts (RabbitMQ, WebSocket, etc.)
+    if (context.getType() !== 'http') {
+      return true;
+    }
+
     const options = this.reflector.getAllAndOverride<FamilyAccessOptions>(
       FAMILY_ACCESS_KEY,
       [context.getHandler(), context.getClass()],

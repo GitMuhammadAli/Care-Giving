@@ -23,6 +23,11 @@ export class RolesGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
+    // Skip for non-HTTP contexts (RabbitMQ, WebSocket, etc.)
+    if (context.getType() !== 'http') {
+      return true;
+    }
+
     const requiredRoles = this.reflector.getAllAndOverride<FamilyRole[]>(
       ROLES_KEY,
       [context.getHandler(), context.getClass()],

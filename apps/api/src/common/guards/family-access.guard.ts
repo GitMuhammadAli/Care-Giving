@@ -6,6 +6,11 @@ export class FamilyAccessGuard implements CanActivate {
   constructor(private prisma: PrismaService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    // Skip for non-HTTP contexts (RabbitMQ, WebSocket, etc.)
+    if (context.getType() !== 'http') {
+      return true;
+    }
+
     const request = context.switchToHttp().getRequest();
     const userId = request.user?.id;
     const familyId = request.params.familyId;

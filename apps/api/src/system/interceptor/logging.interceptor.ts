@@ -14,7 +14,18 @@ export class LoggingInterceptor implements NestInterceptor {
   private readonly logger = new Logger('HTTP');
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    // Skip logging for non-HTTP contexts (RabbitMQ, WebSocket, etc.)
+    if (context.getType() !== 'http') {
+      return next.handle();
+    }
+
     const request = context.switchToHttp().getRequest();
+
+    // Extra safety: skip if request doesn't have expected properties
+    if (!request?.method) {
+      return next.handle();
+    }
+
     const { method, url, body } = request;
     const now = Date.now();
 

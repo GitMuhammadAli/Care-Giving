@@ -70,7 +70,7 @@ export const familyApi = {
   },
 
   updateMemberRole: async (familyId: string, memberId: string, role: string): Promise<void> => {
-    await api.patch(`/families/${familyId}/members/${memberId}`, { role });
+    await api.patch(`/families/${familyId}/members/${memberId}/role`, { role });
   },
 
   removeMember: async (familyId: string, memberId: string): Promise<void> => {

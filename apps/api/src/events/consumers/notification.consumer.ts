@@ -50,6 +50,14 @@ export class NotificationConsumer {
     event: BaseEvent<PushNotificationPayload>,
   ): Promise<void | Nack> {
     try {
+      // Validate required fields - skip malformed events
+      if (!event?.data?.userId || !event?.data?.title || !event?.data?.body) {
+        this.logger.warn(
+          `Skipping malformed push notification event: missing required fields (userId: ${event?.data?.userId}, title: ${event?.data?.title}, body: ${event?.data?.body})`,
+        );
+        return; // Acknowledge and discard malformed message
+      }
+
       this.logger.debug(`Processing push notification for user: ${event.data.userId}`);
 
       // Create in-app notification

@@ -8,6 +8,12 @@ export class CustomThrottlerGuard extends ThrottlerGuard {
   protected reflector: Reflector;
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    // Skip throttling for non-HTTP contexts (RabbitMQ, WebSocket, etc.)
+    const contextType = context.getType();
+    if (contextType !== 'http') {
+      return true;
+    }
+
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),

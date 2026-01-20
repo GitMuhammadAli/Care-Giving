@@ -127,4 +127,13 @@ export class AppointmentsController {
   ) {
     return this.appointmentsService.confirmTransport(id, user.id);
   }
+
+  @Delete(":id")
+  @ApiOperation({ summary: "Delete an appointment (Admin only)" })
+  delete(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload
+  ) {
+    return this.appointmentsService.delete(id, user.id);
+  }
 }

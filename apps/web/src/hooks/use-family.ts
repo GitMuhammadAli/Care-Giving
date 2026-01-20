@@ -197,16 +197,25 @@ export function useResetMemberPassword(familyId: string) {
   });
 }
 
-export function useDeleteFamily() {
+export function useDeleteFamily(options?: { onSuccessCallback?: () => void }) {
   const queryClient = useQueryClient();
   const refetchUser = useAuth((state) => state.refetchUser);
 
   return useMutation({
     mutationFn: (familyId: string) => familyApi.delete(familyId),
     onSuccess: async () => {
+      // Show success message first
+      toast.success('Family deleted successfully');
+
+      // Call custom callback (e.g., for navigation) BEFORE state updates
+      // This prevents re-renders on the current page
+      if (options?.onSuccessCallback) {
+        options.onSuccessCallback();
+      }
+
+      // Then update state in background (after navigation started)
       queryClient.invalidateQueries({ queryKey: ['families'] });
       await refetchUser();
-      toast.success('Family deleted successfully');
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to delete family');

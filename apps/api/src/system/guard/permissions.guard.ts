@@ -13,6 +13,11 @@ export class PermissionsGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
+    // Skip for non-HTTP contexts (RabbitMQ, WebSocket, etc.)
+    if (context.getType() !== 'http') {
+      return true;
+    }
+
     const requiredPermissions = this.reflector.getAllAndOverride<string[]>(
       PERMISSIONS_KEY,
       [context.getHandler(), context.getClass()],

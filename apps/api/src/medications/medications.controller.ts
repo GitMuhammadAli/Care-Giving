@@ -99,6 +99,15 @@ export class MedicationsController {
   ) {
     return this.medicationsService.deactivate(id, user.id);
   }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a medication (Admin only)' })
+  delete(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.medicationsService.delete(id, user.id);
+  }
 }
 
 @ApiTags('Medication Logs')

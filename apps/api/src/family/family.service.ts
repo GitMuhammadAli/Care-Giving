@@ -5,8 +5,10 @@ import { CacheService, CACHE_KEYS, CACHE_TTL } from '../system/module/cache';
 import { EventPublisherService } from '../events/publishers/event-publisher.service';
 import { ROUTING_KEYS } from '../events/events.constants';
 import { CreateFamilyDto } from './dto/create-family.dto';
+import { UpdateFamilyDto } from './dto/update-family.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { randomBytes } from 'crypto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class FamilyService {
@@ -42,6 +44,48 @@ export class FamilyService {
 
     // Invalidate user's families cache
     await this.invalidateUserFamiliesCache(userId);
+
+    return family;
+  }
+
+  async updateFamily(familyId: string, userId: string, dto: UpdateFamilyDto) {
+    // Verify user is admin of this family
+    const membership = await this.prisma.familyMember.findUnique({
+      where: { familyId_userId: { familyId, userId } },
+    });
+
+    if (!membership || membership.role !== 'ADMIN') {
+      throw new ForbiddenException('Only admins can update the family');
+    }
+
+    const family = await this.prisma.family.update({
+      where: { id: familyId },
+      data: {
+        name: dto.name,
+        // Add other fields as needed
+      },
+      include: {
+        members: {
+          include: {
+            user: {
+              select: { id: true, fullName: true, email: true },
+            },
+          },
+        },
+      },
+    });
+
+    // Invalidate family cache
+    await this.invalidateFamilyCache(familyId);
+
+    // Invalidate caches for all members
+    const members = await this.prisma.familyMember.findMany({
+      where: { familyId },
+      select: { userId: true },
+    });
+    for (const member of members) {
+      await this.invalidateUserFamiliesCache(member.userId);
+    }
 
     return family;
   }
@@ -587,6 +631,50 @@ export class FamilyService {
     }
 
     return { success: true, message: 'Family deleted successfully' };
+  }
+
+  async resetMemberPassword(familyId: string, targetUserId: string, adminId: string) {
+    // Verify admin status
+    const admin = await this.prisma.familyMember.findUnique({
+      where: { familyId_userId: { familyId, userId: adminId } },
+      include: { user: { select: { fullName: true } } },
+    });
+
+    if (!admin || admin.role !== 'ADMIN') {
+      throw new ForbiddenException('Only admins can reset member passwords');
+    }
+
+    // Verify member exists in family
+    const member = await this.prisma.familyMember.findFirst({
+      where: { familyId, userId: targetUserId },
+      include: { user: { select: { id: true, email: true, fullName: true } } },
+    });
+
+    if (!member) {
+      throw new NotFoundException('Member not found in this family');
+    }
+
+    // Generate temporary password
+    const tempPassword = randomBytes(8).toString('base64').slice(0, 12);
+    const passwordHash = await bcrypt.hash(tempPassword, 12);
+
+    // Update user's password
+    await this.prisma.user.update({
+      where: { id: targetUserId },
+      data: {
+        passwordHash,
+        passwordChangedAt: new Date(),
+      },
+    });
+
+    // Send email with temporary password
+    await this.mailService.sendPasswordReset(
+      member.user.email,
+      member.user.fullName || 'User',
+      tempPassword,
+    );
+
+    return { success: true, message: 'Password reset successfully. Temporary password sent via email.' };
   }
 
   // Cache invalidation helpers

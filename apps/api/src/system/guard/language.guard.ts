@@ -7,8 +7,13 @@ export class LanguageGuard implements CanActivate {
   private readonly defaultLanguage = 'en';
 
   canActivate(context: ExecutionContext): boolean {
+    // Skip for non-HTTP contexts (RabbitMQ, WebSocket, etc.)
+    if (context.getType() !== 'http') {
+      return true;
+    }
+
     const request = context.switchToHttp().getRequest();
-    
+
     // Check header first, then query param, then accept-language
     let language =
       request.headers['x-language'] ||
@@ -21,7 +26,7 @@ export class LanguageGuard implements CanActivate {
     }
 
     ContextHelper.setLanguage(language);
-    
+
     return true;
   }
 
