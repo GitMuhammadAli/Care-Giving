@@ -54,13 +54,17 @@ export interface PushSubscriptionRequest {
 
 export const notificationsApi = {
   // Get all notifications
-  list: async (limit = 50, offset = 0): Promise<Notification[]> => {
-    return api.get<Notification[]>(`/notifications?limit=${limit}&offset=${offset}`);
+  list: async (limit = 50, offset = 0, unreadOnly = false): Promise<Notification[]> => {
+    const params = new URLSearchParams();
+    params.set('limit', String(limit));
+    params.set('offset', String(offset));
+    if (unreadOnly) params.set('unreadOnly', 'true');
+    return api.get<Notification[]>(`/notifications?${params.toString()}`);
   },
 
-  // Get unread notifications
+  // Get unread notifications (uses list with filter)
   getUnread: async (): Promise<Notification[]> => {
-    return api.get<Notification[]>('/notifications/unread');
+    return notificationsApi.list(50, 0, true);
   },
 
   // Get unread count
@@ -68,9 +72,14 @@ export const notificationsApi = {
     return api.get<{ count: number }>('/notifications/unread/count');
   },
 
-  // Mark notifications as read
-  markAsRead: async (ids: string[]): Promise<void> => {
-    await api.patch('/notifications/read', { ids });
+  // Mark single notification as read
+  markAsRead: async (notificationId: string): Promise<void> => {
+    await api.patch(`/notifications/${notificationId}/read`);
+  },
+
+  // Mark multiple notifications as read (calls single endpoint for each)
+  markMultipleAsRead: async (ids: string[]): Promise<void> => {
+    await Promise.all(ids.map((id) => notificationsApi.markAsRead(id)));
   },
 
   // Mark all as read
@@ -80,12 +89,12 @@ export const notificationsApi = {
 
   // Subscribe to push notifications
   subscribeToPush: async (subscription: PushSubscriptionRequest): Promise<void> => {
-    await api.post('/notifications/push-subscription', subscription);
+    await api.post('/notifications/push-token', subscription);
   },
 
   // Unsubscribe from push notifications
   unsubscribeFromPush: async (endpoint: string): Promise<void> => {
-    await api.delete('/notifications/push-subscription', { body: JSON.stringify({ endpoint }) });
+    await api.delete('/notifications/push-token', { body: JSON.stringify({ endpoint }) });
   },
 
   // Get VAPID public key

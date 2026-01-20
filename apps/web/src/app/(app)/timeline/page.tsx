@@ -67,11 +67,12 @@ export default function TimelinePage() {
   });
 
   // Fetch timeline entries
-  const { data: timeline = [], isLoading } = useQuery({
+  const { data: timelineData, isLoading } = useQuery({
     queryKey: ['timeline', careRecipientId, filter !== 'all' ? filter : undefined],
     queryFn: () => timelineApi.list(careRecipientId!, { type: filter !== 'all' ? filter : undefined }),
     enabled: !!careRecipientId,
   });
+  const timeline = Array.isArray(timelineData) ? timelineData : [];
 
   // Create entry mutation
   const createEntryMutation = useMutation({

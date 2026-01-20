@@ -90,7 +90,7 @@ export class CloudinaryService implements StorageProvider, OnModuleInit {
 
   async getSignedUrl(publicId: string, expiresIn = 3600): Promise<string> {
     const timestamp = Math.floor(Date.now() / 1000) + expiresIn;
-    
+
     return cloudinary.url(publicId, {
       type: 'authenticated',
       sign_url: true,
@@ -119,4 +119,3 @@ export class CloudinaryService implements StorageProvider, OnModuleInit {
     });
   }
 }
-

@@ -49,7 +49,7 @@ export const timelineApi = {
     if (options?.type) params.set('type', options.type);
     if (options?.limit) params.set('limit', String(options.limit));
     if (options?.offset) params.set('offset', String(options.offset));
-    
+
     const query = params.toString() ? `?${params.toString()}` : '';
     return api.get<TimelineEntry[]>(`/care-recipients/${careRecipientId}/timeline${query}`);
   },
@@ -59,16 +59,17 @@ export const timelineApi = {
     return api.get<TimelineEntry[]>(`/care-recipients/${careRecipientId}/timeline/vitals${params}`);
   },
 
+  // Use list with type filter instead of non-existent /incidents endpoint
   getIncidents: async (careRecipientId: string): Promise<TimelineEntry[]> => {
-    return api.get<TimelineEntry[]>(`/care-recipients/${careRecipientId}/timeline/incidents`);
+    return timelineApi.list(careRecipientId, { type: 'INCIDENT' });
   },
 
   create: async (careRecipientId: string, data: CreateTimelineEntryInput): Promise<TimelineEntry> => {
     return api.post<TimelineEntry>(`/care-recipients/${careRecipientId}/timeline`, data);
   },
 
-  update: async (id: string, data: Partial<CreateTimelineEntryInput>): Promise<TimelineEntry> => {
-    return api.patch<TimelineEntry>(`/timeline/${id}`, data);
+  update: async (careRecipientId: string, id: string, data: Partial<CreateTimelineEntryInput>): Promise<TimelineEntry> => {
+    return api.patch<TimelineEntry>(`/care-recipients/${careRecipientId}/timeline/${id}`, data);
   },
 
   delete: async (id: string): Promise<void> => {

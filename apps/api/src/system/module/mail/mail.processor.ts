@@ -120,7 +120,7 @@ export class MailProcessor {
     content: { html: string; text: string },
   ): Promise<void> {
     const apiKey = this.configService.get('mail.resend.apiKey');
-    
+
     if (!apiKey) {
       this.logger.warn('Resend API key not configured, logging email');
       this.logEmail(to, subject, content);
@@ -154,7 +154,7 @@ export class MailProcessor {
     content: { html: string; text: string },
   ): Promise<void> {
     const apiKey = this.configService.get('mail.brevo.apiKey');
-    
+
     if (!apiKey) {
       this.logger.warn('Brevo API key not configured, logging email');
       this.logEmail(to, subject, content);
@@ -241,7 +241,7 @@ export class MailProcessor {
     context: Record<string, any>,
   ): Promise<{ html: string; text: string }> {
     const frontendUrl = this.configService.get('app.frontendUrl');
-    
+
     const templates: Record<string, (ctx: any) => { html: string; text: string }> = {
       welcome: (ctx) => ({
         html: `
@@ -263,7 +263,7 @@ export class MailProcessor {
         `,
         text: `Welcome to CareCircle, ${ctx.name}! We're thrilled to have you join our community of caregivers.`,
       }),
-      
+
       'password-reset': (ctx) => ({
         html: `
           <!DOCTYPE html>
@@ -282,7 +282,7 @@ export class MailProcessor {
         `,
         text: `Hi ${ctx.name}, Click this link to reset your password: ${ctx.resetUrl}. This link expires in 1 hour.`,
       }),
-      
+
       'email-verification': (ctx) => ({
         html: `
           <!DOCTYPE html>
@@ -320,7 +320,7 @@ export class MailProcessor {
         `,
         text: `Hi ${ctx.name},\n\nYour verification code is: ${ctx.otp}\n\nOr click this link to verify: ${ctx.verificationUrl}\n\nThis code expires in 5 minutes.\n\nIf you didn't create an account, you can safely ignore this email.`,
       }),
-      
+
       'family-invitation': (ctx) => ({
         html: `
           <!DOCTYPE html>
@@ -341,7 +341,7 @@ export class MailProcessor {
         `,
         text: `${ctx.inviterName} has invited you to join ${ctx.familyName} on CareCircle. Accept here: ${ctx.inviteUrl}`,
       }),
-      
+
       'emergency-alert': (ctx) => ({
         html: `
           <!DOCTYPE html>
@@ -365,7 +365,7 @@ export class MailProcessor {
         `,
         text: `EMERGENCY: ${ctx.alertType} for ${ctx.careRecipientName}. ${ctx.message}. Reported by ${ctx.alertedByName} at ${ctx.timestamp}.`,
       }),
-      
+
       'medication-reminder': (ctx) => ({
         html: `
           <!DOCTYPE html>

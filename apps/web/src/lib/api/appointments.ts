@@ -55,29 +55,29 @@ export const appointmentsApi = {
     return api.get<Appointment[]>(`/care-recipients/${careRecipientId}/appointments/day?date=${date}`);
   },
 
-  get: async (id: string): Promise<Appointment> => {
-    return api.get<Appointment>(`/appointments/${id}`);
+  get: async (careRecipientId: string, id: string): Promise<Appointment> => {
+    return api.get<Appointment>(`/care-recipients/${careRecipientId}/appointments/${id}`);
   },
 
   create: async (careRecipientId: string, data: CreateAppointmentInput): Promise<Appointment> => {
     return api.post<Appointment>(`/care-recipients/${careRecipientId}/appointments`, data);
   },
 
-  update: async (id: string, data: Partial<CreateAppointmentInput>): Promise<Appointment> => {
-    return api.patch<Appointment>(`/appointments/${id}`, data);
+  update: async (careRecipientId: string, id: string, data: Partial<CreateAppointmentInput>): Promise<Appointment> => {
+    return api.patch<Appointment>(`/care-recipients/${careRecipientId}/appointments/${id}`, data);
   },
 
-  cancel: async (id: string): Promise<void> => {
-    await api.patch(`/appointments/${id}/cancel`);
+  cancel: async (careRecipientId: string, id: string): Promise<void> => {
+    await api.patch(`/care-recipients/${careRecipientId}/appointments/${id}/cancel`);
   },
 
-  delete: async (id: string): Promise<void> => {
-    await api.delete(`/appointments/${id}`);
+  delete: async (careRecipientId: string, id: string): Promise<void> => {
+    await api.delete(`/care-recipients/${careRecipientId}/appointments/${id}`);
   },
 
   // Transport
-  assignTransport: async (id: string, data: AssignTransportInput): Promise<void> => {
-    await api.post(`/appointments/${id}/transport`, data);
+  assignTransport: async (careRecipientId: string, id: string, data: AssignTransportInput): Promise<void> => {
+    await api.post(`/care-recipients/${careRecipientId}/appointments/${id}/transport`, data);
   },
 };
 
