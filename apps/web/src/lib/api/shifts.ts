@@ -6,7 +6,7 @@ export interface CaregiverShift {
   caregiverId: string;
   startTime: string;
   endTime: string;
-  status: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
+  status: 'SCHEDULED' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
   actualStartTime?: string;
   actualEndTime?: string;
   checkInNotes?: string;

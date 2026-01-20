@@ -11,12 +11,15 @@ export interface Medication {
   instructions?: string;
   prescribedBy?: string;
   pharmacy?: string;
+  pharmacyPhone?: string;
   currentSupply?: number;
-  refillAlertThreshold?: number;
+  refillAt?: number;
   isActive: boolean;
   startDate?: string;
   endDate?: string;
+  notes?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface MedicationScheduleItem {
@@ -35,17 +38,21 @@ export interface MedicationScheduleItem {
 
 export interface CreateMedicationInput {
   name: string;
+  genericName?: string;
   dosage: string;
   form: string;
   frequency: string;
-  scheduledTimes: string[];
+  timesPerDay?: number;
+  scheduledTimes?: string[];
   instructions?: string;
   prescribedBy?: string;
   pharmacy?: string;
+  pharmacyPhone?: string;
   currentSupply?: number;
-  refillAlertThreshold?: number;
+  refillAt?: number;
   startDate?: string;
   endDate?: string;
+  notes?: string;
 }
 
 export interface LogMedicationInput {
@@ -60,20 +67,20 @@ export const medicationsApi = {
     return api.get<Medication[]>(`/care-recipients/${careRecipientId}/medications`);
   },
 
-  get: async (id: string): Promise<Medication> => {
-    return api.get<Medication>(`/medications/${id}`);
+  get: async (careRecipientId: string, id: string): Promise<Medication> => {
+    return api.get<Medication>(`/care-recipients/${careRecipientId}/medications/${id}`);
   },
 
   create: async (careRecipientId: string, data: CreateMedicationInput): Promise<Medication> => {
     return api.post<Medication>(`/care-recipients/${careRecipientId}/medications`, data);
   },
 
-  update: async (id: string, data: Partial<CreateMedicationInput>): Promise<Medication> => {
-    return api.patch<Medication>(`/medications/${id}`, data);
+  update: async (careRecipientId: string, id: string, data: Partial<CreateMedicationInput>): Promise<Medication> => {
+    return api.patch<Medication>(`/care-recipients/${careRecipientId}/medications/${id}`, data);
   },
 
-  delete: async (id: string): Promise<void> => {
-    await api.delete(`/medications/${id}`);
+  delete: async (careRecipientId: string, id: string): Promise<void> => {
+    await api.delete(`/care-recipients/${careRecipientId}/medications/${id}`);
   },
 
   // Schedule
@@ -85,15 +92,6 @@ export const medicationsApi = {
   // Logging
   log: async (medicationId: string, data: LogMedicationInput): Promise<void> => {
     await api.post(`/medications/${medicationId}/log`, data);
-  },
-
-  // Refill alerts
-  getLowSupply: async (careRecipientId: string): Promise<Medication[]> => {
-    return api.get<Medication[]>(`/care-recipients/${careRecipientId}/medications/low-supply`);
-  },
-
-  updateSupply: async (id: string, supply: number): Promise<void> => {
-    await api.patch(`/medications/${id}/supply`, { currentSupply: supply });
   },
 };
 

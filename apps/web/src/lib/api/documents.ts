@@ -47,7 +47,7 @@ export interface DocumentsByCategory {
 
 export const documentsApi = {
   // Upload a new document
-  upload: async (careRecipientId: string, data: UploadDocumentInput): Promise<Document> => {
+  upload: async (familyId: string, data: UploadDocumentInput): Promise<Document> => {
     const formData = new FormData();
     formData.append('file', data.file);
     formData.append('name', data.name);
@@ -55,46 +55,46 @@ export const documentsApi = {
     if (data.expiresAt) formData.append('expiresAt', data.expiresAt);
     if (data.notes) formData.append('notes', data.notes);
 
-    return api.upload<Document>(`/care-recipients/${careRecipientId}/documents`, formData);
+    return api.upload<Document>(`/families/${familyId}/documents`, formData);
   },
 
-  // List all documents for a care recipient
-  list: async (careRecipientId: string): Promise<Document[]> => {
-    return api.get<Document[]>(`/care-recipients/${careRecipientId}/documents`);
+  // List all documents for a family
+  list: async (familyId: string): Promise<Document[]> => {
+    return api.get<Document[]>(`/families/${familyId}/documents`);
   },
 
   // Get a specific document
-  get: async (careRecipientId: string, documentId: string): Promise<Document> => {
-    return api.get<Document>(`/care-recipients/${careRecipientId}/documents/${documentId}`);
+  get: async (familyId: string, documentId: string): Promise<Document> => {
+    return api.get<Document>(`/families/${familyId}/documents/${documentId}`);
   },
 
   // Get a signed URL for viewing/downloading a document
-  getSignedUrl: async (careRecipientId: string, documentId: string): Promise<{ url: string }> => {
-    return api.get<{ url: string }>(`/care-recipients/${careRecipientId}/documents/${documentId}/url`);
+  getSignedUrl: async (familyId: string, documentId: string): Promise<{ url: string }> => {
+    return api.get<{ url: string }>(`/families/${familyId}/documents/${documentId}/url`);
   },
 
   // Get documents grouped by category/type
-  getByCategory: async (careRecipientId: string): Promise<DocumentsByCategory> => {
-    return api.get<DocumentsByCategory>(`/care-recipients/${careRecipientId}/documents/by-category`);
+  getByCategory: async (familyId: string): Promise<DocumentsByCategory> => {
+    return api.get<DocumentsByCategory>(`/families/${familyId}/documents/by-category`);
   },
 
   // Get documents expiring within a number of days
-  getExpiring: async (careRecipientId: string, days: number = 30): Promise<Document[]> => {
-    return api.get<Document[]>(`/care-recipients/${careRecipientId}/documents/expiring?days=${days}`);
+  getExpiring: async (familyId: string, days: number = 30): Promise<Document[]> => {
+    return api.get<Document[]>(`/families/${familyId}/documents/expiring?days=${days}`);
   },
 
   // Update a document's metadata
   update: async (
-    careRecipientId: string,
+    familyId: string,
     documentId: string,
     data: UpdateDocumentInput
   ): Promise<Document> => {
-    return api.patch<Document>(`/care-recipients/${careRecipientId}/documents/${documentId}`, data);
+    return api.patch<Document>(`/families/${familyId}/documents/${documentId}`, data);
   },
 
   // Delete a document
-  delete: async (careRecipientId: string, documentId: string): Promise<void> => {
-    await api.delete(`/care-recipients/${careRecipientId}/documents/${documentId}`);
+  delete: async (familyId: string, documentId: string): Promise<void> => {
+    await api.delete(`/families/${familyId}/documents/${documentId}`);
   },
 };
 

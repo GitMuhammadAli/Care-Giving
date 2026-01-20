@@ -219,6 +219,23 @@ export class TimelineService {
     );
   }
 
+  async getIncidents(careRecipientId: string, userId: string) {
+    await this.verifyAccess(careRecipientId, userId);
+
+    return this.prisma.timelineEntry.findMany({
+      where: {
+        careRecipientId,
+        type: 'INCIDENT',
+      },
+      include: {
+        createdBy: {
+          select: { id: true, fullName: true },
+        },
+      },
+      orderBy: { occurredAt: 'desc' },
+    });
+  }
+
   /**
    * Invalidate timeline caches
    */

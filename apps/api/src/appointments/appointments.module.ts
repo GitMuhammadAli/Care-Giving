@@ -1,11 +1,11 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { AppointmentsService } from './appointments.service';
-import { AppointmentsController } from './appointments.controller';
+import { AppointmentsController, CareRecipientAppointmentsController } from './appointments.controller';
 import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [forwardRef(() => NotificationsModule)],
-  controllers: [AppointmentsController],
+  controllers: [CareRecipientAppointmentsController, AppointmentsController],
   providers: [AppointmentsService],
   exports: [AppointmentsService],
 })

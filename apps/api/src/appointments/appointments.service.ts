@@ -355,7 +355,7 @@ export class AppointmentsService {
       return this.prisma.transportAssignment.update({
         where: { appointmentId: id },
         data: {
-          assignedToId: dto.assigneeId,
+          assignedToId: dto.assignedToId,
           notes: dto.notes,
           confirmed: false,
         },
@@ -365,7 +365,7 @@ export class AppointmentsService {
     return this.prisma.transportAssignment.create({
       data: {
         appointmentId: id,
-        assignedToId: dto.assigneeId,
+        assignedToId: dto.assignedToId,
         notes: dto.notes,
       },
     });

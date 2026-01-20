@@ -22,7 +22,7 @@ interface CurrentUserPayload {
 @ApiTags('Timeline')
 @ApiBearerAuth('JWT-auth')
 @Controller('care-recipients/:careRecipientId/timeline')
-export class TimelineController {
+export class CareRecipientTimelineController {
   constructor(private readonly timelineService: TimelineService) {}
 
   @Post()
@@ -65,6 +65,15 @@ export class TimelineController {
     return this.timelineService.getRecentVitals(careRecipientId, user.id, days ? parseInt(days, 10) : 7);
   }
 
+  @Get('incidents')
+  @ApiOperation({ summary: 'Get incidents' })
+  getIncidents(
+    @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.timelineService.getIncidents(careRecipientId, user.id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a timeline entry by ID' })
   findOne(
@@ -73,6 +82,33 @@ export class TimelineController {
   ) {
     return this.timelineService.findOne(id, user.id);
   }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update a timeline entry' })
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: Partial<CreateTimelineEntryDto>,
+  ) {
+    return this.timelineService.update(id, user.id, dto);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a timeline entry' })
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.timelineService.delete(id, user.id);
+  }
+}
+
+// Top-level timeline controller for direct ID access
+@ApiTags('Timeline')
+@ApiBearerAuth('JWT-auth')
+@Controller('timeline')
+export class TimelineController {
+  constructor(private readonly timelineService: TimelineService) {}
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a timeline entry' })

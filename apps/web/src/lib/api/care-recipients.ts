@@ -11,6 +11,11 @@ export interface CareRecipient {
   conditions: string[];
   notes?: string;
   photoUrl?: string;
+  // Hospital & Insurance info
+  primaryHospital?: string;
+  hospitalAddress?: string;
+  insuranceProvider?: string;
+  insurancePolicyNo?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -43,6 +48,11 @@ export interface CreateCareRecipientInput {
   allergies?: string[];
   conditions?: string[];
   notes?: string;
+  photoUrl?: string;
+  primaryHospital?: string;
+  hospitalAddress?: string;
+  insuranceProvider?: string;
+  insurancePolicyNo?: string;
 }
 
 export const careRecipientsApi = {

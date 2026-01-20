@@ -61,7 +61,7 @@ function formatFileSize(bytes: number): string {
 }
 
 export default function DocumentsPage() {
-  const { selectedCareRecipientId: careRecipientId } = useFamilySpace();
+  const { selectedFamilyId: familyId } = useFamilySpace();
   const queryClient = useQueryClient();
 
   const [category, setCategory] = useState('all');
@@ -69,17 +69,17 @@ export default function DocumentsPage() {
 
   // Fetch all documents
   const { data: documents = [], isLoading } = useQuery({
-    queryKey: ['documents', careRecipientId],
-    queryFn: () => documentsApi.list(careRecipientId!),
-    enabled: !!careRecipientId,
+    queryKey: ['documents', familyId],
+    queryFn: () => documentsApi.list(familyId!),
+    enabled: !!familyId,
   });
 
   // Delete document mutation
   const deleteDocumentMutation = useMutation({
-    mutationFn: (docId: string) => documentsApi.delete(careRecipientId!, docId),
+    mutationFn: (docId: string) => documentsApi.delete(familyId!, docId),
     onSuccess: () => {
       toast.success('Document deleted');
-      queryClient.invalidateQueries({ queryKey: ['documents', careRecipientId] });
+      queryClient.invalidateQueries({ queryKey: ['documents', familyId] });
     },
     onError: () => {
       toast.error('Failed to delete document');
@@ -110,7 +110,7 @@ export default function DocumentsPage() {
 
   const handleViewDocument = async (docId: string) => {
     try {
-      const { url } = await documentsApi.getSignedUrl(careRecipientId!, docId);
+      const { url } = await documentsApi.getSignedUrl(familyId!, docId);
       window.open(url, '_blank');
     } catch (error) {
       console.error('Failed to get document URL:', error);
@@ -119,7 +119,7 @@ export default function DocumentsPage() {
 
   const handleDownloadDocument = async (docId: string, docName: string) => {
     try {
-      const { url } = await documentsApi.getSignedUrl(careRecipientId!, docId);
+      const { url } = await documentsApi.getSignedUrl(familyId!, docId);
       const link = document.createElement('a');
       link.href = url;
       link.download = docName;
@@ -129,7 +129,7 @@ export default function DocumentsPage() {
     }
   };
 
-  if (!careRecipientId) {
+  if (!familyId) {
     return (
       <div className="pb-6">
         <PageHeader title="Documents" subtitle="Secure document vault" />
@@ -137,8 +137,8 @@ export default function DocumentsPage() {
           <FamilySpaceSelector />
           <div className="text-center py-12">
             <AlertCircle className="w-12 h-12 text-warning mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-text-primary mb-2">No Loved One Selected</h2>
-            <p className="text-text-secondary">Please select a loved one above to view documents.</p>
+            <h2 className="text-xl font-semibold text-text-primary mb-2">No Family Selected</h2>
+            <p className="text-text-secondary">Please select a family above to view documents.</p>
           </div>
         </div>
       </div>
@@ -346,14 +346,14 @@ export default function DocumentsPage() {
       </div>
 
       {/* Upload Document Modal */}
-      {careRecipientId && (
+      {familyId && (
         <UploadDocumentModal
           isOpen={isUploadModalOpen}
           onClose={() => {
             setIsUploadModalOpen(false);
-            queryClient.invalidateQueries({ queryKey: ['documents', careRecipientId] });
+            queryClient.invalidateQueries({ queryKey: ['documents', familyId] });
           }}
-          careRecipientId={careRecipientId}
+          familyId={familyId}
         />
       )}
     </div>

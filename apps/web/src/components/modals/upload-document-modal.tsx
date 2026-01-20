@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  careRecipientId: string;
+  familyId: string;
 }
 
 const DOCUMENT_CATEGORIES = [
@@ -37,7 +37,7 @@ const ALLOWED_TYPES = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ];
 
-export function UploadDocumentModal({ isOpen, onClose, careRecipientId }: Props) {
+export function UploadDocumentModal({ isOpen, onClose, familyId }: Props) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -51,10 +51,10 @@ export function UploadDocumentModal({ isOpen, onClose, careRecipientId }: Props)
 
   const mutation = useMutation({
     mutationFn: async (data: FormData) => {
-      return api.upload(`/care-recipients/${careRecipientId}/documents`, data);
+      return api.upload(`/families/${familyId}/documents`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['documents', careRecipientId] });
+      queryClient.invalidateQueries({ queryKey: ['documents', familyId] });
       toast.success('Document uploaded successfully');
       onClose();
       resetForm();

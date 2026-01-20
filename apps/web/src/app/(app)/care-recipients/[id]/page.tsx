@@ -32,11 +32,9 @@ interface CareRecipient {
   emergencyContacts: EmergencyContact[];
   doctors: Doctor[];
   insuranceProvider?: string;
-  insurancePolicyNumber?: string;
-  insuranceGroupNumber?: string;
-  preferredHospital?: string;
-  preferredHospitalAddress?: string;
-  preferredHospitalPhone?: string;
+  insurancePolicyNo?: string;
+  primaryHospital?: string;
+  hospitalAddress?: string;
   createdAt: string;
 }
 
@@ -311,49 +309,32 @@ export default function CareRecipientDetailPage() {
             <Shield className="w-5 h-5 text-sage-700" />
             <h2 className="text-lg font-semibold text-ink">Insurance</h2>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-sage-400">Provider</p>
               <p className="font-medium text-ink">{careRecipient.insuranceProvider}</p>
             </div>
-            {careRecipient.insurancePolicyNumber && (
+            {careRecipient.insurancePolicyNo && (
               <div>
                 <p className="text-sm text-sage-400">Policy Number</p>
-                <p className="font-medium text-ink">{careRecipient.insurancePolicyNumber}</p>
-              </div>
-            )}
-            {careRecipient.insuranceGroupNumber && (
-              <div>
-                <p className="text-sm text-sage-400">Group Number</p>
-                <p className="font-medium text-ink">{careRecipient.insuranceGroupNumber}</p>
+                <p className="font-medium text-ink">{careRecipient.insurancePolicyNo}</p>
               </div>
             )}
           </div>
         </Card>
       )}
 
-      {/* Preferred Hospital */}
-      {careRecipient.preferredHospital && (
+      {/* Primary Hospital */}
+      {careRecipient.primaryHospital && (
         <Card className="p-6">
           <div className="flex items-center gap-2 mb-4">
             <MapPin className="w-5 h-5 text-sage-700" />
-            <h2 className="text-lg font-semibold text-ink">Preferred Hospital</h2>
+            <h2 className="text-lg font-semibold text-ink">Primary Hospital</h2>
           </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-ink">{careRecipient.preferredHospital}</p>
-              {careRecipient.preferredHospitalAddress && (
-                <p className="text-sm text-warm-gray">{careRecipient.preferredHospitalAddress}</p>
-              )}
-            </div>
-            {careRecipient.preferredHospitalPhone && (
-              <a 
-                href={`tel:${careRecipient.preferredHospitalPhone}`}
-                className="flex items-center gap-2 px-4 py-2 bg-sage-700 text-white rounded-lg hover:bg-sage-600 transition-colors"
-              >
-                <Phone className="w-4 h-4" />
-                Call
-              </a>
+          <div>
+            <p className="font-medium text-ink">{careRecipient.primaryHospital}</p>
+            {careRecipient.hospitalAddress && (
+              <p className="text-sm text-warm-gray">{careRecipient.hospitalAddress}</p>
             )}
           </div>
         </Card>

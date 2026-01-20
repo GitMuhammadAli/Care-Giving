@@ -27,7 +27,7 @@ export interface FamilyInvitation {
   familyId: string;
   email: string;
   role: 'ADMIN' | 'CAREGIVER' | 'VIEWER';
-  status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED';
+  status: 'PENDING' | 'ACCEPTED' | 'CANCELLED' | 'EXPIRED';
   invitedById: string;
   createdAt: string;
   expiresAt: string;
@@ -86,16 +86,24 @@ export const familyApi = {
     return api.get<FamilyInvitation[]>(`/families/${familyId}/invitations`);
   },
 
-  cancelInvitation: async (familyId: string, invitationId: string): Promise<void> => {
-    await api.delete(`/families/${familyId}/invitations/${invitationId}`);
+  cancelInvitation: async (_familyId: string, invitationId: string): Promise<void> => {
+    await api.delete(`/families/invitations/${invitationId}`);
   },
 
-  resendInvitation: async (familyId: string, invitationId: string): Promise<void> => {
-    await api.post(`/families/${familyId}/invitations/${invitationId}/resend`);
+  resendInvitation: async (_familyId: string, invitationId: string): Promise<void> => {
+    await api.post(`/families/invitations/${invitationId}/resend`);
   },
 
   acceptInvitation: async (token: string): Promise<Family> => {
-    return api.post<Family>(`/families/accept-invite/${token}`);
+    return api.post<Family>(`/families/invitations/${token}/accept`);
+  },
+
+  getInvitationDetails: async (token: string): Promise<FamilyInvitation & { family: { name: string } }> => {
+    return api.get(`/families/invitations/${token}/details`, { skipAuth: true });
+  },
+
+  declineInvitation: async (token: string): Promise<void> => {
+    await api.post(`/families/invitations/${token}/decline`, {}, { skipAuth: true });
   },
 
   // Password Reset (Admin only)

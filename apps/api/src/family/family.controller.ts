@@ -47,6 +47,22 @@ export class FamilyController {
     return this.familyService.getFamily(familyId, user.id);
   }
 
+  @Get(':familyId/members')
+  @ApiOperation({ summary: 'Get all members of a family' })
+  @ApiResponse({ status: 200, description: 'List of family members' })
+  @ApiResponse({ status: 403, description: 'Not a member of this family' })
+  getMembers(@Param('familyId') familyId: string, @CurrentUser() user: CurrentUserPayload) {
+    return this.familyService.getMembers(familyId, user.id);
+  }
+
+  @Get(':familyId/invitations')
+  @ApiOperation({ summary: 'Get pending invitations for a family' })
+  @ApiResponse({ status: 200, description: 'List of pending invitations' })
+  @ApiResponse({ status: 403, description: 'Not a member of this family' })
+  getPendingInvitations(@Param('familyId') familyId: string, @CurrentUser() user: CurrentUserPayload) {
+    return this.familyService.getPendingInvitations(familyId, user.id);
+  }
+
   @Patch(':familyId')
   @ApiOperation({ summary: 'Update a family (Admin only)' })
   @ApiResponse({ status: 200, description: 'Family updated successfully' })

@@ -24,7 +24,7 @@ interface CurrentUserPayload {
 @ApiTags("Appointments")
 @ApiBearerAuth('JWT-auth')
 @Controller("care-recipients/:careRecipientId/appointments")
-export class AppointmentsController {
+export class CareRecipientAppointmentsController {
   constructor(private readonly appointmentsService: AppointmentsService) {}
 
   @Post()
@@ -135,5 +135,60 @@ export class AppointmentsController {
     @CurrentUser() user: CurrentUserPayload
   ) {
     return this.appointmentsService.delete(id, user.id);
+  }
+}
+
+// Top-level appointments controller for direct ID access
+@ApiTags("Appointments")
+@ApiBearerAuth('JWT-auth')
+@Controller("appointments")
+export class AppointmentsController {
+  constructor(private readonly appointmentsService: AppointmentsService) {}
+
+  @Get(":id")
+  @ApiOperation({ summary: "Get an appointment by ID" })
+  findOne(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload
+  ) {
+    return this.appointmentsService.findOne(id, user.id);
+  }
+
+  @Patch(":id")
+  @ApiOperation({ summary: "Update an appointment" })
+  update(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: UpdateAppointmentDto
+  ) {
+    return this.appointmentsService.update(id, user.id, dto);
+  }
+
+  @Patch(":id/cancel")
+  @ApiOperation({ summary: "Cancel an appointment" })
+  cancel(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload
+  ) {
+    return this.appointmentsService.cancel(id, user.id);
+  }
+
+  @Delete(":id")
+  @ApiOperation({ summary: "Delete an appointment (Admin only)" })
+  delete(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload
+  ) {
+    return this.appointmentsService.delete(id, user.id);
+  }
+
+  @Post(":id/transport")
+  @ApiOperation({ summary: "Assign transport for appointment" })
+  assignTransport(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: AssignTransportDto
+  ) {
+    return this.appointmentsService.assignTransport(id, user.id, dto);
   }
 }

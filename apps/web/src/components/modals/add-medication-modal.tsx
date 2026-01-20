@@ -51,7 +51,7 @@ export function AddMedicationModal({ isOpen, onClose, careRecipientId }: Props) 
     prescribedBy: '',
     pharmacy: '',
     currentSupply: '',
-    refillAlertAt: '15',
+    refillAt: '15',
     startDate: new Date().toISOString().split('T')[0],
     endDate: '',
   });
@@ -81,7 +81,7 @@ export function AddMedicationModal({ isOpen, onClose, careRecipientId }: Props) 
       prescribedBy: '',
       pharmacy: '',
       currentSupply: '',
-      refillAlertAt: '15',
+      refillAt: '15',
       startDate: new Date().toISOString().split('T')[0],
       endDate: '',
     });
@@ -92,7 +92,7 @@ export function AddMedicationModal({ isOpen, onClose, careRecipientId }: Props) 
     mutation.mutate({
       ...formData,
       currentSupply: formData.currentSupply ? parseInt(formData.currentSupply) : null,
-      refillAlertAt: formData.refillAlertAt ? parseInt(formData.refillAlertAt) : null,
+      refillAt: formData.refillAt ? parseInt(formData.refillAt) : null,
       endDate: formData.endDate || null,
     });
   };
@@ -245,8 +245,8 @@ export function AddMedicationModal({ isOpen, onClose, careRecipientId }: Props) 
           <Input
             label="Refill Alert At"
             type="number"
-            value={formData.refillAlertAt}
-            onChange={(e) => setFormData({ ...formData, refillAlertAt: e.target.value })}
+            value={formData.refillAt}
+            onChange={(e) => setFormData({ ...formData, refillAt: e.target.value })}
             placeholder="e.g., 15"
           />
         </div>

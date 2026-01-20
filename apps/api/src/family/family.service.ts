@@ -360,6 +360,38 @@ export class FamilyService {
     );
   }
 
+  async getMembers(familyId: string, userId: string) {
+    const membership = await this.prisma.familyMember.findUnique({
+      where: { familyId_userId: { familyId, userId } },
+    });
+
+    if (!membership) {
+      throw new ForbiddenException('You are not a member of this family');
+    }
+
+    return this.prisma.familyMember.findMany({
+      where: { familyId },
+      include: {
+        user: { select: { id: true, fullName: true, email: true, avatarUrl: true, phone: true } },
+      },
+    });
+  }
+
+  async getPendingInvitations(familyId: string, userId: string) {
+    const membership = await this.prisma.familyMember.findUnique({
+      where: { familyId_userId: { familyId, userId } },
+    });
+
+    if (!membership) {
+      throw new ForbiddenException('You are not a member of this family');
+    }
+
+    return this.prisma.familyInvitation.findMany({
+      where: { familyId, status: 'PENDING' },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async updateMemberRole(familyId: string, memberId: string, adminId: string, role: 'ADMIN' | 'CAREGIVER' | 'VIEWER') {
     const admin = await this.prisma.familyMember.findUnique({
       where: { familyId_userId: { familyId, userId: adminId } },

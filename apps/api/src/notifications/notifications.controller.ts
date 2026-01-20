@@ -18,6 +18,16 @@ interface CurrentUserPayload {
   email: string;
 }
 
+interface PushSubscriptionDto {
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+  platform?: 'web' | 'ios' | 'android';
+  deviceName?: string;
+}
+
 @ApiTags('Notifications')
 @ApiBearerAuth('JWT-auth')
 @Controller('notifications')
@@ -30,6 +40,7 @@ export class NotificationsController {
     @CurrentUser() user: CurrentUserPayload,
     @Query('unreadOnly') unreadOnly?: string,
     @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
   ) {
     return this.notificationsService.getNotifications(
       user.id,
@@ -38,10 +49,26 @@ export class NotificationsController {
     );
   }
 
+  @Get('unread')
+  @ApiOperation({ summary: 'Get unread notifications' })
+  getUnread(@CurrentUser() user: CurrentUserPayload) {
+    return this.notificationsService.getUnread(user.id);
+  }
+
   @Get('unread/count')
   @ApiOperation({ summary: 'Get unread notification count' })
-  getUnreadCount(@CurrentUser() user: CurrentUserPayload) {
-    return this.notificationsService.getUnreadCount(user.id);
+  async getUnreadCount(@CurrentUser() user: CurrentUserPayload) {
+    const count = await this.notificationsService.getUnreadCount(user.id);
+    return { count };
+  }
+
+  @Patch('read')
+  @ApiOperation({ summary: 'Mark notifications as read (batch)' })
+  markAsReadBatch(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: { ids: string[] },
+  ) {
+    return this.notificationsService.markMultipleAsRead(dto.ids, user.id);
   }
 
   @Patch(':notificationId/read')
@@ -57,6 +84,23 @@ export class NotificationsController {
   @ApiOperation({ summary: 'Mark all notifications as read' })
   markAllAsRead(@CurrentUser() user: CurrentUserPayload) {
     return this.notificationsService.markAllAsRead(user.id);
+  }
+
+  @Post('push-subscription')
+  @ApiOperation({ summary: 'Subscribe to push notifications (web push)' })
+  subscribeToPush(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: PushSubscriptionDto,
+  ) {
+    // Store the endpoint as the token for web push subscriptions
+    const platform = (dto.platform?.toUpperCase() || 'WEB') as PushPlatform;
+    return this.notificationsService.registerPushToken(user.id, dto.endpoint, platform);
+  }
+
+  @Delete('push-subscription')
+  @ApiOperation({ summary: 'Unsubscribe from push notifications (web push)' })
+  unsubscribeFromPush(@Body() dto: { endpoint: string }) {
+    return this.notificationsService.removePushToken(dto.endpoint);
   }
 
   @Post('push-token')

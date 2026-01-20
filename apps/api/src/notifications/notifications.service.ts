@@ -238,6 +238,29 @@ export class NotificationsService {
     });
   }
 
+  async markMultipleAsRead(notificationIds: string[], userId: string) {
+    return this.prisma.notification.updateMany({
+      where: {
+        id: { in: notificationIds },
+        userId,
+      },
+      data: {
+        read: true,
+        readAt: new Date(),
+      },
+    });
+  }
+
+  async getUnread(userId: string) {
+    return this.prisma.notification.findMany({
+      where: {
+        userId,
+        read: false,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async markAllAsRead(userId: string) {
     return this.prisma.notification.updateMany({
       where: {

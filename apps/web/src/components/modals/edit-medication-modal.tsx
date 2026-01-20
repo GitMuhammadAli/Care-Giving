@@ -52,7 +52,7 @@ export function EditMedicationModal({ isOpen, onClose, medication, careRecipient
     prescribedBy: '',
     pharmacy: '',
     currentSupply: '',
-    refillAlertThreshold: '15',
+    refillAt: '15',
     startDate: new Date().toISOString().split('T')[0],
     endDate: '',
   });
@@ -69,7 +69,7 @@ export function EditMedicationModal({ isOpen, onClose, medication, careRecipient
         prescribedBy: medication.prescribedBy || '',
         pharmacy: medication.pharmacy || '',
         currentSupply: medication.currentSupply?.toString() || '',
-        refillAlertThreshold: medication.refillAlertThreshold?.toString() || '15',
+        refillAt: medication.refillAt?.toString() || '15',
         startDate: medication.startDate?.split('T')[0] || new Date().toISOString().split('T')[0],
         endDate: medication.endDate?.split('T')[0] || '',
       });
@@ -96,7 +96,7 @@ export function EditMedicationModal({ isOpen, onClose, medication, careRecipient
     mutation.mutate({
       ...formData,
       currentSupply: formData.currentSupply ? parseInt(formData.currentSupply) : null,
-      refillAlertThreshold: formData.refillAlertThreshold ? parseInt(formData.refillAlertThreshold) : null,
+      refillAt: formData.refillAt ? parseInt(formData.refillAt) : null,
       endDate: formData.endDate || null,
     });
   };
@@ -251,8 +251,8 @@ export function EditMedicationModal({ isOpen, onClose, medication, careRecipient
           <Input
             label="Refill Alert At"
             type="number"
-            value={formData.refillAlertThreshold}
-            onChange={(e) => setFormData({ ...formData, refillAlertThreshold: e.target.value })}
+            value={formData.refillAt}
+            onChange={(e) => setFormData({ ...formData, refillAt: e.target.value })}
             placeholder="e.g., 15"
           />
         </div>

@@ -17,11 +17,11 @@ export function useTimeline(
         offset: pageParam,
       }),
     getNextPageParam: (lastPage, allPages) => {
-      if (lastPage.length < (options?.limit || 20)) return undefined;
+      if (!lastPage || !Array.isArray(lastPage) || lastPage.length < (options?.limit || 20)) return undefined;
       return allPages.flat().length;
     },
     initialPageParam: 0,
-    enabled: !!careRecipientId,
+    enabled: !!careRecipientId && careRecipientId.length > 0,
   });
 }
 

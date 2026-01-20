@@ -65,10 +65,11 @@ export class CareRecipientService {
         allergies: dto.allergies || [],
         conditions: dto.conditions || [],
         notes: dto.notes,
-        primaryHospital: dto.preferredHospital,
-        hospitalAddress: dto.preferredHospitalAddress,
+        primaryHospital: dto.primaryHospital,
+        hospitalAddress: dto.hospitalAddress,
         insuranceProvider: dto.insuranceProvider,
-        insurancePolicyNo: dto.insurancePolicyNumber,
+        insurancePolicyNo: dto.insurancePolicyNo,
+        photoUrl: dto.photoUrl,
       },
     });
   }
@@ -140,9 +141,9 @@ export class CareRecipientService {
     if (dto.allergies) changes.push('allergies');
     if (dto.conditions) changes.push('conditions');
     if (dto.notes !== undefined && dto.notes !== careRecipient.notes) changes.push('notes');
-    if (dto.preferredHospital && dto.preferredHospital !== careRecipient.primaryHospital) changes.push('hospital');
+    if (dto.primaryHospital && dto.primaryHospital !== careRecipient.primaryHospital) changes.push('hospital');
     if (dto.insuranceProvider && dto.insuranceProvider !== careRecipient.insuranceProvider) changes.push('insurance');
-    if (dto.avatarUrl) changes.push('photo');
+    if (dto.photoUrl) changes.push('photo');
 
     const updated = await this.prisma.careRecipient.update({
       where: { id },
@@ -154,11 +155,11 @@ export class CareRecipientService {
         allergies: dto.allergies,
         conditions: dto.conditions,
         notes: dto.notes,
-        primaryHospital: dto.preferredHospital,
-        hospitalAddress: dto.preferredHospitalAddress,
+        primaryHospital: dto.primaryHospital,
+        hospitalAddress: dto.hospitalAddress,
         insuranceProvider: dto.insuranceProvider,
-        insurancePolicyNo: dto.insurancePolicyNumber,
-        photoUrl: dto.avatarUrl,
+        insurancePolicyNo: dto.insurancePolicyNo,
+        photoUrl: dto.photoUrl,
       },
     });
 

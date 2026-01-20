@@ -129,8 +129,8 @@ export default function MedicationsPage() {
     return allMedications.map(med => {
       const dosesPerDay = med.scheduledTimes?.length || 1;
       const daysLeft = med.currentSupply ? Math.floor(med.currentSupply / dosesPerDay) : undefined;
-      const lowSupply = med.refillAlertThreshold && med.currentSupply 
-        ? med.currentSupply <= med.refillAlertThreshold 
+      const lowSupply = med.refillAt && med.currentSupply
+        ? med.currentSupply <= med.refillAt
         : false;
       return { ...med, daysLeft, lowSupply };
     });

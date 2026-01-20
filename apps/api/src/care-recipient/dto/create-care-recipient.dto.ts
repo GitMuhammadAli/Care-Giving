@@ -47,7 +47,7 @@ export class CreateCareRecipientDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsUrl()
-  avatarUrl?: string;
+  photoUrl?: string;
 
   @ApiPropertyOptional({ example: ['Penicillin', 'Sulfa drugs'] })
   @IsOptional()
@@ -70,12 +70,12 @@ export class CreateCareRecipientDto {
   @ApiPropertyOptional({ example: 'Memorial Hospital' })
   @IsOptional()
   @IsString()
-  preferredHospital?: string;
+  primaryHospital?: string;
 
   @ApiPropertyOptional({ example: '123 Hospital Drive, Springfield, IL' })
   @IsOptional()
   @IsString()
-  preferredHospitalAddress?: string;
+  hospitalAddress?: string;
 
   @ApiPropertyOptional({ example: 'BlueCross BlueShield' })
   @IsOptional()
@@ -85,11 +85,6 @@ export class CreateCareRecipientDto {
   @ApiPropertyOptional({ example: 'BCB123456789' })
   @IsOptional()
   @IsString()
-  insurancePolicyNumber?: string;
-
-  @ApiPropertyOptional({ example: 'GRP987654' })
-  @IsOptional()
-  @IsString()
-  insuranceGroupNumber?: string;
+  insurancePolicyNo?: string;
 }
 

@@ -60,6 +60,15 @@ export class DocumentsController {
     return this.documentsService.getExpiringDocuments(familyId, user.id, days ? parseInt(days, 10) : 30);
   }
 
+  @Get('by-category')
+  @ApiOperation({ summary: 'Get documents grouped by category' })
+  getByCategory(
+    @Param('familyId', ParseUUIDPipe) familyId: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.documentsService.getByCategory(familyId, user.id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a document by ID' })
   findOne(
@@ -67,6 +76,16 @@ export class DocumentsController {
     @CurrentUser() user: CurrentUserPayload,
   ) {
     return this.documentsService.findOne(id, user.id);
+  }
+
+  @Get(':id/url')
+  @ApiOperation({ summary: 'Get a signed URL for viewing/downloading a document' })
+  getSignedUrl(
+    @Param('familyId', ParseUUIDPipe) familyId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.documentsService.getSignedUrl(id, familyId, user.id);
   }
 
   @Patch(':id')

@@ -142,6 +142,46 @@ export class DocumentsService {
       orderBy: { expiresAt: 'asc' },
     });
   }
+
+  async getSignedUrl(documentId: string, familyId: string, userId: string) {
+    await this.verifyFamilyAccess(familyId, userId);
+
+    const document = await this.prisma.document.findUnique({
+      where: { id: documentId, familyId },
+    });
+
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+
+    // TODO: Implement actual S3 signed URL generation
+    // For now, return a placeholder URL
+    // const signedUrl = await this.s3Service.getSignedUrl(document.s3Key);
+    const signedUrl = `/api/v1/storage/${document.s3Key}`;
+
+    return { url: signedUrl };
+  }
+
+  async getByCategory(familyId: string, userId: string) {
+    await this.verifyFamilyAccess(familyId, userId);
+
+    const documents = await this.prisma.document.findMany({
+      where: { familyId },
+      orderBy: [{ type: 'asc' }, { createdAt: 'desc' }],
+    });
+
+    // Group documents by type
+    const grouped: Record<string, any[]> = {};
+    for (const doc of documents) {
+      const category = doc.type;
+      if (!grouped[category]) {
+        grouped[category] = [];
+      }
+      grouped[category].push(doc);
+    }
+
+    return grouped;
+  }
 }
 
 

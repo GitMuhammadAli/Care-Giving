@@ -19,11 +19,9 @@ interface CareRecipient {
   conditions?: string[];
   notes?: string;
   insuranceProvider?: string;
-  insurancePolicyNumber?: string;
-  insuranceGroupNumber?: string;
-  preferredHospital?: string;
-  preferredHospitalAddress?: string;
-  preferredHospitalPhone?: string;
+  insurancePolicyNo?: string;
+  primaryHospital?: string;
+  hospitalAddress?: string;
 }
 
 interface Props {
@@ -43,11 +41,9 @@ export function EditCareRecipientModal({ isOpen, onClose, careRecipient }: Props
     conditions: careRecipient.conditions || [],
     notes: careRecipient.notes || '',
     insuranceProvider: careRecipient.insuranceProvider || '',
-    insurancePolicyNumber: careRecipient.insurancePolicyNumber || '',
-    insuranceGroupNumber: careRecipient.insuranceGroupNumber || '',
-    preferredHospital: careRecipient.preferredHospital || '',
-    preferredHospitalAddress: careRecipient.preferredHospitalAddress || '',
-    preferredHospitalPhone: careRecipient.preferredHospitalPhone || '',
+    insurancePolicyNo: careRecipient.insurancePolicyNo || '',
+    primaryHospital: careRecipient.primaryHospital || '',
+    hospitalAddress: careRecipient.hospitalAddress || '',
   });
 
   const [newAllergy, setNewAllergy] = useState('');
@@ -231,7 +227,7 @@ export function EditCareRecipientModal({ isOpen, onClose, careRecipient }: Props
         {/* Insurance */}
         <div>
           <h3 className="text-sm font-medium text-text-primary mb-3">Insurance Information</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Provider"
               value={formData.insuranceProvider}
@@ -240,35 +236,25 @@ export function EditCareRecipientModal({ isOpen, onClose, careRecipient }: Props
             />
             <Input
               label="Policy Number"
-              value={formData.insurancePolicyNumber}
-              onChange={(e) => setFormData({ ...formData, insurancePolicyNumber: e.target.value })}
-            />
-            <Input
-              label="Group Number"
-              value={formData.insuranceGroupNumber}
-              onChange={(e) => setFormData({ ...formData, insuranceGroupNumber: e.target.value })}
+              value={formData.insurancePolicyNo}
+              onChange={(e) => setFormData({ ...formData, insurancePolicyNo: e.target.value })}
             />
           </div>
         </div>
 
-        {/* Preferred Hospital */}
+        {/* Primary Hospital */}
         <div>
-          <h3 className="text-sm font-medium text-text-primary mb-3">Preferred Hospital</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <h3 className="text-sm font-medium text-text-primary mb-3">Primary Hospital</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Hospital Name"
-              value={formData.preferredHospital}
-              onChange={(e) => setFormData({ ...formData, preferredHospital: e.target.value })}
+              value={formData.primaryHospital}
+              onChange={(e) => setFormData({ ...formData, primaryHospital: e.target.value })}
             />
             <Input
               label="Address"
-              value={formData.preferredHospitalAddress}
-              onChange={(e) => setFormData({ ...formData, preferredHospitalAddress: e.target.value })}
-            />
-            <Input
-              label="Phone"
-              value={formData.preferredHospitalPhone}
-              onChange={(e) => setFormData({ ...formData, preferredHospitalPhone: e.target.value })}
+              value={formData.hospitalAddress}
+              onChange={(e) => setFormData({ ...formData, hospitalAddress: e.target.value })}
             />
           </div>
         </div>

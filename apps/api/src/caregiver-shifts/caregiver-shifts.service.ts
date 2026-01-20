@@ -144,6 +144,102 @@ export class CaregiverShiftsService {
     );
   }
 
+  async getAll(careRecipientId: string, userId: string) {
+    await this.verifyAccess(careRecipientId, userId);
+
+    return this.prisma.caregiverShift.findMany({
+      where: {
+        careRecipientId,
+        status: { not: 'CANCELLED' },
+      },
+      include: {
+        caregiver: {
+          select: { id: true, fullName: true, email: true, avatarUrl: true },
+        },
+        careRecipient: {
+          select: { id: true, fullName: true, preferredName: true },
+        },
+      },
+      orderBy: { startTime: 'desc' },
+    });
+  }
+
+  async getByDateRange(careRecipientId: string, userId: string, startDate: Date, endDate: Date) {
+    await this.verifyAccess(careRecipientId, userId);
+
+    return this.prisma.caregiverShift.findMany({
+      where: {
+        careRecipientId,
+        status: { not: 'CANCELLED' },
+        OR: [
+          { startTime: { gte: startDate, lte: endDate } },
+          { endTime: { gte: startDate, lte: endDate } },
+          { startTime: { lte: startDate }, endTime: { gte: endDate } },
+        ],
+      },
+      include: {
+        caregiver: {
+          select: { id: true, fullName: true, email: true, avatarUrl: true },
+        },
+      },
+      orderBy: { startTime: 'asc' },
+    });
+  }
+
+  async getOnDuty(careRecipientId: string, userId: string) {
+    await this.verifyAccess(careRecipientId, userId);
+
+    const now = new Date();
+
+    const currentShift = await this.prisma.caregiverShift.findFirst({
+      where: {
+        careRecipientId,
+        startTime: { lte: now },
+        endTime: { gte: now },
+        status: { in: ['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS'] },
+      },
+      include: {
+        caregiver: {
+          select: { id: true, fullName: true, email: true, avatarUrl: true },
+        },
+      },
+    });
+
+    if (!currentShift) {
+      return null;
+    }
+
+    return {
+      caregiver: currentShift.caregiver,
+      shift: currentShift,
+    };
+  }
+
+  async getById(careRecipientId: string, shiftId: string, userId: string) {
+    await this.verifyAccess(careRecipientId, userId);
+
+    const shift = await this.prisma.caregiverShift.findFirst({
+      where: {
+        id: shiftId,
+        careRecipientId,
+      },
+      include: {
+        caregiver: {
+          select: { id: true, fullName: true, email: true, avatarUrl: true },
+        },
+        careRecipient: {
+          select: { id: true, fullName: true, preferredName: true },
+        },
+      },
+    });
+
+    if (!shift) {
+      throw new NotFoundException('Shift not found');
+    }
+
+    return shift;
+  }
+
   async getUpcoming(careRecipientId: string, userId: string, days: number = 7) {
     await this.verifyAccess(careRecipientId, userId);
 

@@ -2,10 +2,18 @@ import { api } from './client';
 
 export type NotificationType =
   | 'MEDICATION_REMINDER'
+  | 'MEDICATION_MISSED'
   | 'APPOINTMENT_REMINDER'
+  | 'SHIFT_REMINDER'
+  | 'SHIFT_HANDOFF'
   | 'EMERGENCY_ALERT'
-  | 'FAMILY_UPDATE'
-  | 'SYSTEM'
+  | 'FAMILY_INVITE'
+  | 'DOCUMENT_SHARED'
+  | 'TIMELINE_UPDATE'
+  | 'REFILL_NEEDED'
+  | 'REFILL_ALERT'
+  | 'GENERAL'
+  // Admin action notifications
   | 'CARE_RECIPIENT_DELETED'
   | 'CARE_RECIPIENT_UPDATED'
   | 'MEDICATION_DELETED'

@@ -35,6 +35,31 @@ export class CaregiverShiftsController {
     return this.shiftsService.createShift(careRecipientId, user.id, dto);
   }
 
+  @Get()
+  @ApiOperation({ summary: 'Get all shifts for a care recipient' })
+  getAll(
+    @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.shiftsService.getAll(careRecipientId, user.id);
+  }
+
+  @Get('range')
+  @ApiOperation({ summary: 'Get shifts within a date range' })
+  getByDateRange(
+    @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    return this.shiftsService.getByDateRange(
+      careRecipientId,
+      user.id,
+      new Date(startDate),
+      new Date(endDate),
+    );
+  }
+
   @Get('current')
   @ApiOperation({ summary: 'Get the current shift' })
   getCurrentShift(
@@ -43,12 +68,22 @@ export class CaregiverShiftsController {
     return this.shiftsService.getCurrentShift(careRecipientId);
   }
 
+  @Get('on-duty')
+  @ApiOperation({ summary: 'Get who is currently on duty' })
+  getOnDuty(
+    @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.shiftsService.getOnDuty(careRecipientId, user.id);
+  }
+
   @Get('upcoming')
   @ApiOperation({ summary: 'Get upcoming shifts' })
   getUpcoming(
     @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
     @CurrentUser() user: CurrentUserPayload,
     @Query('days') days?: string,
+    @Query('limit') limit?: string,
   ) {
     return this.shiftsService.getUpcoming(careRecipientId, user.id, days ? parseInt(days, 10) : 7);
   }
@@ -61,6 +96,16 @@ export class CaregiverShiftsController {
     @Query('date') date: string,
   ) {
     return this.shiftsService.getForDay(careRecipientId, user.id, new Date(date));
+  }
+
+  @Get(':shiftId')
+  @ApiOperation({ summary: 'Get a specific shift by ID' })
+  getById(
+    @Param('careRecipientId', ParseUUIDPipe) careRecipientId: string,
+    @Param('shiftId', ParseUUIDPipe) shiftId: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.shiftsService.getById(careRecipientId, shiftId, user.id);
   }
 
   @Post(':id/checkin')

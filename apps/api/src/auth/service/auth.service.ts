@@ -346,6 +346,44 @@ export class AuthService {
     );
   }
 
+  async updateProfile(userId: string, dto: { fullName?: string; phone?: string; timezone?: string; avatarUrl?: string }) {
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        fullName: dto.fullName,
+        phone: dto.phone,
+        timezone: dto.timezone,
+        avatarUrl: dto.avatarUrl,
+      },
+      include: {
+        familyMemberships: {
+          include: {
+            family: {
+              include: {
+                careRecipients: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    preferredName: true,
+                    dateOfBirth: true,
+                    photoUrl: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Invalidate user cache
+    await this.invalidateUserCache(userId);
+
+    await this.logAudit(userId, 'PROFILE_UPDATE', 'user', userId);
+
+    return this.sanitizeUser(user);
+  }
+
   /**
    * Invalidate user profile cache
    * Call this when user data changes

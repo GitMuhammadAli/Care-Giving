@@ -10,7 +10,7 @@ export interface Appointment {
   location?: string;
   address?: string;
   notes?: string;
-  status: 'SCHEDULED' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
+  status: 'SCHEDULED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
   recurrence?: string;
   reminderMinutes: number[];
   createdAt: string;
