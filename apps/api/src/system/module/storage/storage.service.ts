@@ -40,8 +40,14 @@ export class StorageService {
       const cloudinaryUrl = cloudinaryConfig?.url;
 
       if (cloudinaryUrl) {
+        // Parse CLOUDINARY_URL format: cloudinary://api_key:api_secret@cloud_name
+        // The cloudinary library can use this directly
+        process.env.CLOUDINARY_URL = cloudinaryUrl;
         cloudinary.config({ secure: true });
         this.cloudinaryConfigured = true;
+        // Log the cloud name to verify config is correct
+        const config = cloudinary.config();
+        console.log('[StorageService] Cloudinary configured via URL, cloud_name:', config.cloud_name);
       } else if (cloudinaryConfig?.cloudName && cloudinaryConfig?.apiKey && cloudinaryConfig?.apiSecret) {
         cloudinary.config({
           cloud_name: cloudinaryConfig.cloudName,
@@ -50,8 +56,10 @@ export class StorageService {
           secure: true,
         });
         this.cloudinaryConfigured = true;
+        console.log('[StorageService] Cloudinary configured via credentials');
       } else {
         this.cloudinaryConfigured = false;
+        console.log('[StorageService] Cloudinary NOT configured - missing credentials');
       }
     } else {
       this.cloudinaryConfigured = false;
@@ -62,22 +70,46 @@ export class StorageService {
     file: Express.Multer.File,
     options: UploadOptions = {},
   ): Promise<UploadResult> {
+    console.log('[StorageService] Upload called:', {
+      filename: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+      cloudinaryConfigured: this.cloudinaryConfigured,
+      resourceType: options.resourceType,
+    });
+
     if (!this.cloudinaryConfigured) {
-      // Fallback to local storage for dev
+      console.log('[StorageService] Cloudinary not configured, using local fallback');
       return this.uploadLocal(file, options);
     }
+
+    // Use original filename (sanitized) with timestamp for uniqueness
+    // This makes files more identifiable in Cloudinary dashboard
+    const sanitizedName = file.originalname
+      .replace(/[^a-zA-Z0-9._-]/g, '_') // Replace special chars with underscore
+      .replace(/_{2,}/g, '_'); // Remove multiple consecutive underscores
+    const timestamp = Date.now();
+    const publicId = `${timestamp}_${sanitizedName}`;
 
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
           folder: options.folder || 'carecircle',
           resource_type: options.resourceType || 'auto',
-          public_id: uuid(),
+          public_id: publicId,
+          // Use regular 'upload' type (not 'authenticated' which is restricted)
         },
         (error, result) => {
           if (error) {
+            console.error('[StorageService] Cloudinary upload error:', error);
             reject(error);
           } else if (result) {
+            console.log('[StorageService] Cloudinary upload success:', {
+              url: result.secure_url,
+              publicId: result.public_id,
+              format: result.format,
+              resourceType: result.resource_type,
+            });
             resolve({
               url: result.secure_url,
               key: result.public_id,
@@ -91,13 +123,17 @@ export class StorageService {
     });
   }
 
-  async delete(key: string): Promise<void> {
+  async delete(key: string, resourceType: 'image' | 'raw' | 'video' = 'raw'): Promise<void> {
     if (!this.cloudinaryConfigured) {
       // Local storage deletion
       return;
     }
 
-    await cloudinary.uploader.destroy(key);
+    console.log('[StorageService] Deleting from Cloudinary:', { key, resourceType });
+    const result = await cloudinary.uploader.destroy(key, {
+      resource_type: resourceType,
+    });
+    console.log('[StorageService] Delete result:', result);
   }
 
   async getSignedUrl(key: string, mimeType?: string): Promise<string> {
@@ -117,6 +153,7 @@ export class StorageService {
     }
 
     // Return the public Cloudinary URL
+    // Make sure "Allow delivery of PDF and ZIP files" is enabled in Cloudinary settings
     return cloudinary.url(key, {
       secure: true,
       resource_type: resourceType,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { FileText, Plus, Upload, Download, Eye, Folder, CreditCard, FileCheck, Shield, Clock, Search } from 'lucide-react';
+import { FileText, Plus, Upload, Download, Eye, Folder, CreditCard, FileCheck, Shield, Clock, Search, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -95,7 +95,36 @@ export const DocumentsVault = ({ familyId }: DocumentsVaultProps) => {
     },
   });
 
+  // Update mutation
+  const updateMutation = useMutation({
+    mutationFn: (data: { id: string; name?: string; type?: DocumentType; notes?: string }) =>
+      documentsApi.update(familyId, data.id, { name: data.name, type: data.type, notes: data.notes }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['documents', familyId] });
+      toast.success('Document updated successfully!');
+      setEditingDoc(null);
+    },
+    onError: () => {
+      toast.error('Failed to update document');
+    },
+  });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: (documentId: string) => documentsApi.delete(familyId, documentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['documents', familyId] });
+      toast.success('Document deleted successfully!');
+      setDeleteConfirmDoc(null);
+    },
+    onError: () => {
+      toast.error('Failed to delete document. Only admins can delete documents.');
+    },
+  });
+
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [editingDoc, setEditingDoc] = useState<Document | null>(null);
+  const [deleteConfirmDoc, setDeleteConfirmDoc] = useState<Document | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [newDoc, setNewDoc] = useState({
@@ -127,25 +156,64 @@ export const DocumentsVault = ({ familyId }: DocumentsVaultProps) => {
 
   const handleView = async (doc: Document) => {
     try {
-      const { viewUrl } = await documentsApi.getSignedUrl(familyId, doc.id);
-      window.open(viewUrl, '_blank');
+      const { viewUrl, mimeType } = await documentsApi.getSignedUrl(familyId, doc.id);
+
+      // For viewable files (images and PDFs), fetch as blob and open with correct MIME type
+      // This is needed because Cloudinary's 'raw' resource type doesn't set Content-Type properly
+      if (mimeType.startsWith('image/') || mimeType === 'application/pdf') {
+        toast.loading('Opening document...', { id: 'view-doc' });
+
+        const response = await fetch(viewUrl);
+        const blob = await response.blob();
+
+        // Create a new blob with the correct MIME type
+        const typedBlob = new Blob([blob], { type: mimeType });
+        const blobUrl = window.URL.createObjectURL(typedBlob);
+
+        // Open in new tab
+        window.open(blobUrl, '_blank');
+
+        // Clean up the blob URL after a delay (give time for the new tab to load)
+        setTimeout(() => {
+          window.URL.revokeObjectURL(blobUrl);
+        }, 10000);
+
+        toast.success('Document opened', { id: 'view-doc' });
+      } else {
+        // For non-viewable files, trigger download
+        handleDownload(doc);
+      }
     } catch (error) {
-      toast.error('Failed to open document');
+      toast.error('Failed to open document', { id: 'view-doc' });
     }
   };
 
   const handleDownload = async (doc: Document) => {
     try {
-      const { downloadUrl, filename } = await documentsApi.getSignedUrl(familyId, doc.id);
+      toast.loading('Preparing download...', { id: 'download-doc' });
+
+      const { downloadUrl, filename, mimeType } = await documentsApi.getSignedUrl(familyId, doc.id);
+
+      // Fetch the file as blob for proper download
+      const response = await fetch(downloadUrl);
+      const blob = await response.blob();
+
+      // Create a new blob with the correct MIME type
+      const typedBlob = new Blob([blob], { type: mimeType });
+
+      // Create blob URL and download
+      const blobUrl = window.URL.createObjectURL(typedBlob);
       const link = document.createElement('a');
-      link.href = downloadUrl;
+      link.href = blobUrl;
       link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      toast.success(`Downloading ${filename}...`);
+      window.URL.revokeObjectURL(blobUrl);
+
+      toast.success(`Downloaded ${filename}`, { id: 'download-doc' });
     } catch (error) {
-      toast.error('Failed to download document');
+      toast.error('Failed to download document', { id: 'download-doc' });
     }
   };
 
@@ -313,6 +381,7 @@ export const DocumentsVault = ({ familyId }: DocumentsVaultProps) => {
                       size="icon"
                       className="h-8 w-8"
                       onClick={() => handleView(doc)}
+                      title="View"
                     >
                       <Eye className="w-4 h-4" />
                     </Button>
@@ -321,8 +390,27 @@ export const DocumentsVault = ({ familyId }: DocumentsVaultProps) => {
                       size="icon"
                       className="h-8 w-8"
                       onClick={() => handleDownload(doc)}
+                      title="Download"
                     >
                       <Download className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setEditingDoc(doc)}
+                      title="Edit"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={() => setDeleteConfirmDoc(doc)}
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
@@ -335,6 +423,55 @@ export const DocumentsVault = ({ familyId }: DocumentsVaultProps) => {
       <Button variant="ghost" className="w-full mt-4 text-primary hover:text-primary hover:bg-primary/10">
         View All Documents
       </Button>
+
+      {/* Edit Document Dialog */}
+      <Dialog open={!!editingDoc} onOpenChange={(open) => !open && setEditingDoc(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-serif">Edit Document</DialogTitle>
+          </DialogHeader>
+          {editingDoc && (
+            <EditDocumentForm
+              doc={editingDoc}
+              onSubmit={(data) => updateMutation.mutate({ id: editingDoc.id, ...data })}
+              onCancel={() => setEditingDoc(null)}
+              isLoading={updateMutation.isPending}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteConfirmDoc} onOpenChange={(open) => !open && setDeleteConfirmDoc(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-serif">Delete Document</DialogTitle>
+          </DialogHeader>
+          {deleteConfirmDoc && (
+            <div className="space-y-4 mt-4">
+              <p className="text-sm text-muted-foreground">
+                Are you sure you want to delete <span className="font-medium text-foreground">{deleteConfirmDoc.name}</span>? This action cannot be undone.
+              </p>
+              <div className="flex gap-3 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setDeleteConfirmDoc(null)}
+                  disabled={deleteMutation.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => deleteMutation.mutate(deleteConfirmDoc.id)}
+                  disabled={deleteMutation.isPending}
+                >
+                  {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
@@ -437,6 +574,75 @@ function UploadFormDialog({
         </Button>
       </form>
     </DialogContent>
+  );
+}
+
+// Edit document form
+function EditDocumentForm({
+  doc,
+  onSubmit,
+  onCancel,
+  isLoading,
+}: {
+  doc: Document;
+  onSubmit: (data: { name?: string; type?: DocumentType; notes?: string }) => void;
+  onCancel: () => void;
+  isLoading: boolean;
+}) {
+  const [name, setName] = useState(doc.name);
+  const [type, setType] = useState<DocumentType>(doc.type);
+  const [notes, setNotes] = useState(doc.notes || '');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit({ name, type, notes: notes || undefined });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+      <div>
+        <label className="text-sm font-medium text-foreground block mb-2">Document Name</label>
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Enter document name"
+          required
+        />
+      </div>
+      <div>
+        <label className="text-sm font-medium text-foreground block mb-2">Category</label>
+        <select
+          value={type}
+          onChange={(e) => setType(e.target.value as DocumentType)}
+          className="w-full h-10 px-3 rounded-md border border-border bg-background text-foreground"
+        >
+          <option value="INSURANCE_CARD">Insurance</option>
+          <option value="MEDICAL_RECORD">Medical Records</option>
+          <option value="LAB_RESULT">Lab Results</option>
+          <option value="PRESCRIPTION">Prescription</option>
+          <option value="POWER_OF_ATTORNEY">Power of Attorney</option>
+          <option value="LIVING_WILL">Living Will</option>
+          <option value="PHOTO_ID">Identification</option>
+          <option value="OTHER">Other</option>
+        </select>
+      </div>
+      <div>
+        <label className="text-sm font-medium text-foreground block mb-2">Notes (optional)</label>
+        <Input
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Any additional notes..."
+        />
+      </div>
+      <div className="flex gap-3 justify-end">
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={isLoading}>
+          {isLoading ? 'Saving...' : 'Save Changes'}
+        </Button>
+      </div>
+    </form>
   );
 }
 

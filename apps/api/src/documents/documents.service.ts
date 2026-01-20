@@ -120,8 +120,13 @@ export class DocumentsService {
       throw new ForbiddenException('Only admins can delete documents');
     }
 
-    // Delete from Cloudinary
-    await this.storageService.delete(document.s3Key);
+    // Delete from Cloudinary - determine resource type from mimeType
+    const resourceType = document.mimeType.startsWith('image/')
+      ? 'image'
+      : document.mimeType.startsWith('video/')
+        ? 'video'
+        : 'raw';
+    await this.storageService.delete(document.s3Key, resourceType);
 
     await this.prisma.document.delete({
       where: { id },
@@ -171,12 +176,13 @@ export class DocumentsService {
     }
 
     // For Cloudinary URLs, create view and download URLs
-    // Download URL includes fl_attachment flag to force download
+    // Note: For 'raw' resource type, we cannot append file extensions - Cloudinary treats public_id as exact
+    // The frontend handles MIME type via blob creation
     let viewUrl = baseUrl;
     let downloadUrl = baseUrl;
 
     if (baseUrl.includes('cloudinary.com')) {
-      // Add fl_attachment for download to force browser download with filename
+      // For download, add fl_attachment flag to force browser download
       // URL format: .../upload/fl_attachment:filename/...
       downloadUrl = baseUrl.replace('/upload/', `/upload/fl_attachment:${encodeURIComponent(filename)}/`);
     }
