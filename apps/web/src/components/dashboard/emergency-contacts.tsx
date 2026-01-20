@@ -1,6 +1,7 @@
 'use client';
 
-import { Phone, AlertTriangle, Heart, Building2, Siren, User } from 'lucide-react';
+import { memo } from 'react';
+import { AlertTriangle, Heart, Siren, User } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
 import { careRecipientsApi, EmergencyContact as EmergencyContactType } from '@/lib/api';
@@ -30,7 +31,7 @@ const defaultEmergencyContacts = [
   },
 ];
 
-export const EmergencyContacts = ({ careRecipientId }: EmergencyContactsProps) => {
+export const EmergencyContacts = memo(function EmergencyContacts({ careRecipientId }: EmergencyContactsProps) {
   // Fetch emergency contacts from API
   const { data: contacts, isLoading } = useQuery({
     queryKey: ['emergencyContacts', careRecipientId],
@@ -46,7 +47,7 @@ export const EmergencyContacts = ({ careRecipientId }: EmergencyContactsProps) =
   };
 
   // Map API contacts to display format
-  const apiContacts = (contacts || []).map((contact: EmergencyContactType, index: number) => ({
+  const apiContacts = (contacts || []).map((contact: EmergencyContactType) => ({
     id: contact.id,
     name: contact.name,
     phone: contact.phone,
@@ -102,4 +103,4 @@ export const EmergencyContacts = ({ careRecipientId }: EmergencyContactsProps) =
       </div>
     </div>
   );
-};
+});

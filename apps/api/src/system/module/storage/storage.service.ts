@@ -100,17 +100,26 @@ export class StorageService {
     await cloudinary.uploader.destroy(key);
   }
 
-  async getSignedUrl(key: string): Promise<string> {
+  async getSignedUrl(key: string, mimeType?: string): Promise<string> {
     if (!this.cloudinaryConfigured) {
       // Return local URL
       return `/uploads/${key}`;
     }
 
-    // Cloudinary signed URL (expiring in 1 hour)
+    // Determine resource type from mimeType
+    let resourceType: 'image' | 'video' | 'raw' = 'raw';
+    if (mimeType) {
+      if (mimeType.startsWith('image/')) {
+        resourceType = 'image';
+      } else if (mimeType.startsWith('video/')) {
+        resourceType = 'video';
+      }
+    }
+
+    // Return the public Cloudinary URL
     return cloudinary.url(key, {
-      sign_url: true,
-      type: 'authenticated',
-      expires_at: Math.floor(Date.now() / 1000) + 3600,
+      secure: true,
+      resource_type: resourceType,
     });
   }
 

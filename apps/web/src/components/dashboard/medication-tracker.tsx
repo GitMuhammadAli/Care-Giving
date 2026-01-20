@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { Pill, Plus, Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,7 +19,7 @@ interface MedicationTrackerProps {
   careRecipientId: string;
 }
 
-export const MedicationTracker = ({ careRecipientId }: MedicationTrackerProps) => {
+export const MedicationTracker = memo(function MedicationTracker({ careRecipientId }: MedicationTrackerProps) {
   const { data: medications, isLoading: medicationsLoading } = useMedications(careRecipientId);
   const { data: todaySchedule, isLoading: scheduleLoading } = useTodaysMedications(careRecipientId);
   const { data: lowSupplyMeds } = useLowSupplyMedications(careRecipientId);
@@ -260,7 +260,7 @@ export const MedicationTracker = ({ careRecipientId }: MedicationTrackerProps) =
       </Button>
     </div>
   );
-};
+});
 
 // Separate dialog form component
 function MedicationFormDialog({

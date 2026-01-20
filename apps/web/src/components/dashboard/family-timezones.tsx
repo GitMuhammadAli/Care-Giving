@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, memo } from 'react';
 import { Globe, Clock, Phone, MessageCircle, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'react-hot-toast';
@@ -71,7 +71,7 @@ const timeOfDayEmoji: Record<string, string> = {
   night: '🌙',
 };
 
-export const FamilyTimezones = ({ familyId }: FamilyTimezonesProps) => {
+export const FamilyTimezones = memo(function FamilyTimezones({ familyId }: FamilyTimezonesProps) {
   const { data: familyMembers, isLoading } = useFamilyMembers(familyId);
   const [currentTimes, setCurrentTimes] = useState<Record<string, string>>({});
   const [timesOfDay, setTimesOfDay] = useState<Record<string, string>>({});
@@ -245,4 +245,4 @@ export const FamilyTimezones = ({ familyId }: FamilyTimezonesProps) => {
       </div>
     </div>
   );
-};
+});

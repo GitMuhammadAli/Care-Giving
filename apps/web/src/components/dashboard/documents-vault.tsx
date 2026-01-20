@@ -17,7 +17,7 @@ import { documentsApi, Document, DocumentType } from '@/lib/api';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface DocumentsVaultProps {
-  careRecipientId: string;
+  familyId: string;
 }
 
 const typeIcons: Record<string, React.ReactNode> = {
@@ -72,22 +72,22 @@ const formatDate = (dateString: string): string => {
   });
 };
 
-export const DocumentsVault = ({ careRecipientId }: DocumentsVaultProps) => {
+export const DocumentsVault = ({ familyId }: DocumentsVaultProps) => {
   const queryClient = useQueryClient();
 
   // Fetch documents
   const { data: documents, isLoading } = useQuery({
-    queryKey: ['documents', careRecipientId],
-    queryFn: () => documentsApi.list(careRecipientId),
-    enabled: !!careRecipientId,
+    queryKey: ['documents', familyId],
+    queryFn: () => documentsApi.list(familyId),
+    enabled: !!familyId,
   });
 
   // Upload mutation
   const uploadMutation = useMutation({
     mutationFn: (data: { name: string; type: DocumentType; file: File; notes?: string }) =>
-      documentsApi.upload(careRecipientId, data),
+      documentsApi.upload(familyId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['documents', careRecipientId] });
+      queryClient.invalidateQueries({ queryKey: ['documents', familyId] });
       toast.success('Document uploaded successfully!');
     },
     onError: () => {
@@ -127,8 +127,8 @@ export const DocumentsVault = ({ careRecipientId }: DocumentsVaultProps) => {
 
   const handleView = async (doc: Document) => {
     try {
-      const { url } = await documentsApi.getSignedUrl(careRecipientId, doc.id);
-      window.open(url, '_blank');
+      const { viewUrl } = await documentsApi.getSignedUrl(familyId, doc.id);
+      window.open(viewUrl, '_blank');
     } catch (error) {
       toast.error('Failed to open document');
     }
@@ -136,12 +136,14 @@ export const DocumentsVault = ({ careRecipientId }: DocumentsVaultProps) => {
 
   const handleDownload = async (doc: Document) => {
     try {
-      const { url } = await documentsApi.getSignedUrl(careRecipientId, doc.id);
+      const { downloadUrl, filename } = await documentsApi.getSignedUrl(familyId, doc.id);
       const link = document.createElement('a');
-      link.href = url;
-      link.download = doc.name;
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
       link.click();
-      toast.success(`Downloading ${doc.name}...`);
+      document.body.removeChild(link);
+      toast.success(`Downloading ${filename}...`);
     } catch (error) {
       toast.error('Failed to download document');
     }
@@ -378,7 +380,7 @@ function UploadFormDialog({
           <input
             id="file-upload"
             type="file"
-            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+            accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.rtf,.odt,.ods,.odp,.zip,.rar,.7z"
             onChange={handleFileChange}
             className="hidden"
           />
@@ -391,7 +393,7 @@ function UploadFormDialog({
                 Drag and drop or click to upload
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                PDF, JPG, PNG up to 10MB
+                PDF, Images, Word, Excel, PowerPoint, Text, and more
               </p>
             </>
           )}

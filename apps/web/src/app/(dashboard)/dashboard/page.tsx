@@ -1105,8 +1105,8 @@ const Dashboard = () => {
 
       {activeTab === 'documents' && (
         <div className="max-w-4xl">
-          {careRecipientId ? (
-            <DocumentsVault careRecipientId={careRecipientId} />
+          {familyId ? (
+            <DocumentsVault familyId={familyId} />
           ) : (
             <div className="dashboard-card text-center py-12">
               <Calendar className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />

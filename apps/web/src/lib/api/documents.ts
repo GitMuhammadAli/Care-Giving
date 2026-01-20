@@ -68,9 +68,21 @@ export const documentsApi = {
     return api.get<Document>(`/families/${familyId}/documents/${documentId}`);
   },
 
-  // Get a signed URL for viewing/downloading a document
-  getSignedUrl: async (familyId: string, documentId: string): Promise<{ url: string }> => {
-    return api.get<{ url: string }>(`/families/${familyId}/documents/${documentId}/url`);
+  // Get URLs for viewing/downloading a document
+  getSignedUrl: async (familyId: string, documentId: string): Promise<{
+    url: string;
+    viewUrl: string;
+    downloadUrl: string;
+    filename: string;
+    mimeType: string;
+  }> => {
+    return api.get<{
+      url: string;
+      viewUrl: string;
+      downloadUrl: string;
+      filename: string;
+      mimeType: string;
+    }>(`/families/${familyId}/documents/${documentId}/url`);
   },
 
   // Get documents grouped by category/type

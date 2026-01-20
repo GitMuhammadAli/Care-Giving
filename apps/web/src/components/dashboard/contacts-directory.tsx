@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, memo, useMemo } from 'react';
 import { Phone, Mail, Plus, User, Stethoscope, Building, Users, Star, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,7 +54,7 @@ const contactTypeColors: Record<string, string> = {
   emergency: 'bg-destructive/20 text-destructive',
 };
 
-export const ContactsDirectory = ({ careRecipientId, familyId }: ContactsDirectoryProps) => {
+export const ContactsDirectory = memo(function ContactsDirectory({ careRecipientId, familyId }: ContactsDirectoryProps) {
   const queryClient = useQueryClient();
 
   // Fetch doctors
@@ -113,8 +113,8 @@ export const ContactsDirectory = ({ careRecipientId, familyId }: ContactsDirecto
 
   const isLoading = doctorsLoading || emergencyLoading || familyLoading;
 
-  // Combine all contacts into unified list
-  const allContacts: Contact[] = [
+  // Combine all contacts into unified list - memoized
+  const allContacts = useMemo<Contact[]>(() => [
     // Map doctors to contacts
     ...(doctors || []).map((doc): Contact => ({
       id: doc.id,
@@ -145,7 +145,7 @@ export const ContactsDirectory = ({ careRecipientId, familyId }: ContactsDirecto
       phone: '',
       email: member.user.email,
     })),
-  ];
+  ], [doctors, emergencyContacts, familyMembers]);
 
   const handleAddContact = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -358,7 +358,7 @@ export const ContactsDirectory = ({ careRecipientId, familyId }: ContactsDirecto
       </Button>
     </div>
   );
-};
+});
 
 // Separate dialog form component
 function ContactFormDialog({

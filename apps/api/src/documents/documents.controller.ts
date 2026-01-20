@@ -8,12 +8,16 @@ import {
   Delete,
   Query,
   ParseUUIDPipe,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { DocumentsService } from './documents.service';
-import { UploadDocumentDto } from './dto/upload-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { StorageService } from '../system/module/storage/storage.service';
 
 interface CurrentUserPayload {
   id: string;
@@ -24,19 +28,52 @@ interface CurrentUserPayload {
 @ApiBearerAuth('JWT-auth')
 @Controller('families/:familyId/documents')
 export class DocumentsController {
-  constructor(private readonly documentsService: DocumentsService) {}
+  constructor(
+    private readonly documentsService: DocumentsService,
+    private readonly storageService: StorageService,
+  ) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create document record (file upload handled separately)' })
-  create(
+  @ApiOperation({ summary: 'Upload a document' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file'))
+  async create(
     @Param('familyId', ParseUUIDPipe) familyId: string,
     @CurrentUser() user: CurrentUserPayload,
-    @Body() dto: UploadDocumentDto & { s3Key: string; mimeType: string; sizeBytes: number },
+    @UploadedFile() file: Express.Multer.File,
+    @Body() dto: { name?: string; type?: string; notes?: string; expiresAt?: string },
   ) {
-    return this.documentsService.create(familyId, user.id, dto, {
-      s3Key: dto.s3Key,
-      mimeType: dto.mimeType,
-      sizeBytes: dto.sizeBytes,
+    if (!file) {
+      throw new BadRequestException('File is required');
+    }
+
+    // Determine resource type based on mimeType
+    // PDFs and documents should be 'raw', images should be 'image'
+    let resourceType: 'image' | 'raw' | 'video' | 'auto' = 'raw';
+    if (file.mimetype.startsWith('image/')) {
+      resourceType = 'image';
+    } else if (file.mimetype.startsWith('video/')) {
+      resourceType = 'video';
+    }
+
+    // Upload file to Cloudinary
+    const uploadResult = await this.storageService.upload(file, {
+      folder: `carecircle/documents/${familyId}`,
+      resourceType,
+    });
+
+    const documentDto = {
+      name: dto.name || file.originalname.replace(/\.[^/.]+$/, ''),
+      type: dto.type as any,
+      notes: dto.notes,
+      expiresAt: dto.expiresAt,
+    };
+
+    return this.documentsService.create(familyId, user.id, documentDto, {
+      s3Key: uploadResult.key,
+      url: uploadResult.url,
+      mimeType: file.mimetype,
+      sizeBytes: file.size,
     });
   }
 

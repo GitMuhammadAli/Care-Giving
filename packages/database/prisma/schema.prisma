@@ -485,6 +485,7 @@ model Document {
   name      String
   type      DocumentType
   s3Key     String
+  url       String?
   mimeType  String
   sizeBytes Int
 

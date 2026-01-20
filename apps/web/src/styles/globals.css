@@ -335,26 +335,27 @@
     @apply border-sage-700;
   }
 
-  /* Dashboard card with subtle shadow */
+  /* Dashboard card with subtle shadow - optimized transitions */
   .dashboard-card {
-    @apply bg-card border border-sage-200 rounded-2xl p-6 transition-all duration-300;
+    @apply bg-card border border-sage-200 rounded-2xl p-6;
     box-shadow: 0 1px 3px rgba(82, 94, 72, 0.04), 0 4px 12px rgba(82, 94, 72, 0.03);
+    transition: box-shadow 0.15s ease-out, border-color 0.15s ease-out;
   }
 
   .dashboard-card:hover {
     box-shadow: 0 2px 8px rgba(82, 94, 72, 0.08), 0 8px 24px rgba(82, 94, 72, 0.05);
-    transform: translateY(-1px);
     @apply border-sage-700;
   }
 
-  /* Status indicator pulse */
+  /* Status indicator pulse - optimized with will-change */
   .status-pulse {
-    animation: pulse-soft 2s ease-in-out infinite;
+    animation: pulse-soft 3s ease-in-out infinite;
+    will-change: opacity;
   }
 
   @keyframes pulse-soft {
     0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
+    50% { opacity: 0.7; }
   }
 
   /* Loved one card */
@@ -460,35 +461,36 @@
     display: none;
   }
 
-  /* Animation utilities */
+  /* Animation utilities - optimized for performance */
   .animate-fade {
-    animation: fade-in 0.8s ease-out forwards;
+    animation: fade-in 0.2s ease-out forwards;
+    will-change: opacity, transform;
   }
 
   .animate-fade-delay-1 {
-    animation: fade-in 0.8s ease-out 0.1s forwards;
+    animation: fade-in 0.2s ease-out 0.05s forwards;
     opacity: 0;
   }
 
   .animate-fade-delay-2 {
-    animation: fade-in 0.8s ease-out 0.2s forwards;
+    animation: fade-in 0.2s ease-out 0.1s forwards;
     opacity: 0;
   }
 
   .animate-fade-delay-3 {
-    animation: fade-in 0.8s ease-out 0.3s forwards;
+    animation: fade-in 0.2s ease-out 0.15s forwards;
     opacity: 0;
   }
 
   .animate-fade-delay-4 {
-    animation: fade-in 0.8s ease-out 0.4s forwards;
+    animation: fade-in 0.2s ease-out 0.2s forwards;
     opacity: 0;
   }
 
   @keyframes fade-in {
     from {
       opacity: 0;
-      transform: translateY(6px);
+      transform: translateY(4px);
     }
     to {
       opacity: 1;

@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { AlertTriangle, X, Phone, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -18,7 +19,7 @@ interface EmergencyAlertBannerProps {
   onAcknowledge: (id: number) => void;
 }
 
-export const EmergencyAlertBanner = ({ alerts, onDismiss, onAcknowledge }: EmergencyAlertBannerProps) => {
+export const EmergencyAlertBanner = memo(function EmergencyAlertBanner({ alerts, onDismiss, onAcknowledge }: EmergencyAlertBannerProps) {
   const emergencyAlerts = alerts.filter(a => a.type === "emergency" && a.actionRequired);
 
   if (emergencyAlerts.length === 0) return null;
@@ -73,4 +74,4 @@ export const EmergencyAlertBanner = ({ alerts, onDismiss, onAcknowledge }: Emerg
       ))}
     </div>
   );
-};
+});
