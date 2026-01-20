@@ -15,6 +15,8 @@ import {
   Moon,
   Droplet,
   Activity,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 
 export interface TimelineEntryData {
@@ -41,6 +43,8 @@ export interface TimelineEntryData {
 interface TimelineEntryProps {
   entry: TimelineEntryData;
   className?: string;
+  onEdit?: (entry: TimelineEntryData) => void;
+  onDelete?: (entry: TimelineEntryData) => void;
 }
 
 const typeConfig: Record<string, { icon: typeof Pill; color: string; bgColor: string }> = {
@@ -65,7 +69,7 @@ const severityConfig: Record<string, { variant: 'default' | 'warning' | 'destruc
   CRITICAL: { variant: 'destructive', label: 'Critical' },
 };
 
-export function TimelineEntry({ entry, className }: TimelineEntryProps) {
+export function TimelineEntry({ entry, className, onEdit, onDelete }: TimelineEntryProps) {
   const config = typeConfig[entry.type] || typeConfig.OTHER;
   const Icon = config.icon;
   const severityInfo = entry.severity ? severityConfig[entry.severity] : null;
@@ -98,9 +102,29 @@ export function TimelineEntry({ entry, className }: TimelineEntryProps) {
               {entry.createdBy.fullName}
             </p>
           </div>
-          <span className="text-xs text-text-tertiary whitespace-nowrap">
-            {formatRelativeTime(entry.occurredAt)}
-          </span>
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-text-tertiary whitespace-nowrap mr-2">
+              {formatRelativeTime(entry.occurredAt)}
+            </span>
+            {onEdit && (
+              <button
+                onClick={() => onEdit(entry)}
+                className="p-1.5 rounded-lg text-text-tertiary hover:text-primary hover:bg-primary/10 transition-colors"
+                title="Edit"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {onDelete && (
+              <button
+                onClick={() => onDelete(entry)}
+                className="p-1.5 rounded-lg text-text-tertiary hover:text-destructive hover:bg-destructive/10 transition-colors"
+                title="Delete"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Description */}

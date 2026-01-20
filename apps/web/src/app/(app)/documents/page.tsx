@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,7 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
-import { useAuth } from '@/hooks/use-auth';
+import { FamilySpaceSelector } from '@/components/layout/family-space-selector';
+import { useFamilySpace } from '@/contexts/family-space-context';
 import { documentsApi, Document } from '@/lib/api';
 import {
   Plus,
@@ -26,7 +28,9 @@ import {
   Clock,
   AlertCircle,
   FolderOpen,
+  Trash2,
 } from 'lucide-react';
+import { UploadDocumentModal } from '@/components/modals/upload-document-modal';
 import { differenceInDays, parseISO } from 'date-fns';
 
 const documentCategories = [
@@ -57,17 +61,29 @@ function formatFileSize(bytes: number): string {
 }
 
 export default function DocumentsPage() {
-  const { user } = useAuth();
+  const { selectedCareRecipientId: careRecipientId } = useFamilySpace();
   const queryClient = useQueryClient();
-  const careRecipientId = user?.families?.[0]?.careRecipients?.[0]?.id;
 
   const [category, setCategory] = useState('all');
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   // Fetch all documents
   const { data: documents = [], isLoading } = useQuery({
     queryKey: ['documents', careRecipientId],
     queryFn: () => documentsApi.list(careRecipientId!),
     enabled: !!careRecipientId,
+  });
+
+  // Delete document mutation
+  const deleteDocumentMutation = useMutation({
+    mutationFn: (docId: string) => documentsApi.delete(careRecipientId!, docId),
+    onSuccess: () => {
+      toast.success('Document deleted');
+      queryClient.invalidateQueries({ queryKey: ['documents', careRecipientId] });
+    },
+    onError: () => {
+      toast.error('Failed to delete document');
+    },
   });
 
   // Filter documents by category
@@ -115,10 +131,16 @@ export default function DocumentsPage() {
 
   if (!careRecipientId) {
     return (
-      <div className="text-center py-12">
-        <AlertCircle className="w-12 h-12 text-warning mx-auto mb-4" />
-        <h2 className="text-xl font-semibold text-text-primary mb-2">No Care Recipient Selected</h2>
-        <p className="text-text-secondary">Please select a care recipient to view documents.</p>
+      <div className="pb-6">
+        <PageHeader title="Documents" subtitle="Secure document vault" />
+        <div className="px-4 sm:px-6 py-6">
+          <FamilySpaceSelector />
+          <div className="text-center py-12">
+            <AlertCircle className="w-12 h-12 text-warning mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-text-primary mb-2">No Loved One Selected</h2>
+            <p className="text-text-secondary">Please select a loved one above to view documents.</p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -128,6 +150,7 @@ export default function DocumentsPage() {
       <div className="pb-6">
         <PageHeader title="Documents" subtitle="Secure document vault" />
         <div className="px-4 sm:px-6 py-6 space-y-6">
+          <FamilySpaceSelector />
           <div className="flex gap-2 overflow-x-auto">
             {[1, 2, 3, 4, 5].map((i) => (
               <Skeleton key={i} className="h-10 w-32 rounded-full flex-shrink-0" />
@@ -149,13 +172,21 @@ export default function DocumentsPage() {
         title="Documents"
         subtitle="Secure document vault"
         actions={
-          <Button variant="primary" size="default" leftIcon={<Upload className="w-4 h-4" />}>
+          <Button
+            variant="primary"
+            size="default"
+            leftIcon={<Upload className="w-4 h-4" />}
+            onClick={() => setIsUploadModalOpen(true)}
+          >
             Upload
           </Button>
         }
       />
 
       <div className="px-4 sm:px-6 py-6 space-y-6">
+        {/* Family Space Selector */}
+        <FamilySpaceSelector />
+
         {/* Expiring Soon Alert */}
         {expiringDocuments.length > 0 && (
           <Card variant="highlighted">
@@ -217,7 +248,7 @@ export default function DocumentsPage() {
             title="No documents yet"
             description="Upload important documents like insurance cards, medical records, and legal documents to keep them secure and accessible."
             actionLabel="Upload Document"
-            onAction={() => {}}
+            onAction={() => setIsUploadModalOpen(true)}
           />
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -260,26 +291,34 @@ export default function DocumentsPage() {
                     )}
 
                     <div className="flex gap-2 mt-4 pt-4 border-t border-border-subtle">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        leftIcon={<Eye className="w-4 h-4" />} 
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        leftIcon={<Eye className="w-4 h-4" />}
                         className="flex-1"
                         onClick={() => handleViewDocument(doc.id)}
                       >
                         View
                       </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        leftIcon={<Download className="w-4 h-4" />} 
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        leftIcon={<Download className="w-4 h-4" />}
                         className="flex-1"
                         onClick={() => handleDownloadDocument(doc.id, doc.name)}
                       >
                         Download
                       </Button>
-                      <button className="p-2 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-bg-muted transition-colors">
-                        <MoreVertical className="w-4 h-4" />
+                      <button
+                        className="p-2 rounded-lg text-text-tertiary hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        onClick={() => {
+                          if (confirm('Are you sure you want to delete this document?')) {
+                            deleteDocumentMutation.mutate(doc.id);
+                          }
+                        }}
+                        disabled={deleteDocumentMutation.isPending}
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </Card>
@@ -305,6 +344,18 @@ export default function DocumentsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Upload Document Modal */}
+      {careRecipientId && (
+        <UploadDocumentModal
+          isOpen={isUploadModalOpen}
+          onClose={() => {
+            setIsUploadModalOpen(false);
+            queryClient.invalidateQueries({ queryKey: ['documents', careRecipientId] });
+          }}
+          careRecipientId={careRecipientId}
+        />
+      )}
     </div>
   );
 }

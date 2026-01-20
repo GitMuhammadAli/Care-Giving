@@ -11,19 +11,13 @@ interface AppShellProps {
     email: string;
     avatarUrl?: string;
   };
-  careRecipient?: {
-    id: string;
-    name: string;
-    preferredName?: string;
-    photoUrl?: string;
-  };
 }
 
-export function AppShell({ children, currentUser, careRecipient }: AppShellProps) {
+export function AppShell({ children, currentUser }: AppShellProps) {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <DashboardHeader currentUser={currentUser} careRecipient={careRecipient} />
+      <DashboardHeader currentUser={currentUser} />
 
       {/* Main Content */}
       <main

@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEmail, IsBoolean, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsEmail, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateDoctorDto {
@@ -7,15 +7,13 @@ export class CreateDoctorDto {
   @MaxLength(100)
   name: string;
 
-  @ApiPropertyOptional({ example: 'Cardiology' })
-  @IsOptional()
+  @ApiProperty({ example: 'Cardiology' })
   @IsString()
-  specialty?: string;
+  specialty: string;
 
-  @ApiPropertyOptional({ example: '555-456-7890' })
-  @IsOptional()
+  @ApiProperty({ example: '555-456-7890' })
   @IsString()
-  phone?: string;
+  phone: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -32,20 +30,10 @@ export class CreateDoctorDto {
   @IsString()
   address?: string;
 
-  @ApiPropertyOptional({ example: 'Springfield Heart Center' })
-  @IsOptional()
-  @IsString()
-  practice?: string;
-
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   @MaxLength(500)
   notes?: string;
-
-  @ApiPropertyOptional({ default: false })
-  @IsOptional()
-  @IsBoolean()
-  isPrimary?: boolean;
 }
 

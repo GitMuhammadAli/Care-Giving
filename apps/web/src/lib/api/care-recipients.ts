@@ -18,8 +18,8 @@ export interface CareRecipient {
 export interface Doctor {
   id: string;
   name: string;
-  specialty?: string;
-  phone?: string;
+  specialty: string;
+  phone: string;
   fax?: string;
   email?: string;
   address?: string;

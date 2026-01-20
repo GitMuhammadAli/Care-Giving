@@ -5,7 +5,7 @@ import { Footer } from '@/components/layout/footer';
 import { RealtimeProvider } from '@/components/providers/realtime-provider';
 import { NotificationProvider } from '@/components/providers/notification-provider';
 import { ProtectedRoute } from '@/components/auth/protected-route';
-import { useAuthContext } from '@/components/providers/auth-provider';
+import { FamilySpaceProvider, useFamilySpace } from '@/contexts/family-space-context';
 
 export default function DashboardLayout({
   children,
@@ -14,28 +14,21 @@ export default function DashboardLayout({
 }) {
   return (
     <ProtectedRoute>
-      <DashboardLayoutContent>{children}</DashboardLayoutContent>
+      <FamilySpaceProvider>
+        <DashboardLayoutContent>{children}</DashboardLayoutContent>
+      </FamilySpaceProvider>
     </ProtectedRoute>
   );
 }
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
-  const { user } = useAuthContext();
-  const familyId = user?.families?.[0]?.id;
-  const careRecipient = user?.families?.[0]?.careRecipients?.[0];
-
-  const careRecipientData = careRecipient ? {
-    id: careRecipient.id,
-    name: careRecipient.fullName,
-    preferredName: careRecipient.preferredName,
-    photoUrl: careRecipient.photoUrl
-  } : undefined;
+  const { selectedFamilyId } = useFamilySpace();
 
   return (
     <NotificationProvider>
-      <RealtimeProvider familyId={familyId}>
+      <RealtimeProvider familyId={selectedFamilyId ?? undefined}>
         <div className="min-h-screen bg-background flex flex-col texture-paper">
-          <DashboardHeader careRecipient={careRecipientData} />
+          <DashboardHeader />
           <main className="flex-1 pt-24 pb-12 md:pb-20">
             {children}
           </main>

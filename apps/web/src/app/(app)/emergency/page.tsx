@@ -22,18 +22,15 @@ import {
   Droplet,
   Shield,
 } from 'lucide-react';
-import { useAuth } from '@/hooks/use-auth';
+import { FamilySpaceSelector } from '@/components/layout/family-space-selector';
+import { useFamilySpace } from '@/contexts/family-space-context';
 import { useQuery } from '@tanstack/react-query';
 import { careRecipientsApi } from '@/lib/api';
 import { useMedications } from '@/hooks/use-medications';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function EmergencyPage() {
-  const { user } = useAuth();
-
-  // Get care recipient from user's family
-  const careRecipientFromUser = user?.families?.[0]?.careRecipients?.[0];
-  const careRecipientId = careRecipientFromUser?.id;
+  const { selectedCareRecipientId: careRecipientId } = useFamilySpace();
 
   // Fetch full care recipient details
   const { data: careRecipient, isLoading } = useQuery({
@@ -114,16 +111,14 @@ export default function EmergencyPage() {
           showNotifications={false}
         />
         <div className="px-4 sm:px-6 py-6 max-w-2xl mx-auto">
+          <FamilySpaceSelector />
           <Card>
             <CardContent className="p-8 text-center">
               <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold mb-2">No Care Recipient Found</h3>
+              <h3 className="text-lg font-semibold mb-2">No Loved One Selected</h3>
               <p className="text-muted-foreground mb-4">
-                Please add a care recipient to view emergency information.
+                Please select a loved one above to view emergency information.
               </p>
-              <Button onClick={() => window.location.href = '/onboarding'}>
-                Get Started
-              </Button>
             </CardContent>
           </Card>
         </div>
@@ -140,6 +135,9 @@ export default function EmergencyPage() {
       />
 
       <div className="px-4 sm:px-6 py-6 space-y-6 max-w-2xl mx-auto">
+        {/* Family Space Selector */}
+        <FamilySpaceSelector />
+
         {/* Emergency Alert Button */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}

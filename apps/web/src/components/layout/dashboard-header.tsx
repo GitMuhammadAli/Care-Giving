@@ -34,15 +34,9 @@ interface DashboardHeaderProps {
     email: string;
     avatarUrl?: string;
   };
-  careRecipient?: {
-    id: string;
-    name: string;
-    preferredName?: string;
-    photoUrl?: string;
-  };
 }
 
-export function DashboardHeader({ className, currentUser, careRecipient }: DashboardHeaderProps) {
+export function DashboardHeader({ className, currentUser }: DashboardHeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, logout } = useAuth();
@@ -195,29 +189,6 @@ export function DashboardHeader({ className, currentUser, careRecipient }: Dashb
               )}
             </div>
 
-            {/* Care Recipient Selector (Desktop) */}
-            {careRecipient && (
-              <div className="hidden 2xl:flex">
-                <button
-                  className={cn(
-                    'flex items-center gap-2 px-2 py-1.5 rounded-lg border border-border',
-                    'bg-card hover:bg-accent',
-                    'transition-all duration-150 shadow-sm hover:shadow'
-                  )}
-                >
-                  <Avatar
-                    name={careRecipient.preferredName || careRecipient.name}
-                    src={careRecipient.photoUrl}
-                    size="sm"
-                  />
-                  <span className="text-xs font-semibold text-primary max-w-[80px] truncate">
-                    {careRecipient.preferredName || careRecipient.name.split(' ')[0]}
-                  </span>
-                  <ChevronDown className="w-3 h-3 shrink-0" />
-                </button>
-              </div>
-            )}
-
             {/* Emergency Button (Desktop) */}
             <Button
               variant="emergency"
@@ -242,32 +213,6 @@ export function DashboardHeader({ className, currentUser, careRecipient }: Dashb
         {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className="lg:hidden border-t border-border py-4 px-4 bg-background/95 backdrop-blur-sm max-h-[80vh] overflow-y-auto">
-            {/* Care Recipient (Mobile) */}
-            {careRecipient && (
-              <div className="mb-4 pb-4 border-b border-border">
-                <button
-                  className={cn(
-                    'w-full flex items-center gap-3 p-3 rounded-lg',
-                    'bg-primary/10 hover:bg-primary/20',
-                    'transition-colors duration-150'
-                  )}
-                >
-                  <Avatar
-                    name={careRecipient.preferredName || careRecipient.name}
-                    src={careRecipient.photoUrl}
-                    size="md"
-                  />
-                  <div className="flex-1 text-left">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {careRecipient.preferredName || careRecipient.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Care Recipient</p>
-                  </div>
-                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                </button>
-              </div>
-            )}
-
             {/* Main Navigation */}
             <nav className="flex flex-col gap-1 mb-4">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">

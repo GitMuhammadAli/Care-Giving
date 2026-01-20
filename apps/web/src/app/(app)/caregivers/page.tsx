@@ -5,7 +5,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import { cn, formatDate } from '@/lib/utils';
-import { useAuth } from '@/hooks/use-auth';
+import { FamilySpaceSelector } from '@/components/layout/family-space-selector';
+import { useFamilySpace } from '@/contexts/family-space-context';
 import { shiftsApi, familyApi, type CaregiverShift, type CreateShiftDto } from '@/lib/api';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent } from '@/components/ui/card';
@@ -61,7 +62,7 @@ const statusConfig = {
 };
 
 export default function CaregiversPage() {
-  const { user } = useAuth();
+  const { selectedFamilyId: familyId, selectedCareRecipientId: careRecipientId } = useFamilySpace();
   const queryClient = useQueryClient();
 
   const [currentWeek, setCurrentWeek] = useState(new Date());
@@ -90,10 +91,6 @@ export default function CaregiversPage() {
     location: '',
     handoffNotes: '',
   });
-
-  // Get care recipient ID
-  const familyId = user?.families?.[0]?.id;
-  const careRecipientId = user?.families?.[0]?.careRecipients?.[0]?.id;
 
   const weekStart = startOfWeek(currentWeek);
   const weekEnd = endOfWeek(currentWeek);
@@ -224,12 +221,13 @@ export default function CaregiversPage() {
       <div className="pb-6">
         <PageHeader title="Caregiver Schedule" subtitle="Shifts and handoffs" />
         <div className="px-4 sm:px-6 py-6">
+          <FamilySpaceSelector />
           <Card>
             <CardContent className="py-12 text-center">
               <AlertCircle className="w-12 h-12 mx-auto text-text-tertiary mb-4" />
-              <p className="text-text-secondary">No care recipient found</p>
+              <p className="text-text-secondary">No loved one selected</p>
               <p className="text-sm text-text-tertiary mt-2">
-                Please add a care recipient to manage shifts
+                Please select a loved one above to manage shifts
               </p>
             </CardContent>
           </Card>
@@ -256,6 +254,9 @@ export default function CaregiversPage() {
       />
 
       <div className="px-4 sm:px-6 py-6 space-y-6">
+        {/* Family Space Selector */}
+        <FamilySpaceSelector />
+
         {/* Current On Duty */}
         {onDuty && (
           <Card variant="success">

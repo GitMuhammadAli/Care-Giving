@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,8 +13,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { MedicationCard, MedicationScheduleItem } from '@/components/care/medication-card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { AddMedicationModal } from '@/components/modals/add-medication-modal';
+import { EditMedicationModal } from '@/components/modals/edit-medication-modal';
 import { LogMedicationModal } from '@/components/modals/log-medication-modal';
-import { useAuth } from '@/hooks/use-auth';
+import { FamilySpaceSelector } from '@/components/layout/family-space-selector';
+import { useFamilySpace } from '@/contexts/family-space-context';
 import { medicationsApi, Medication, MedicationScheduleItem as ApiScheduleItem } from '@/lib/api';
 import {
   Plus,
@@ -21,6 +24,8 @@ import {
   Clock,
   AlertCircle,
   Package,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 
 // Group schedule items by time of day
@@ -64,12 +69,13 @@ function groupScheduleByTimeOfDay(items: ApiScheduleItem[]): { time: string; lab
 }
 
 export default function MedicationsPage() {
-  const { user } = useAuth();
+  const { selectedCareRecipientId: careRecipientId, selectedCareRecipient } = useFamilySpace();
   const queryClient = useQueryClient();
-  const careRecipientId = user?.families?.[0]?.careRecipients?.[0]?.id;
 
   const [view, setView] = useState<'schedule' | 'all'>('schedule');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedMedication, setSelectedMedication] = useState<Medication | null>(null);
   const [logMedicationData, setLogMedicationData] = useState<{
     id: string;
     name: string;
@@ -90,6 +96,30 @@ export default function MedicationsPage() {
     queryFn: () => medicationsApi.list(careRecipientId!),
     enabled: !!careRecipientId,
   });
+
+  // Delete medication mutation
+  const deleteMedicationMutation = useMutation({
+    mutationFn: (id: string) => medicationsApi.delete(id),
+    onSuccess: () => {
+      toast.success('Medication deleted');
+      queryClient.invalidateQueries({ queryKey: ['medications', careRecipientId] });
+      queryClient.invalidateQueries({ queryKey: ['medications-schedule', careRecipientId] });
+    },
+    onError: () => {
+      toast.error('Failed to delete medication');
+    },
+  });
+
+  const handleEditMedication = (med: Medication) => {
+    setSelectedMedication(med);
+    setIsEditModalOpen(true);
+  };
+
+  const handleDeleteMedication = (med: Medication) => {
+    if (confirm(`Are you sure you want to delete ${med.name}?`)) {
+      deleteMedicationMutation.mutate(med.id);
+    }
+  };
 
   // Group schedule by time of day
   const groupedSchedule = useMemo(() => groupScheduleByTimeOfDay(scheduleItems), [scheduleItems]);
@@ -126,10 +156,16 @@ export default function MedicationsPage() {
 
   if (!careRecipientId) {
     return (
-      <div className="text-center py-12">
-        <AlertCircle className="w-12 h-12 text-warning mx-auto mb-4" />
-        <h2 className="text-xl font-semibold text-text-primary mb-2">No Care Recipient Selected</h2>
-        <p className="text-text-secondary">Please select a care recipient to view medications.</p>
+      <div className="pb-6">
+        <PageHeader title="Medications" subtitle="Track and manage all medications" />
+        <div className="px-4 sm:px-6 py-6">
+          <FamilySpaceSelector />
+          <div className="text-center py-12">
+            <AlertCircle className="w-12 h-12 text-warning mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-text-primary mb-2">No Loved One Selected</h2>
+            <p className="text-text-secondary">Please select a loved one above to view their medications.</p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -139,6 +175,7 @@ export default function MedicationsPage() {
       <div className="pb-6">
         <PageHeader title="Medications" subtitle="Track and manage all medications" />
         <div className="px-4 sm:px-6 py-6 space-y-4">
+          <FamilySpaceSelector />
           <Skeleton className="h-12 w-64" />
           <Skeleton className="h-24 w-full" />
           <Skeleton className="h-24 w-full" />
@@ -166,6 +203,9 @@ export default function MedicationsPage() {
       />
 
       <div className="px-4 sm:px-6 py-6">
+        {/* Family Space Selector */}
+        <FamilySpaceSelector />
+
         {/* View Toggle */}
         <div className="flex gap-2 mb-6 p-1 bg-bg-muted rounded-lg w-fit">
           <button
@@ -278,9 +318,12 @@ export default function MedicationsPage() {
                             <Badge size="sm">{med.frequency}</Badge>
                           </div>
                           <p className="text-sm text-text-secondary">{med.dosage}</p>
+                          {med.instructions && (
+                            <p className="text-xs text-text-tertiary mt-1">{med.instructions}</p>
+                          )}
                         </div>
                         {med.currentSupply !== undefined && (
-                          <div className="text-right">
+                          <div className="text-right mr-2">
                             <div className="flex items-center gap-1 text-sm">
                               <Package className={cn(
                                 'w-4 h-4',
@@ -297,6 +340,23 @@ export default function MedicationsPage() {
                             )}
                           </div>
                         )}
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleEditMedication(med)}
+                            className="p-2 rounded-lg text-text-tertiary hover:text-primary hover:bg-primary/10 transition-colors"
+                            title="Edit"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteMedication(med)}
+                            disabled={deleteMedicationMutation.isPending}
+                            className="p-2 rounded-lg text-text-tertiary hover:text-destructive hover:bg-destructive/10 transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </Card>
                   </motion.div>
@@ -326,6 +386,19 @@ export default function MedicationsPage() {
             queryClient.invalidateQueries({ queryKey: ['medications-schedule', careRecipientId] });
           }}
           medication={logMedicationData}
+          careRecipientId={careRecipientId}
+        />
+      )}
+
+      {/* Edit Medication Modal */}
+      {careRecipientId && (
+        <EditMedicationModal
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setSelectedMedication(null);
+          }}
+          medication={selectedMedication}
           careRecipientId={careRecipientId}
         />
       )}
