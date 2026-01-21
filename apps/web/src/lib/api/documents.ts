@@ -11,13 +11,16 @@ export type DocumentType =
   | 'DNR'
   | 'OTHER';
 
+export type DocumentStatus = 'PROCESSING' | 'READY' | 'FAILED';
+
 export interface Document {
   id: string;
   familyId: string;
   uploadedById: string;
   name: string;
   type: DocumentType;
-  s3Key: string;
+  status: DocumentStatus;
+  s3Key?: string;
   mimeType: string;
   sizeBytes: number;
   expiresAt?: string;

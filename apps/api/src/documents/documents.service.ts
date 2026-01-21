@@ -21,6 +21,38 @@ export class DocumentsService {
     return membership;
   }
 
+  /**
+   * Create a document record with PROCESSING status (for async upload)
+   */
+  async createPending(
+    familyId: string,
+    userId: string,
+    dto: { name: string; type?: string; notes?: string; expiresAt?: string; mimeType: string; sizeBytes: number },
+  ) {
+    const membership = await this.verifyFamilyAccess(familyId, userId);
+
+    if (membership.role === 'VIEWER') {
+      throw new ForbiddenException('Viewers cannot upload documents');
+    }
+
+    return this.prisma.document.create({
+      data: {
+        familyId,
+        uploadedById: userId,
+        name: dto.name,
+        type: (dto.type as any) || 'OTHER',
+        status: 'PROCESSING',
+        mimeType: dto.mimeType,
+        sizeBytes: dto.sizeBytes,
+        expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : undefined,
+        notes: dto.notes,
+      },
+    });
+  }
+
+  /**
+   * Create a document with file already uploaded (sync mode)
+   */
   async create(
     familyId: string,
     userId: string,
@@ -39,6 +71,7 @@ export class DocumentsService {
         uploadedById: userId,
         name: dto.name,
         type: (dto.type as any) || 'OTHER',
+        status: 'READY',
         s3Key: file.s3Key,
         url: file.url,
         mimeType: file.mimeType,
@@ -120,13 +153,15 @@ export class DocumentsService {
       throw new ForbiddenException('Only admins can delete documents');
     }
 
-    // Delete from Cloudinary - determine resource type from mimeType
-    const resourceType = document.mimeType.startsWith('image/')
-      ? 'image'
-      : document.mimeType.startsWith('video/')
-        ? 'video'
-        : 'raw';
-    await this.storageService.delete(document.s3Key, resourceType);
+    // Delete from Cloudinary if file was uploaded (s3Key exists)
+    if (document.s3Key) {
+      const resourceType = document.mimeType.startsWith('image/')
+        ? 'image'
+        : document.mimeType.startsWith('video/')
+          ? 'video'
+          : 'raw';
+      await this.storageService.delete(document.s3Key, resourceType);
+    }
 
     await this.prisma.document.delete({
       where: { id },

@@ -484,7 +484,8 @@ model Document {
 
   name      String
   type      DocumentType
-  s3Key     String
+  status    DocumentStatus @default(PROCESSING)
+  s3Key     String?
   url       String?
   mimeType  String
   sizeBytes Int
@@ -499,6 +500,13 @@ model Document {
   family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
 
   @@index([familyId, type])
+  @@index([status])
+}
+
+enum DocumentStatus {
+  PROCESSING
+  READY
+  FAILED
 }
 
 enum DocumentType {

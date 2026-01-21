@@ -14,10 +14,13 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 import { DocumentsService } from './documents.service';
 import { UpdateDocumentDto } from './dto/update-document.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { StorageService } from '../system/module/storage/storage.service';
+import { DocumentUploadJob } from './documents.processor';
 
 interface CurrentUserPayload {
   id: string;
@@ -31,10 +34,11 @@ export class DocumentsController {
   constructor(
     private readonly documentsService: DocumentsService,
     private readonly storageService: StorageService,
+    @InjectQueue('document-upload') private documentQueue: Queue<DocumentUploadJob>,
   ) {}
 
   @Post()
-  @ApiOperation({ summary: 'Upload a document' })
+  @ApiOperation({ summary: 'Upload a document (async - returns immediately)' })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('file'))
   async create(
@@ -47,34 +51,43 @@ export class DocumentsController {
       throw new BadRequestException('File is required');
     }
 
-    // Determine resource type based on mimeType
-    // PDFs and documents should be 'raw', images should be 'image'
-    let resourceType: 'image' | 'raw' | 'video' | 'auto' = 'raw';
-    if (file.mimetype.startsWith('image/')) {
-      resourceType = 'image';
-    } else if (file.mimetype.startsWith('video/')) {
-      resourceType = 'video';
-    }
-
-    // Upload file to Cloudinary
-    const uploadResult = await this.storageService.upload(file, {
-      folder: `carecircle/documents/${familyId}`,
-      resourceType,
-    });
-
-    const documentDto = {
+    // Create a pending document record first (returns immediately to user)
+    const document = await this.documentsService.createPending(familyId, user.id, {
       name: dto.name || file.originalname.replace(/\.[^/.]+$/, ''),
-      type: dto.type as any,
+      type: dto.type,
       notes: dto.notes,
       expiresAt: dto.expiresAt,
-    };
-
-    return this.documentsService.create(familyId, user.id, documentDto, {
-      s3Key: uploadResult.key,
-      url: uploadResult.url,
       mimeType: file.mimetype,
       sizeBytes: file.size,
     });
+
+    // Add upload job to queue (processed in background)
+    await this.documentQueue.add(
+      'upload',
+      {
+        documentId: document.id,
+        familyId,
+        userId: user.id,
+        file: {
+          buffer: file.buffer.toString('base64'),
+          originalname: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size,
+        },
+      },
+      {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 2000,
+        },
+        removeOnComplete: true,
+        removeOnFail: false,
+      },
+    );
+
+    // Return immediately with the pending document
+    return document;
   }
 
   @Get()

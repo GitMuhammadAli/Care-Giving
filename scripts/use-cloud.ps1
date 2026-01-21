@@ -45,7 +45,7 @@ $merged | Out-File -FilePath ".env" -Encoding UTF8 -NoNewline
 # Copy .env to app directories (Windows fallback for symlinks)
 $appDirs = @("apps/api", "apps/workers", "packages/database")
 foreach ($dir in $appDirs) {
-    $targetPath = Join-Path $rootDir $dir ".env"
+    $targetPath = Join-Path (Join-Path $rootDir $dir) ".env"
     Write-Host "Copying .env to $targetPath" -ForegroundColor DarkGray
     Copy-Item -Path ".env" -Destination $targetPath -Force
 }

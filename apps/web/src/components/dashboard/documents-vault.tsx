@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { FileText, Plus, Upload, Download, Eye, Folder, CreditCard, FileCheck, Shield, Clock, Search, Pencil, Trash2 } from 'lucide-react';
+import { FileText, Plus, Upload, Download, Eye, Folder, CreditCard, FileCheck, Shield, Clock, Search, Pencil, Trash2, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -75,11 +75,19 @@ const formatDate = (dateString: string): string => {
 export const DocumentsVault = ({ familyId }: DocumentsVaultProps) => {
   const queryClient = useQueryClient();
 
-  // Fetch documents
+  // Fetch documents - auto-refresh when there are processing documents
   const { data: documents, isLoading } = useQuery({
     queryKey: ['documents', familyId],
     queryFn: () => documentsApi.list(familyId),
     enabled: !!familyId,
+    refetchInterval: (query) => {
+      // Auto-refresh every 3 seconds if there are processing documents
+      const docs = query.state.data;
+      if (docs?.some((doc) => doc.status === 'PROCESSING')) {
+        return 3000;
+      }
+      return false;
+    },
   });
 
   // Upload mutation
@@ -88,7 +96,7 @@ export const DocumentsVault = ({ familyId }: DocumentsVaultProps) => {
       documentsApi.upload(familyId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents', familyId] });
-      toast.success('Document uploaded successfully!');
+      toast.success('Document upload started! Processing in background...');
     },
     onError: () => {
       toast.error('Failed to upload document');
@@ -356,65 +364,113 @@ export const DocumentsVault = ({ familyId }: DocumentsVaultProps) => {
               <span className="text-xs text-muted-foreground">({docs.length})</span>
             </div>
             <div className="space-y-2 pl-6">
-              {docs.map((doc) => (
-                <div
-                  key={doc.id}
-                  className="flex items-center gap-3 p-3 rounded-lg bg-accent/50 hover:bg-accent transition-colors border border-transparent hover:border-border group"
-                >
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${typeColors[doc.type]}`}>
-                    {typeIcons[doc.type]}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground text-sm truncate">{doc.name}</p>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {formatDate(doc.createdAt)}
-                      </span>
-                      <span>•</span>
-                      <span>{formatFileSize(doc.sizeBytes)}</span>
+              {docs.map((doc) => {
+                const isProcessing = doc.status === 'PROCESSING';
+                const isFailed = doc.status === 'FAILED';
+                const isReady = doc.status === 'READY';
+
+                return (
+                  <div
+                    key={doc.id}
+                    className={`flex items-center gap-3 p-3 rounded-lg transition-colors border group ${
+                      isProcessing
+                        ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800'
+                        : isFailed
+                          ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'
+                          : 'bg-accent/50 hover:bg-accent border-transparent hover:border-border'
+                    }`}
+                  >
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                      isProcessing
+                        ? 'bg-blue-100 dark:bg-blue-900 text-blue-600'
+                        : isFailed
+                          ? 'bg-red-100 dark:bg-red-900 text-red-600'
+                          : typeColors[doc.type]
+                    }`}>
+                      {isProcessing ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : isFailed ? (
+                        <AlertCircle className="w-4 h-4" />
+                      ) : (
+                        typeIcons[doc.type]
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground text-sm truncate">{doc.name}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        {isProcessing ? (
+                          <span className="text-blue-600 dark:text-blue-400 font-medium">Uploading...</span>
+                        ) : isFailed ? (
+                          <span className="text-red-600 dark:text-red-400 font-medium">Upload failed</span>
+                        ) : (
+                          <>
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {formatDate(doc.createdAt)}
+                            </span>
+                            <span>•</span>
+                            <span>{formatFileSize(doc.sizeBytes)}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className={`flex items-center gap-1 ${isReady ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'} transition-opacity`}>
+                      {isProcessing ? (
+                        <span className="text-xs text-blue-600 dark:text-blue-400 px-2">Processing...</span>
+                      ) : isFailed ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-red-600 hover:text-red-700"
+                          onClick={() => setDeleteConfirmDoc(doc)}
+                          title="Remove failed upload"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleView(doc)}
+                            title="View"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleDownload(doc)}
+                            title="Download"
+                          >
+                            <Download className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => setEditingDoc(doc)}
+                            title="Edit"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => setDeleteConfirmDoc(doc)}
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => handleView(doc)}
-                      title="View"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => handleDownload(doc)}
-                      title="Download"
-                    >
-                      <Download className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => setEditingDoc(doc)}
-                      title="Edit"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() => setDeleteConfirmDoc(doc)}
-                      title="Delete"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ))}
