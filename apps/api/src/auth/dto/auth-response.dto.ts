@@ -75,6 +75,9 @@ export class AuthUserDto {
  * Login response
  */
 export class LoginResponseDto {
+  @ApiProperty({ type: TokensDto, description: 'JWT tokens (used internally for cookie setting)' })
+  tokens: TokensDto;
+
   @ApiProperty({
     description: 'JWT access token - use this in the Authorization header as "Bearer <token>"',
     example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
@@ -111,6 +114,9 @@ export class RegisterResponseDto {
 export class VerifyEmailResponseDto {
   @ApiProperty({ example: 'Email verified successfully' })
   message: string;
+
+  @ApiProperty({ type: TokensDto, description: 'JWT tokens (used internally for cookie setting)' })
+  tokens: TokensDto;
 
   @ApiProperty({
     description: 'JWT access token - use this in the Authorization header as "Bearer <token>"',

@@ -95,7 +95,7 @@ import { EventsModule } from './events/events.module';
       },
     ]),
 
-    // Bull (Queues) - Uses centralized Redis config
+    // Bull (Queues) - Uses centralized Redis config with cloud-friendly settings
     BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
@@ -105,7 +105,15 @@ import { EventsModule } from './events/events.module';
         const password = redisConfig?.password;
         const useTls = redisConfig?.tls === true;
 
-        const redis: any = { host, port };
+        const redis: any = {
+          host,
+          port,
+          maxRetriesPerRequest: null, // Required for BullMQ
+          enableReadyCheck: false, // Faster startup
+          connectTimeout: 20000, // 20 second connect timeout for cloud
+          keepAlive: 30000, // Send keepalive every 30 seconds
+          retryStrategy: (times: number) => Math.min(times * 1000, 30000),
+        };
 
         // Only add password if set
         if (password && password.trim() !== '') {

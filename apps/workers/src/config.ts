@@ -49,28 +49,28 @@ let _redisConnection: Redis | null = null;
 export function getRedisConnection(): Redis {
   if (!_redisConnection) {
     const redisConfig = getRedisConfig(getConfig());
-    
+
     if ('url' in redisConfig && redisConfig.url) {
       // Pass URL as first parameter, options as second
-      _redisConnection = new Redis(redisConfig.url as string, {
-        maxRetriesPerRequest: null,
-      });
+      const { url, ...options } = redisConfig;
+      _redisConnection = new Redis(url as string, options);
     } else {
-      _redisConnection = new Redis({
-        host: (redisConfig as { host: string }).host,
-        port: (redisConfig as { port: number }).port,
-        password: (redisConfig as { password?: string }).password,
-        tls: (redisConfig as { tls?: Record<string, never> }).tls,
-        maxRetriesPerRequest: null,
-      });
+      _redisConnection = new Redis(redisConfig as any);
     }
 
     _redisConnection.on('connect', () => {
       logger.info('Redis connected');
     });
 
+    _redisConnection.on('reconnecting', (delay: number) => {
+      logger.warn({ delay }, 'Redis reconnecting...');
+    });
+
     _redisConnection.on('error', (err) => {
-      logger.error({ err }, 'Redis connection error');
+      // Only log if not a reconnection error (those are noisy)
+      if (!err.message?.includes('ECONNRESET') && !err.message?.includes('ETIMEDOUT')) {
+        logger.error({ err }, 'Redis connection error');
+      }
     });
   }
 

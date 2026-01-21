@@ -48,7 +48,7 @@ import { JwtAuthGuard } from "../../system/guard/jwt-auth.guard";
 import { GetUser } from "../../system/decorator/current-user.decorator";
 import { CurrentUser } from "../../system/helper/context.helper";
 
-@ApiTags("auth")
+@ApiTags("Auth")
 @Controller("auth")
 export class AuthController {
   private readonly isProduction: boolean;

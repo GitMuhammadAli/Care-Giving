@@ -86,6 +86,8 @@ Set the \`X-Language\` header to receive localized error messages.
     .addTag('Notifications', 'Push notifications')
     .addTag('Chat', 'Real-time chat')
     .addTag('Health', 'API health checks')
+    .addTag('My Shifts', 'Caregiver personal shift management')
+    .addTag('Medication Logs', 'Medication administration logs')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
