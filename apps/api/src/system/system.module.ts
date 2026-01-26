@@ -8,6 +8,10 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { OtpHelper } from './helper/otp.helper';
 import { LockHelper } from './helper/lock.helper';
 
+// Guards
+import { FamilyAccessGuard } from './guard/family-access.guard';
+import { RolesGuard } from './guard/roles.guard';
+
 // Validators
 import { IsUniqueConstraint } from './validator/is-unique.validator';
 import { IsExistsConstraint } from './validator/is-exists.validator';
@@ -37,6 +41,8 @@ import { CacheModule } from './module/cache';
     LockHelper,
     IsUniqueConstraint,
     IsExistsConstraint,
+    FamilyAccessGuard,
+    RolesGuard,
   ],
   exports: [
     PrismaModule,
@@ -47,6 +53,8 @@ import { CacheModule } from './module/cache';
     IsExistsConstraint,
     StorageModule,
     MailModule,
+    FamilyAccessGuard,
+    RolesGuard,
   ],
 })
 export class SystemModule {}

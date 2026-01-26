@@ -69,8 +69,12 @@ function groupScheduleByTimeOfDay(items: ApiScheduleItem[]): { time: string; lab
 }
 
 export default function MedicationsPage() {
-  const { selectedCareRecipientId: careRecipientId, selectedCareRecipient } = useFamilySpace();
+  const { selectedCareRecipientId: careRecipientId, selectedCareRecipient, currentRole } = useFamilySpace();
   const queryClient = useQueryClient();
+
+  // Role-based permissions
+  const canEdit = currentRole === 'ADMIN' || currentRole === 'CAREGIVER';
+  const canDelete = currentRole === 'ADMIN';
 
   const [view, setView] = useState<'schedule' | 'all'>('schedule');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -191,14 +195,16 @@ export default function MedicationsPage() {
         title="Medications"
         subtitle="Track and manage all medications"
         actions={
-          <Button 
-            variant="primary" 
-            size="default" 
-            leftIcon={<Plus className="w-4 h-4" />}
-            onClick={() => setIsAddModalOpen(true)}
-          >
-            Add Medication
-          </Button>
+          canEdit ? (
+            <Button
+              variant="primary"
+              size="default"
+              leftIcon={<Plus className="w-4 h-4" />}
+              onClick={() => setIsAddModalOpen(true)}
+            >
+              Add Medication
+            </Button>
+          ) : null
         }
       />
 
@@ -244,9 +250,9 @@ export default function MedicationsPage() {
               <EmptyState
                 type="medications"
                 title="No medications scheduled today"
-                description="Add medications to start tracking the daily schedule."
-                actionLabel="Add Medication"
-                onAction={() => setIsAddModalOpen(true)}
+                description={canEdit ? "Add medications to start tracking the daily schedule." : "No medications have been added yet."}
+                actionLabel={canEdit ? "Add Medication" : undefined}
+                onAction={canEdit ? () => setIsAddModalOpen(true) : undefined}
               />
             ) : (
               groupedSchedule.map((timeSlot) => (
@@ -291,9 +297,9 @@ export default function MedicationsPage() {
               <EmptyState
                 type="medications"
                 title="No medications yet"
-                description="Add medications to track dosages and schedules."
-                actionLabel="Add Medication"
-                onAction={() => setIsAddModalOpen(true)}
+                description={canEdit ? "Add medications to track dosages and schedules." : "No medications have been added yet."}
+                actionLabel={canEdit ? "Add Medication" : undefined}
+                onAction={canEdit ? () => setIsAddModalOpen(true) : undefined}
               />
             ) : (
               <div className="space-y-3">
@@ -340,23 +346,29 @@ export default function MedicationsPage() {
                             )}
                           </div>
                         )}
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleEditMedication(med)}
-                            className="p-2 rounded-lg text-text-tertiary hover:text-primary hover:bg-primary/10 transition-colors"
-                            title="Edit"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteMedication(med)}
-                            disabled={deleteMedicationMutation.isPending}
-                            className="p-2 rounded-lg text-text-tertiary hover:text-destructive hover:bg-destructive/10 transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                        {(canEdit || canDelete) && (
+                          <div className="flex items-center gap-1">
+                            {canEdit && (
+                              <button
+                                onClick={() => handleEditMedication(med)}
+                                className="p-2 rounded-lg text-text-tertiary hover:text-primary hover:bg-primary/10 transition-colors"
+                                title="Edit"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                            )}
+                            {canDelete && (
+                              <button
+                                onClick={() => handleDeleteMedication(med)}
+                                disabled={deleteMedicationMutation.isPending}
+                                className="p-2 rounded-lg text-text-tertiary hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </Card>
                   </motion.div>

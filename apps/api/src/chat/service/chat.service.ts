@@ -1,13 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { StreamChat, Channel } from 'stream-chat';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class ChatService {
   private readonly logger = new Logger(ChatService.name);
   private streamClient: StreamChat;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly prisma: PrismaService
+  ) {
     const apiKey = this.configService.get<string>('NEXT_PUBLIC_STREAM_API_KEY');
     const apiSecret = this.configService.get<string>('STREAM_API_SECRET');
 
@@ -20,6 +24,77 @@ export class ChatService {
 
     this.streamClient = StreamChat.getInstance(apiKey, apiSecret);
     this.logger.log('Stream Chat service initialized');
+  }
+
+  /**
+   * Validate that all memberIds belong to the family
+   * If no memberIds provided, returns all active family member user IDs
+   */
+  async validateAndGetFamilyMemberIds(
+    familyId: string,
+    requestedMemberIds?: string[]
+  ): Promise<string[]> {
+    // Get all active family members
+    const familyMembers = await this.prisma.familyMember.findMany({
+      where: {
+        familyId,
+        isActive: true,
+      },
+      select: {
+        userId: true,
+      },
+    });
+
+    const validUserIds = new Set(familyMembers.map((m) => m.userId));
+
+    // If no specific members requested, return all family members
+    if (!requestedMemberIds || requestedMemberIds.length === 0) {
+      return Array.from(validUserIds);
+    }
+
+    // Filter to only valid family member IDs
+    const validatedIds = requestedMemberIds.filter((id) => validUserIds.has(id));
+
+    this.logger.debug(
+      `Validated ${validatedIds.length}/${requestedMemberIds.length} member IDs for family ${familyId}`
+    );
+
+    return validatedIds;
+  }
+
+  /**
+   * Check if a user is a member of a family
+   */
+  async isUserFamilyMember(familyId: string, userId: string): Promise<boolean> {
+    const member = await this.prisma.familyMember.findUnique({
+      where: {
+        familyId_userId: {
+          familyId,
+          userId,
+        },
+      },
+    });
+
+    return !!member && member.isActive;
+  }
+
+  /**
+   * Get user's role in a family
+   */
+  async getUserFamilyRole(familyId: string, userId: string): Promise<string | null> {
+    const member = await this.prisma.familyMember.findUnique({
+      where: {
+        familyId_userId: {
+          familyId,
+          userId,
+        },
+      },
+      select: {
+        role: true,
+      },
+    });
+
+    return member?.role || null;
   }
 
   /**

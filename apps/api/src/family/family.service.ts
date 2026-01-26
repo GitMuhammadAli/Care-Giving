@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../system/module/mail/mail.service';
 import { CacheService, CACHE_KEYS, CACHE_TTL } from '../system/module/cache';
 import { EventPublisherService } from '../events/publishers/event-publisher.service';
 import { ROUTING_KEYS } from '../events/events.constants';
+import { ChatService } from '../chat/service/chat.service';
 import { CreateFamilyDto } from './dto/create-family.dto';
 import { UpdateFamilyDto } from './dto/update-family.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
@@ -12,11 +13,14 @@ import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class FamilyService {
+  private readonly logger = new Logger(FamilyService.name);
+
   constructor(
     private prisma: PrismaService,
     private mailService: MailService,
     private cacheService: CacheService,
     private eventPublisher: EventPublisherService,
+    private chatService: ChatService,
   ) {}
 
   async createFamily(userId: string, dto: CreateFamilyDto) {
@@ -284,13 +288,22 @@ export class FamilyService {
     ]);
 
     // Invalidate ALL related caches to ensure fresh data
-    console.log('AcceptInvitation - Invalidating caches for user:', userId, 'family:', invitation.familyId);
+    this.logger.log(`AcceptInvitation - Invalidating caches for user: ${userId}, family: ${invitation.familyId}`);
     await this.invalidateUserFamiliesCache(userId);
     await this.invalidateFamilyCache(invitation.familyId);
     // Also use pattern-based invalidation for thorough cleanup
     await this.cacheService.delPattern(`user:*${userId}*`);
 
-    console.log('AcceptInvitation - Complete. Family joined:', invitation.family.name);
+    // Add new member to family chat channel
+    try {
+      await this.chatService.addMemberToFamilyChannel(invitation.familyId, userId);
+      this.logger.log(`Added user ${userId} to family ${invitation.familyId} chat channel`);
+    } catch (error) {
+      // Don't fail the invitation acceptance if chat fails
+      this.logger.warn(`Failed to add user to chat channel: ${error.message}`);
+    }
+
+    this.logger.log(`AcceptInvitation - Complete. Family joined: ${invitation.family.name}`);
 
     return family.family;
   }
@@ -519,6 +532,15 @@ export class FamilyService {
       { aggregateType: 'FamilyMember', aggregateId: memberId },
       { familyId, causedBy: adminId },
     );
+
+    // Remove member from family chat channel
+    try {
+      await this.chatService.removeMemberFromFamilyChannel(familyId, member.userId);
+      this.logger.log(`Removed user ${member.userId} from family ${familyId} chat channel`);
+    } catch (error) {
+      // Don't fail the removal if chat fails
+      this.logger.warn(`Failed to remove user from chat channel: ${error.message}`);
+    }
 
     // Invalidate caches
     await this.invalidateFamilyCache(familyId);

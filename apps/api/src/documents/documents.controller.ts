@@ -11,16 +11,20 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
+import { FamilyRole } from '@prisma/client';
 import { DocumentsService } from './documents.service';
 import { UpdateDocumentDto } from './dto/update-document.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { StorageService } from '../system/module/storage/storage.service';
 import { DocumentUploadJob } from './documents.processor';
+import { FamilyAccessGuard } from '../system/guard/family-access.guard';
+import { FamilyAccess } from '../system/decorator/family-access.decorator';
 
 interface CurrentUserPayload {
   id: string;
@@ -29,6 +33,8 @@ interface CurrentUserPayload {
 
 @ApiTags('Documents')
 @ApiBearerAuth('JWT-auth')
+@UseGuards(FamilyAccessGuard)
+@FamilyAccess({ param: 'familyId' })
 @Controller('families/:familyId/documents')
 export class DocumentsController {
   constructor(
@@ -38,7 +44,8 @@ export class DocumentsController {
   ) {}
 
   @Post()
-  @ApiOperation({ summary: 'Upload a document (async - returns immediately)' })
+  @FamilyAccess({ param: 'familyId', roles: [FamilyRole.ADMIN, FamilyRole.CAREGIVER] })
+  @ApiOperation({ summary: 'Upload a document (async - ADMIN/CAREGIVER only)' })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('file'))
   async create(
@@ -139,7 +146,8 @@ export class DocumentsController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update a document' })
+  @FamilyAccess({ param: 'familyId', roles: [FamilyRole.ADMIN, FamilyRole.CAREGIVER] })
+  @ApiOperation({ summary: 'Update a document (ADMIN/CAREGIVER only)' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: CurrentUserPayload,
@@ -149,7 +157,8 @@ export class DocumentsController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Delete a document' })
+  @FamilyAccess({ param: 'familyId', roles: [FamilyRole.ADMIN] })
+  @ApiOperation({ summary: 'Delete a document (ADMIN only)' })
   remove(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: CurrentUserPayload,

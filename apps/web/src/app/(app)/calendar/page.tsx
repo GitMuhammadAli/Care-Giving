@@ -52,11 +52,15 @@ const appointmentColors: Record<string, { bg: string; text: string }> = {
 };
 
 export default function CalendarPage() {
-  const { selectedCareRecipientId: careRecipientId } = useFamilySpace();
+  const { selectedCareRecipientId: careRecipientId, currentRole } = useFamilySpace();
   const queryClient = useQueryClient();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  // Role-based permissions
+  const canEdit = currentRole === 'ADMIN' || currentRole === 'CAREGIVER';
+  const canDelete = currentRole === 'ADMIN';
 
   // Fetch all appointments for the care recipient
   const { data: appointments = [], isLoading, error } = useQuery({
@@ -137,14 +141,16 @@ export default function CalendarPage() {
         title="Calendar"
         subtitle="Appointments and schedules"
         actions={
-          <Button
-            variant="primary"
-            size="default"
-            leftIcon={<Plus className="w-4 h-4" />}
-            onClick={() => setIsAddModalOpen(true)}
-          >
-            Add Appointment
-          </Button>
+          canEdit ? (
+            <Button
+              variant="primary"
+              size="default"
+              leftIcon={<Plus className="w-4 h-4" />}
+              onClick={() => setIsAddModalOpen(true)}
+            >
+              Add Appointment
+            </Button>
+          ) : null
         }
       />
 
@@ -245,15 +251,17 @@ export default function CalendarPage() {
               <CardContent className="py-12 text-center">
                 <CalendarIcon className="w-12 h-12 mx-auto text-text-tertiary mb-4" />
                 <p className="text-text-secondary">No appointments scheduled</p>
-                <Button
-                  variant="secondary"
-                  size="default"
-                  className="mt-4"
-                  leftIcon={<Plus className="w-4 h-4" />}
-                  onClick={() => setIsAddModalOpen(true)}
-                >
-                  Add Appointment
-                </Button>
+                {canEdit && (
+                  <Button
+                    variant="secondary"
+                    size="default"
+                    className="mt-4"
+                    leftIcon={<Plus className="w-4 h-4" />}
+                    onClick={() => setIsAddModalOpen(true)}
+                  >
+                    Add Appointment
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ) : (
@@ -317,32 +325,40 @@ export default function CalendarPage() {
                             )}
                           </div>
 
-                          <div className="flex gap-2 mt-4">
-                            <Button variant="secondary" size="sm">Edit</Button>
-                            {apt.status !== 'CANCELLED' && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => cancelAppointmentMutation.mutate(apt.id)}
-                                disabled={cancelAppointmentMutation.isPending}
-                              >
-                                Cancel
-                              </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                if (confirm('Are you sure you want to delete this appointment?')) {
-                                  deleteAppointmentMutation.mutate(apt.id);
-                                }
-                              }}
-                              disabled={deleteAppointmentMutation.isPending}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
+                          {(canEdit || canDelete) && (
+                            <div className="flex gap-2 mt-4">
+                              {canEdit && (
+                                <>
+                                  <Button variant="secondary" size="sm">Edit</Button>
+                                  {apt.status !== 'CANCELLED' && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => cancelAppointmentMutation.mutate(apt.id)}
+                                      disabled={cancelAppointmentMutation.isPending}
+                                    >
+                                      Cancel
+                                    </Button>
+                                  )}
+                                </>
+                              )}
+                              {canDelete && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    if (confirm('Are you sure you want to delete this appointment?')) {
+                                      deleteAppointmentMutation.mutate(apt.id);
+                                    }
+                                  }}
+                                  disabled={deleteAppointmentMutation.isPending}
+                                  className="text-destructive hover:text-destructive"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </Card>

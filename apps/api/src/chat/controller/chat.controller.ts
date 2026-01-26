@@ -1,7 +1,10 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ChatService } from '../service/chat.service';
 import { CurrentUser } from '../../system/decorator/current-user.decorator';
+import { FamilyAccessGuard } from '../../system/guard/family-access.guard';
+import { FamilyAccess } from '../../system/decorator/family-access.decorator';
+import { FamilyRole } from '@prisma/client';
 
 @ApiTags('Chat')
 @ApiBearerAuth('JWT-auth')
@@ -17,16 +20,24 @@ export class ChatController {
   }
 
   @Post('family/:familyId/channel')
-  @ApiOperation({ summary: 'Create or get family chat channel' })
+  @UseGuards(FamilyAccessGuard)
+  @FamilyAccess({ param: 'familyId', roles: [FamilyRole.ADMIN, FamilyRole.CAREGIVER] })
+  @ApiOperation({ summary: 'Create or get family chat channel (ADMIN/CAREGIVER only)' })
   async createFamilyChannel(
     @Param('familyId') familyId: string,
-    @Body() dto: { familyName: string; memberIds: string[] },
+    @Body() dto: { familyName: string; memberIds?: string[] },
     @CurrentUser('id') userId: string
   ) {
+    // Validate and get only family member IDs
+    const validatedMemberIds = await this.chatService.validateAndGetFamilyMemberIds(
+      familyId,
+      dto.memberIds
+    );
+
     const channel = await this.chatService.createFamilyChannel(
       familyId,
       dto.familyName,
-      dto.memberIds,
+      validatedMemberIds,
       userId
     );
 
@@ -37,17 +48,25 @@ export class ChatController {
   }
 
   @Post('family/:familyId/topic')
-  @ApiOperation({ summary: 'Create care topic channel' })
+  @UseGuards(FamilyAccessGuard)
+  @FamilyAccess({ param: 'familyId', roles: [FamilyRole.ADMIN, FamilyRole.CAREGIVER] })
+  @ApiOperation({ summary: 'Create care topic channel (ADMIN/CAREGIVER only)' })
   async createTopicChannel(
     @Param('familyId') familyId: string,
-    @Body() dto: { topic: string; topicName: string; memberIds: string[] },
+    @Body() dto: { topic: string; topicName: string; memberIds?: string[] },
     @CurrentUser('id') userId: string
   ) {
+    // Validate and get only family member IDs
+    const validatedMemberIds = await this.chatService.validateAndGetFamilyMemberIds(
+      familyId,
+      dto.memberIds
+    );
+
     const channel = await this.chatService.createCareTopicChannel(
       familyId,
       dto.topic,
       dto.topicName,
-      dto.memberIds,
+      validatedMemberIds,
       userId
     );
 
@@ -55,6 +74,25 @@ export class ChatController {
       channelId: channel.id,
       channelType: channel.type,
     };
+  }
+
+  @Post('family/:familyId/member/:memberId')
+  @UseGuards(FamilyAccessGuard)
+  @FamilyAccess({ param: 'familyId', roles: [FamilyRole.ADMIN] })
+  @ApiOperation({ summary: 'Add member to family chat channel (ADMIN only)' })
+  async addMemberToChannel(
+    @Param('familyId') familyId: string,
+    @Param('memberId') memberId: string
+  ) {
+    // Validate the member belongs to the family
+    const isMember = await this.chatService.isUserFamilyMember(familyId, memberId);
+    if (!isMember) {
+      throw new ForbiddenException('User is not a member of this family');
+    }
+
+    await this.chatService.addMemberToFamilyChannel(familyId, memberId);
+
+    return { success: true, message: 'Member added to channel' };
   }
 
   @Get('channels')

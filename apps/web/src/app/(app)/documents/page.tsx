@@ -61,8 +61,12 @@ function formatFileSize(bytes: number): string {
 }
 
 export default function DocumentsPage() {
-  const { selectedFamilyId: familyId } = useFamilySpace();
+  const { selectedFamilyId: familyId, currentRole } = useFamilySpace();
   const queryClient = useQueryClient();
+
+  // Role-based permissions
+  const canUpload = currentRole === 'ADMIN' || currentRole === 'CAREGIVER';
+  const canDelete = currentRole === 'ADMIN';
 
   const [category, setCategory] = useState('all');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -172,14 +176,16 @@ export default function DocumentsPage() {
         title="Documents"
         subtitle="Secure document vault"
         actions={
-          <Button
-            variant="primary"
-            size="default"
-            leftIcon={<Upload className="w-4 h-4" />}
-            onClick={() => setIsUploadModalOpen(true)}
-          >
-            Upload
-          </Button>
+          canUpload ? (
+            <Button
+              variant="primary"
+              size="default"
+              leftIcon={<Upload className="w-4 h-4" />}
+              onClick={() => setIsUploadModalOpen(true)}
+            >
+              Upload
+            </Button>
+          ) : null
         }
       />
 
@@ -246,9 +252,9 @@ export default function DocumentsPage() {
           <EmptyState
             type="documents"
             title="No documents yet"
-            description="Upload important documents like insurance cards, medical records, and legal documents to keep them secure and accessible."
-            actionLabel="Upload Document"
-            onAction={() => setIsUploadModalOpen(true)}
+            description={canUpload ? "Upload important documents like insurance cards, medical records, and legal documents to keep them secure and accessible." : "No documents have been uploaded yet."}
+            actionLabel={canUpload ? "Upload Document" : undefined}
+            onAction={canUpload ? () => setIsUploadModalOpen(true) : undefined}
           />
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -309,17 +315,19 @@ export default function DocumentsPage() {
                       >
                         Download
                       </Button>
-                      <button
-                        className="p-2 rounded-lg text-text-tertiary hover:text-destructive hover:bg-destructive/10 transition-colors"
-                        onClick={() => {
-                          if (confirm('Are you sure you want to delete this document?')) {
-                            deleteDocumentMutation.mutate(doc.id);
-                          }
-                        }}
-                        disabled={deleteDocumentMutation.isPending}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {canDelete && (
+                        <button
+                          className="p-2 rounded-lg text-text-tertiary hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          onClick={() => {
+                            if (confirm('Are you sure you want to delete this document?')) {
+                              deleteDocumentMutation.mutate(doc.id);
+                            }
+                          }}
+                          disabled={deleteDocumentMutation.isPending}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </Card>
                 </motion.div>
