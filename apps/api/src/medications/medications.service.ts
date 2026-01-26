@@ -317,7 +317,32 @@ export class MedicationsService {
       }
     }
 
-    // Emit event for WebSocket broadcast
+    // Publish to RabbitMQ for multi-instance sync
+    try {
+      await this.eventPublisher.publish(
+        ROUTING_KEYS.MEDICATION_LOGGED,
+        {
+          logId: log.id,
+          medicationId: medication.id,
+          medicationName: medication.name,
+          careRecipientId: medication.careRecipientId,
+          careRecipientName: medication.careRecipient.preferredName || medication.careRecipient.fullName,
+          familyId: medication.careRecipient.familyId,
+          status: log.status,
+          loggedById: userId,
+          loggedByName: log.givenBy?.fullName || 'Unknown',
+          scheduledTime: dto.scheduledTime,
+          givenTime: log.givenTime?.toISOString(),
+        },
+        { aggregateType: 'MedicationLog', aggregateId: log.id },
+        { familyId: medication.careRecipient.familyId, careRecipientId: medication.careRecipientId, causedBy: userId },
+      );
+    } catch (error) {
+      // Don't fail the operation if event publishing fails
+      console.warn('Failed to publish medication.logged event:', error);
+    }
+
+    // Emit internal event for WebSocket broadcast (local instance)
     this.eventEmitter.emit('medication.logged', {
       log,
       medication,

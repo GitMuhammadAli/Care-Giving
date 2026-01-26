@@ -239,6 +239,39 @@ export class WebSocketConsumer {
   }
 
   /**
+   * Listen to document events (uploaded, deleted)
+   */
+  @RabbitSubscribe({
+    exchange: EXCHANGES.DOMAIN_EVENTS,
+    routingKey: 'document.*',
+    queue: QUEUES.WEBSOCKET_UPDATES,
+    queueOptions: {
+      durable: true,
+      arguments: {
+        'x-dead-letter-exchange': EXCHANGES.DEAD_LETTER,
+        'x-dead-letter-routing-key': QUEUES.DLQ_PROCESSING,
+      },
+    },
+  })
+  async handleDocumentEvent(event: BaseEvent): Promise<void | Nack> {
+    try {
+      this.logger.debug(`Received document event: ${event.type}`);
+
+      // Convert routing key to websocket event name (e.g., document.uploaded -> document_uploaded)
+      const wsEventName = event.type.replace(/\./g, '_');
+
+      this.eventEmitter.emit('ws.broadcast', {
+        event: wsEventName,
+        data: event.data,
+        rooms: this.getRoomsForEvent(event),
+      });
+    } catch (error) {
+      this.logger.error(`Error handling document event: ${error}`);
+      return new Nack(true);
+    }
+  }
+
+  /**
    * Determine which WebSocket rooms should receive the event
    */
   private getRoomsForEvent(event: BaseEvent): string[] {

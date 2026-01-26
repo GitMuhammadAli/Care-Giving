@@ -128,6 +128,10 @@ export const WS_EVENTS = {
   FAMILY_MEMBER_JOINED: 'family_member_joined',
   NOTIFICATION: 'notification',
 
+  // Document events
+  DOCUMENT_UPLOADED: 'document_uploaded',
+  DOCUMENT_DELETED: 'document_deleted',
+
   // Admin action events
   CARE_RECIPIENT_DELETED: 'care_recipient_deleted',
   CARE_RECIPIENT_UPDATED: 'care_recipient_updated',

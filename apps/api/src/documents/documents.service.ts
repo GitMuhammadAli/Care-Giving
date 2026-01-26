@@ -1,12 +1,19 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../system/module/storage/storage.service';
+import { EventPublisherService } from '../events/publishers/event-publisher.service';
+import { ROUTING_KEYS } from '../events/events.constants';
 
 @Injectable()
 export class DocumentsService {
+  private readonly logger = new Logger(DocumentsService.name);
+
   constructor(
     private prisma: PrismaService,
     private storageService: StorageService,
+    private eventEmitter: EventEmitter2,
+    private eventPublisher: EventPublisherService,
   ) {}
 
   private async verifyFamilyAccess(familyId: string, userId: string) {
@@ -65,7 +72,13 @@ export class DocumentsService {
       throw new ForbiddenException('Viewers cannot upload documents');
     }
 
-    return this.prisma.document.create({
+    // Get uploader info
+    const uploader = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { fullName: true },
+    });
+
+    const document = await this.prisma.document.create({
       data: {
         familyId,
         uploadedById: userId,
@@ -80,6 +93,34 @@ export class DocumentsService {
         notes: dto.notes,
       },
     });
+
+    // Publish event for real-time sync
+    try {
+      await this.eventPublisher.publish(
+        ROUTING_KEYS.DOCUMENT_UPLOADED,
+        {
+          documentId: document.id,
+          documentName: document.name,
+          documentType: document.type,
+          familyId,
+          uploadedById: userId,
+          uploadedByName: uploader?.fullName || 'Unknown',
+        },
+        { aggregateType: 'Document', aggregateId: document.id },
+        { familyId, causedBy: userId },
+      );
+    } catch (error) {
+      this.logger.warn(`Failed to publish document.uploaded event: ${error.message}`);
+    }
+
+    // Also emit internal event for local WebSocket broadcast
+    this.eventEmitter.emit('document.uploaded', {
+      document,
+      uploadedBy: uploader,
+      familyId,
+    });
+
+    return document;
   }
 
   async findAll(familyId: string, userId: string, type?: string) {
@@ -153,6 +194,35 @@ export class DocumentsService {
       throw new ForbiddenException('Only admins can delete documents');
     }
 
+    // Get admin info before deletion
+    const admin = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { fullName: true },
+    });
+
+    const familyId = document.familyId;
+    const documentName = document.name;
+    const documentType = document.type;
+
+    // Publish event BEFORE deletion for real-time sync
+    try {
+      await this.eventPublisher.publish(
+        ROUTING_KEYS.DOCUMENT_DELETED,
+        {
+          documentId: id,
+          documentName,
+          documentType,
+          familyId,
+          deletedById: userId,
+          deletedByName: admin?.fullName || 'Admin',
+        },
+        { aggregateType: 'Document', aggregateId: id },
+        { familyId, causedBy: userId },
+      );
+    } catch (error) {
+      this.logger.warn(`Failed to publish document.deleted event: ${error.message}`);
+    }
+
     // Delete from Cloudinary if file was uploaded (s3Key exists)
     if (document.s3Key) {
       const resourceType = document.mimeType.startsWith('image/')
@@ -165,6 +235,15 @@ export class DocumentsService {
 
     await this.prisma.document.delete({
       where: { id },
+    });
+
+    // Also emit internal event for local WebSocket broadcast
+    this.eventEmitter.emit('document.deleted', {
+      documentId: id,
+      documentName,
+      documentType,
+      familyId,
+      deletedBy: admin,
     });
 
     return { success: true };

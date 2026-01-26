@@ -312,6 +312,35 @@ export class CareCircleGateway implements OnGatewayConnection, OnGatewayDisconne
     }
   }
 
+  // ============================================================================
+  // DOCUMENT EVENT HANDLERS
+  // ============================================================================
+
+  @OnEvent('document.uploaded')
+  handleDocumentUploaded(payload: { document: any; uploadedBy: any; familyId: string }) {
+    if (payload.familyId) {
+      this.server.to(`family:${payload.familyId}`).emit('document_uploaded', {
+        documentId: payload.document.id,
+        documentName: payload.document.name,
+        documentType: payload.document.type,
+        uploadedBy: payload.uploadedBy?.fullName || 'Unknown',
+        uploadedAt: payload.document.createdAt,
+      });
+    }
+  }
+
+  @OnEvent('document.deleted')
+  handleDocumentDeleted(payload: { documentId: string; documentName: string; documentType: string; familyId: string; deletedBy: any }) {
+    if (payload.familyId) {
+      this.server.to(`family:${payload.familyId}`).emit('document_deleted', {
+        documentId: payload.documentId,
+        documentName: payload.documentName,
+        documentType: payload.documentType,
+        deletedBy: payload.deletedBy?.fullName || 'Admin',
+      });
+    }
+  }
+
   // Send notification to specific user
   sendToUser(userId: string, event: string, data: any) {
     const sockets = this.userSocketMap.get(userId);

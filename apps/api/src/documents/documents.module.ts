@@ -4,10 +4,12 @@ import { DocumentsService } from './documents.service';
 import { DocumentsController } from './documents.controller';
 import { DocumentsProcessor } from './documents.processor';
 import { SystemModule } from '../system/system.module';
+import { EventsModule } from '../events/events.module';
 
 @Module({
   imports: [
     SystemModule,
+    EventsModule,
     BullModule.registerQueue({
       name: 'document-upload',
     }),

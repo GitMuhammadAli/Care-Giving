@@ -281,6 +281,27 @@ export function useWebSocket(familyId?: string) {
     };
 
     // ============================================================================
+    // DOCUMENT EVENTS
+    // ============================================================================
+
+    const handleDocumentUploaded = (data: any) => {
+      console.log('📄 Document uploaded:', data);
+      toast.success(`📄 ${data.uploadedBy} uploaded "${data.documentName}"`, {
+        duration: 5000,
+      });
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
+    };
+
+    const handleDocumentDeleted = (data: any) => {
+      console.log('🗑️ Document deleted:', data);
+      toast(`${data.deletedBy} deleted "${data.documentName}"`, {
+        icon: '📄',
+        duration: 6000,
+      });
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
+    };
+
+    // ============================================================================
     // GENERIC EVENTS
     // ============================================================================
 
@@ -328,6 +349,10 @@ export function useWebSocket(familyId?: string) {
     wsClient.on(WS_EVENTS.APPOINTMENT_DELETED, handleAppointmentDeleted);
     wsClient.on(WS_EVENTS.FAMILY_DELETED, handleFamilyDeleted);
 
+    // Document events
+    wsClient.on(WS_EVENTS.DOCUMENT_UPLOADED, handleDocumentUploaded);
+    wsClient.on(WS_EVENTS.DOCUMENT_DELETED, handleDocumentDeleted);
+
     // Cleanup
     return () => {
       wsClient.off(WS_EVENTS.EMERGENCY_ALERT, handleEmergencyAlert);
@@ -354,6 +379,10 @@ export function useWebSocket(familyId?: string) {
       wsClient.off(WS_EVENTS.MEDICATION_DELETED, handleMedicationDeleted);
       wsClient.off(WS_EVENTS.APPOINTMENT_DELETED, handleAppointmentDeleted);
       wsClient.off(WS_EVENTS.FAMILY_DELETED, handleFamilyDeleted);
+
+      // Document events cleanup
+      wsClient.off(WS_EVENTS.DOCUMENT_UPLOADED, handleDocumentUploaded);
+      wsClient.off(WS_EVENTS.DOCUMENT_DELETED, handleDocumentDeleted);
     };
   }, [isConnected, queryClient]);
 

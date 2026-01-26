@@ -72,7 +72,46 @@ export class AppointmentsService {
     // Invalidate cache
     await this.invalidateAppointmentCache(careRecipientId);
 
-    // Emit event for WebSocket broadcast
+    // Get care recipient for family info
+    const careRecipient = await this.prisma.careRecipient.findUnique({
+      where: { id: careRecipientId },
+      select: { familyId: true, fullName: true, preferredName: true },
+    });
+
+    // Get creator info
+    const creator = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { fullName: true },
+    });
+
+    // Publish to RabbitMQ for multi-instance sync
+    if (careRecipient) {
+      try {
+        await this.eventPublisher.publish(
+          ROUTING_KEYS.APPOINTMENT_CREATED,
+          {
+            appointmentId: appointment.id,
+            appointmentTitle: appointment.title,
+            appointmentType: appointment.type,
+            careRecipientId,
+            careRecipientName: careRecipient.preferredName || careRecipient.fullName,
+            familyId: careRecipient.familyId,
+            startTime: appointment.startTime.toISOString(),
+            endTime: appointment.endTime.toISOString(),
+            location: appointment.location,
+            createdById: userId,
+            createdByName: creator?.fullName || 'Unknown',
+          },
+          { aggregateType: 'Appointment', aggregateId: appointment.id },
+          { familyId: careRecipient.familyId, careRecipientId, causedBy: userId },
+        );
+      } catch (error) {
+        // Don't fail the operation if event publishing fails
+        console.warn('Failed to publish appointment.created event:', error);
+      }
+    }
+
+    // Emit internal event for WebSocket broadcast (local instance)
     this.eventEmitter.emit('appointment.created', appointment);
 
     return appointment;
