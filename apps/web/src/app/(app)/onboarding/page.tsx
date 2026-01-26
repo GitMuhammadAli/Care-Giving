@@ -141,7 +141,7 @@ export default function OnboardingPage() {
       });
 
       setCreatedFamilyId(result.id);
-      toast.success('Family created successfully!');
+      // Note: toast is shown by the useCreateFamily hook
       setCurrentStep('care-recipient');
     } catch (error) {
       // Error handled by mutation

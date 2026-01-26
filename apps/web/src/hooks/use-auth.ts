@@ -152,8 +152,10 @@ export const useAuth = create<AuthState>()(
 
       refetchUser: async () => {
         // Force refresh user profile from server (bypasses sessionChecked)
+        // NOTE: Don't set isLoading: true here - this is a background refresh
+        // Setting isLoading causes components to show loading UI which can
+        // interfere with local state updates (e.g., onboarding step navigation)
         console.log('refetchUser - Starting...');
-        set({ isLoading: true });
         try {
           const user = await authApi.getProfile();
           console.log('refetchUser - Got user:', {
@@ -166,11 +168,10 @@ export const useAuth = create<AuthState>()(
               careRecipientsCount: f.careRecipients?.length || 0,
             })),
           });
-          set({ user, isAuthenticated: true, isLoading: false });
+          set({ user, isAuthenticated: true });
         } catch (err) {
           // If profile fetch fails, don't clear auth - user might still be authenticated
           console.error('refetchUser - Error:', err);
-          set({ isLoading: false });
         }
       },
 
