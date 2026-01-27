@@ -1,13 +1,17 @@
-import { Injectable, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Inject, forwardRef, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../gateway/events.gateway';
+import { WebPushService } from './web-push.service';
 
 @Injectable()
 export class NotificationsService {
+  private readonly logger = new Logger(NotificationsService.name);
+
   constructor(
     private prisma: PrismaService,
     @Inject(forwardRef(() => EventsGateway))
     private gateway: EventsGateway,
+    private webPushService: WebPushService,
   ) {}
 
   async notifyEmergency(familyId: string, careRecipientId: string, alert: any) {
@@ -17,10 +21,11 @@ export class NotificationsService {
 
     if (!careRecipient) return;
 
+    const careRecipientName = careRecipient.preferredName || careRecipient.fullName;
     const notification = {
       type: 'EMERGENCY_ALERT',
       title: `🚨 EMERGENCY: ${alert.title}`,
-      body: `${careRecipient.preferredName || careRecipient.fullName}: ${alert.description}`,
+      body: `${careRecipientName}: ${alert.description}`,
       data: {
         type: 'EMERGENCY',
         careRecipientId,
@@ -33,7 +38,7 @@ export class NotificationsService {
       alert,
       careRecipient: {
         id: careRecipient.id,
-        name: careRecipient.preferredName || careRecipient.fullName,
+        name: careRecipientName,
       },
     });
 
@@ -51,13 +56,28 @@ export class NotificationsService {
         data: notification.data,
       })),
     });
+
+    // Send push notifications to all family members
+    const userIds = members.map((m) => m.userId);
+    try {
+      await this.webPushService.sendEmergencyAlert(
+        userIds,
+        careRecipientName,
+        alert.description,
+        alert.id,
+      );
+      this.logger.log(`Emergency push notifications sent to ${userIds.length} users`);
+    } catch (error) {
+      this.logger.error('Failed to send emergency push notifications', error);
+    }
   }
 
   async notifyHighSeverityEntry(familyId: string, careRecipient: any, entry: any) {
+    const careRecipientName = careRecipient.preferredName || careRecipient.fullName;
     const notification = {
       type: 'TIMELINE_UPDATE',
       title: `⚠️ ${entry.type}: ${entry.title}`,
-      body: `${careRecipient.preferredName || careRecipient.fullName} - ${entry.description || 'New entry logged'}`,
+      body: `${careRecipientName} - ${entry.description || 'New entry logged'}`,
       data: {
         type: 'TIMELINE',
         careRecipientId: careRecipient.id,
@@ -69,7 +89,7 @@ export class NotificationsService {
       entry,
       careRecipient: {
         id: careRecipient.id,
-        name: careRecipient.preferredName || careRecipient.fullName,
+        name: careRecipientName,
       },
     });
 
@@ -86,15 +106,33 @@ export class NotificationsService {
         data: notification.data,
       })),
     });
+
+    // Send push notifications for high severity entries
+    const userIds = members.map((m) => m.userId);
+    try {
+      await this.webPushService.sendGenericNotification(
+        userIds,
+        notification.title,
+        notification.body,
+        `/timeline/${careRecipient.id}`,
+        { entryId: entry.id, severity: entry.severity },
+      );
+    } catch (error) {
+      this.logger.error('Failed to send timeline push notifications', error);
+    }
   }
 
   async notifyShiftAssigned(shift: any) {
+    const careRecipientName = shift.careRecipient.preferredName || shift.careRecipient.fullName;
+    const title = '📅 New Shift Assigned';
+    const body = `You have been assigned a shift for ${careRecipientName}`;
+
     await this.prisma.notification.create({
       data: {
         userId: shift.caregiverId,
         type: 'SHIFT_REMINDER',
-        title: '📅 New Shift Assigned',
-        body: `You have been assigned a shift for ${shift.careRecipient.preferredName || shift.careRecipient.fullName}`,
+        title,
+        body,
         data: {
           type: 'SHIFT',
           shiftId: shift.id,
@@ -104,15 +142,31 @@ export class NotificationsService {
     });
 
     this.gateway.emitToUser(shift.caregiverId, 'shift_assigned', shift);
+
+    // Send push notification
+    try {
+      await this.webPushService.sendShiftReminder(
+        shift.caregiverId,
+        careRecipientName,
+        new Date(shift.startTime),
+        shift.id,
+      );
+    } catch (error) {
+      this.logger.error('Failed to send shift assignment push notification', error);
+    }
   }
 
   async notifyShiftHandoff(fromUser: any, toUser: any, careRecipient: any, notes?: string) {
+    const careRecipientName = careRecipient.preferredName || careRecipient.fullName;
+    const title = '🔄 Shift Handoff';
+    const body = `${fromUser.fullName} has completed their shift for ${careRecipientName}`;
+
     await this.prisma.notification.create({
       data: {
         userId: toUser.id,
         type: 'SHIFT_HANDOFF',
-        title: '🔄 Shift Handoff',
-        body: `${fromUser.fullName} has completed their shift for ${careRecipient.preferredName || careRecipient.fullName}`,
+        title,
+        body,
         data: {
           type: 'HANDOFF',
           careRecipientId: careRecipient.id,
@@ -126,15 +180,30 @@ export class NotificationsService {
       careRecipient,
       notes,
     });
+
+    // Send push notification
+    try {
+      await this.webPushService.sendGenericNotification(
+        [toUser.id],
+        title,
+        body,
+        `/shifts`,
+        { type: 'HANDOFF', careRecipientId: careRecipient.id },
+      );
+    } catch (error) {
+      this.logger.error('Failed to send shift handoff push notification', error);
+    }
   }
 
   async notifyMedicationReminder(medication: any, careRecipient: any, caregiverId: string) {
+    const careRecipientName = careRecipient.preferredName || careRecipient.fullName;
+
     await this.prisma.notification.create({
       data: {
         userId: caregiverId,
         type: 'MEDICATION_REMINDER',
         title: '💊 Medication Due',
-        body: `${careRecipient.preferredName || careRecipient.fullName}: ${medication.name} ${medication.dosage}`,
+        body: `${careRecipientName}: ${medication.name} ${medication.dosage}`,
         data: {
           type: 'MEDICATION',
           medicationId: medication.id,
@@ -147,13 +216,27 @@ export class NotificationsService {
       medication,
       careRecipient,
     });
+
+    // Send push notification
+    try {
+      await this.webPushService.sendMedicationReminder(
+        caregiverId,
+        medication.name,
+        medication.dosage,
+        careRecipientName,
+        medication.id,
+      );
+    } catch (error) {
+      this.logger.error('Failed to send medication reminder push notification', error);
+    }
   }
 
   async notifyAppointmentReminder(appointment: any, careRecipient: any, familyId: string) {
+    const careRecipientName = careRecipient.preferredName || careRecipient.fullName;
     const notification = {
       type: 'APPOINTMENT_REMINDER',
       title: '📅 Appointment Reminder',
-      body: `${careRecipient.preferredName || careRecipient.fullName}: ${appointment.title} is coming up`,
+      body: `${careRecipientName}: ${appointment.title} is coming up`,
       data: {
         type: 'APPOINTMENT',
         appointmentId: appointment.id,
@@ -179,13 +262,28 @@ export class NotificationsService {
         data: notification.data,
       })),
     });
+
+    // Send push notifications to all family members
+    const userIds = members.map((m) => m.userId);
+    try {
+      await this.webPushService.sendAppointmentReminder(
+        userIds,
+        appointment.title,
+        careRecipientName,
+        new Date(appointment.startTime),
+        appointment.id,
+      );
+    } catch (error) {
+      this.logger.error('Failed to send appointment push notifications', error);
+    }
   }
 
   async notifyMedicationRefillNeeded(medication: any, careRecipient: any, familyId: string) {
+    const careRecipientName = careRecipient.preferredName || careRecipient.fullName;
     const notification = {
       type: 'REFILL_NEEDED',
       title: '⚠️ Medication Refill Needed',
-      body: `${careRecipient.preferredName || careRecipient.fullName}: ${medication.name} is running low (${medication.currentSupply} remaining)`,
+      body: `${careRecipientName}: ${medication.name} is running low (${medication.currentSupply} remaining)`,
       data: {
         type: 'REFILL',
         medicationId: medication.id,
@@ -212,6 +310,20 @@ export class NotificationsService {
         data: notification.data,
       })),
     });
+
+    // Send push notifications for refill alerts
+    const userIds = members.map((m) => m.userId);
+    try {
+      await this.webPushService.sendGenericNotification(
+        userIds,
+        notification.title,
+        notification.body,
+        `/medications/${medication.id}`,
+        { medicationId: medication.id, currentSupply: medication.currentSupply },
+      );
+    } catch (error) {
+      this.logger.error('Failed to send refill push notifications', error);
+    }
   }
 
   async getNotifications(userId: string, unreadOnly: boolean = false, limit: number = 50) {

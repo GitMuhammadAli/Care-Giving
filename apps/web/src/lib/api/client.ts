@@ -153,8 +153,12 @@ class ApiClient {
     });
   }
 
-  delete<T>(url: string, options?: RequestOptions) {
-    return this.fetch<T>(url, { ...options, method: 'DELETE' });
+  delete<T>(url: string, data?: unknown, options?: RequestOptions) {
+    return this.fetch<T>(url, {
+      ...options,
+      method: 'DELETE',
+      body: data ? JSON.stringify(data) : undefined,
+    });
   }
 
   async upload<T>(url: string, formData: FormData, options?: RequestOptions): Promise<T> {

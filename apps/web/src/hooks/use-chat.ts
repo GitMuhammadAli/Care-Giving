@@ -10,12 +10,29 @@ interface UseChatOptions {
   autoConnect?: boolean;
 }
 
+interface ChatTokenResponse {
+  token: string;
+  userId: string;
+  userName?: string;
+  userImage?: string;
+}
+
+interface ChatInitResponse {
+  success: boolean;
+  configured: boolean;
+  channelId?: string;
+  channelType?: string;
+  familyName?: string;
+  message?: string;
+}
+
 export function useChat(options: UseChatOptions = {}) {
   const { user, isAuthenticated } = useAuth();
   const [client, setClient] = useState<StreamChat | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [isConfigured, setIsConfigured] = useState(true);
 
   // Initialize Stream Chat client
   useEffect(() => {
@@ -33,11 +50,13 @@ export function useChat(options: UseChatOptions = {}) {
         // Get Stream API key from environment
         const apiKey = process.env.NEXT_PUBLIC_STREAM_API_KEY;
         if (!apiKey) {
-          throw new Error('Stream API key not configured');
+          setIsConfigured(false);
+          console.warn('[Chat] Stream API key not configured');
+          return;
         }
 
-        // Get user token from backend
-        const { token } = await api.get<{ token: string }>('/chat/token');
+        // Get user token from backend (also syncs user to Stream Chat)
+        const tokenResponse = await api.get<ChatTokenResponse>('/chat/token');
 
         // Create and connect client
         const chatClient = StreamChat.getInstance(apiKey);
@@ -46,19 +65,24 @@ export function useChat(options: UseChatOptions = {}) {
           await chatClient.connectUser(
             {
               id: user.id,
-              name: user.fullName,
-              image: user.avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${user.fullName}`,
+              name: tokenResponse.userName || user.fullName,
+              image: tokenResponse.userImage || user.avatarUrl ||
+                `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.fullName)}`,
             },
-            token
+            tokenResponse.token
           );
 
           setClient(chatClient);
           setIsConnected(true);
           console.log('[Chat] Connected to Stream Chat');
         }
-      } catch (err) {
+      } catch (err: any) {
         if (!isCancelled) {
           console.error('[Chat] Failed to connect:', err);
+          // Check if it's a configuration error
+          if (err?.message?.includes('not configured') || err?.status === 500) {
+            setIsConfigured(false);
+          }
           setError(err as Error);
         }
       } finally {
@@ -80,7 +104,25 @@ export function useChat(options: UseChatOptions = {}) {
     };
   }, [isAuthenticated, user, options.autoConnect]);
 
-  // Get family channel
+  // Initialize family chat channel (ensures users are synced and channel exists)
+  const initializeFamilyChat = useCallback(
+    async (familyId: string): Promise<ChatInitResponse> => {
+      try {
+        const response = await api.get<ChatInitResponse>(`/chat/family/${familyId}/init`);
+        return response;
+      } catch (err: any) {
+        console.error('[Chat] Failed to initialize family chat:', err);
+        return {
+          success: false,
+          configured: false,
+          message: err.message || 'Failed to initialize chat',
+        };
+      }
+    },
+    []
+  );
+
+  // Get family channel (calls init first to ensure users are synced)
   const getFamilyChannel = useCallback(
     async (familyId: string, familyName: string): Promise<Channel | null> => {
       if (!client) {
@@ -89,19 +131,30 @@ export function useChat(options: UseChatOptions = {}) {
       }
 
       try {
+        // First, initialize the family chat on the backend
+        // This ensures all users are synced to Stream Chat
+        const initResult = await initializeFamilyChat(familyId);
+
+        if (!initResult.success || !initResult.configured) {
+          console.warn('[Chat] Family chat not configured:', initResult.message);
+          return null;
+        }
+
+        // Now get the channel
         const channel = client.channel('messaging', `family-${familyId}`, {
           name: `${familyName} Chat`,
           image: '/icons/family-chat.png',
         } as any);
 
         await channel.watch();
+        console.log(`[Chat] Connected to family channel: family-${familyId}`);
         return channel;
       } catch (err) {
         console.error('[Chat] Failed to get family channel:', err);
         return null;
       }
     },
-    [client]
+    [client, initializeFamilyChat]
   );
 
   // Get direct message channel
@@ -166,7 +219,9 @@ export function useChat(options: UseChatOptions = {}) {
     client,
     isConnecting,
     isConnected,
+    isConfigured,
     error,
+    initializeFamilyChat,
     getFamilyChannel,
     getDirectMessageChannel,
     getUnreadCount,
@@ -223,6 +278,60 @@ export function useChannel(channelType: string, channelId: string) {
   return {
     channel,
     isLoading,
+    error,
+  };
+}
+
+/**
+ * Hook for family chat that handles initialization
+ */
+export function useFamilyChat(familyId: string | undefined, familyName: string) {
+  const { client, isConnected, isConfigured, initializeFamilyChat, getFamilyChannel } = useChat({ autoConnect: true });
+  const [channel, setChannel] = useState<Channel | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!client || !isConnected || !familyId) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    const loadFamilyChannel = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const ch = await getFamilyChannel(familyId, familyName);
+
+        if (!isCancelled) {
+          setChannel(ch);
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          console.error('[Chat] Failed to load family channel:', err);
+          setError(err as Error);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadFamilyChannel();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [client, isConnected, familyId, familyName, getFamilyChannel]);
+
+  return {
+    client,
+    channel,
+    isLoading,
+    isConfigured,
     error,
   };
 }

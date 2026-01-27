@@ -110,9 +110,8 @@ async function sendSubscriptionToServer(subscription: PushSubscription): Promise
 }
 
 async function removeSubscriptionFromServer(subscription: PushSubscription): Promise<void> {
-  await api.delete('/notifications/push-subscription', {
-    body: JSON.stringify({ endpoint: subscription.endpoint }),
-  });
+  // Use POST-style body in the api.delete call
+  await api.delete('/notifications/push-subscription', { endpoint: subscription.endpoint });
 }
 
 export function showLocalNotification(title: string, options?: NotificationOptions): void {

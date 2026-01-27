@@ -12,11 +12,11 @@ export function useMedications(careRecipientId: string) {
   });
 }
 
-export function useMedication(id: string) {
+export function useMedication(careRecipientId: string, id: string) {
   return useQuery({
-    queryKey: ['medications', 'detail', id],
-    queryFn: () => medicationsApi.get(id),
-    enabled: !!id,
+    queryKey: ['medications', careRecipientId, 'detail', id],
+    queryFn: () => medicationsApi.get(careRecipientId, id),
+    enabled: !!careRecipientId && !!id,
   });
 }
 
@@ -29,13 +29,6 @@ export function useTodaysMedications(careRecipientId: string, date?: string) {
   });
 }
 
-export function useLowSupplyMedications(careRecipientId: string) {
-  return useQuery({
-    queryKey: ['medications', careRecipientId, 'low-supply'],
-    queryFn: () => medicationsApi.getLowSupply(careRecipientId),
-    enabled: !!careRecipientId,
-  });
-}
 
 export function useCreateMedication(careRecipientId: string) {
   const queryClient = useQueryClient();

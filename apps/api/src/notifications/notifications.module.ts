@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bull';
 import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './notifications.controller';
 import { GatewayModule } from '../gateway/gateway.module';
+import { WebPushService } from './web-push.service';
 
 @Module({
   imports: [
@@ -12,7 +13,7 @@ import { GatewayModule } from '../gateway/gateway.module';
     forwardRef(() => GatewayModule),
   ],
   controllers: [NotificationsController],
-  providers: [NotificationsService],
-  exports: [NotificationsService],
+  providers: [NotificationsService, WebPushService],
+  exports: [NotificationsService, WebPushService],
 })
 export class NotificationsModule {}

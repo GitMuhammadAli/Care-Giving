@@ -12,7 +12,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { toast } from 'react-hot-toast';
-import { useMedications, useTodaysMedications, useLowSupplyMedications, useCreateMedication, useLogMedication } from '@/hooks/use-medications';
+import { useMedications, useTodaysMedications, useCreateMedication, useLogMedication } from '@/hooks/use-medications';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface MedicationTrackerProps {
@@ -22,9 +22,13 @@ interface MedicationTrackerProps {
 export const MedicationTracker = memo(function MedicationTracker({ careRecipientId }: MedicationTrackerProps) {
   const { data: medications, isLoading: medicationsLoading } = useMedications(careRecipientId);
   const { data: todaySchedule, isLoading: scheduleLoading } = useTodaysMedications(careRecipientId);
-  const { data: lowSupplyMeds } = useLowSupplyMedications(careRecipientId);
   const createMedication = useCreateMedication(careRecipientId);
   const logMedication = useLogMedication(careRecipientId);
+
+  // Filter low supply medications locally
+  const lowSupplyMeds = medications?.filter(
+    (med) => med.currentSupply !== undefined && med.refillAt !== undefined && med.currentSupply <= med.refillAt
+  );
 
   const [addOpen, setAddOpen] = useState(false);
   const [newMed, setNewMed] = useState({

@@ -5,18 +5,80 @@ import { CurrentUser } from '../../system/decorator/current-user.decorator';
 import { FamilyAccessGuard } from '../../system/guard/family-access.guard';
 import { FamilyAccess } from '../../system/decorator/family-access.decorator';
 import { FamilyRole } from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @ApiTags('Chat')
 @ApiBearerAuth('JWT-auth')
 @Controller('chat')
 export class ChatController {
-  constructor(private readonly chatService: ChatService) {}
+  constructor(
+    private readonly chatService: ChatService,
+    private readonly prisma: PrismaService
+  ) {}
 
   @Get('token')
-  @ApiOperation({ summary: 'Get Stream Chat user token' })
-  getUserToken(@CurrentUser('id') userId: string) {
+  @ApiOperation({ summary: 'Get Stream Chat user token and sync user' })
+  async getUserToken(@CurrentUser('id') userId: string) {
+    // Get user info and sync to Stream Chat
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, fullName: true, avatarUrl: true },
+    });
+
+    if (user) {
+      // Sync user to Stream Chat so they can connect
+      await this.chatService.syncUser(user.id, user.fullName, user.avatarUrl);
+    }
+
     const token = this.chatService.generateUserToken(userId);
-    return { token };
+    return {
+      token,
+      userId,
+      userName: user?.fullName,
+      userImage: user?.avatarUrl,
+    };
+  }
+
+  @Get('family/:familyId/init')
+  @UseGuards(FamilyAccessGuard)
+  @FamilyAccess({ param: 'familyId', roles: [FamilyRole.ADMIN, FamilyRole.CAREGIVER, FamilyRole.VIEWER] })
+  @ApiOperation({ summary: 'Initialize family chat channel (creates if not exists, syncs all members)' })
+  async initializeFamilyChat(
+    @Param('familyId') familyId: string,
+    @CurrentUser('id') userId: string
+  ) {
+    // Get family info
+    const family = await this.prisma.family.findUnique({
+      where: { id: familyId },
+      select: { id: true, name: true },
+    });
+
+    if (!family) {
+      throw new ForbiddenException('Family not found');
+    }
+
+    // Get or create the family channel (syncs all users automatically)
+    const channel = await this.chatService.getOrCreateFamilyChannel(
+      familyId,
+      family.name,
+      userId
+    );
+
+    if (!channel) {
+      return {
+        success: false,
+        configured: false,
+        message: 'Stream Chat not configured',
+      };
+    }
+
+    return {
+      success: true,
+      configured: true,
+      channelId: channel.id,
+      channelType: channel.type,
+      familyName: family.name,
+    };
   }
 
   @Post('family/:familyId/channel')
@@ -98,6 +160,16 @@ export class ChatController {
   @Get('channels')
   @ApiOperation({ summary: 'Get all channels for current user' })
   async getUserChannels(@CurrentUser('id') userId: string) {
+    // First sync user to ensure they exist in Stream Chat
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, fullName: true, avatarUrl: true },
+    });
+
+    if (user) {
+      await this.chatService.syncUser(user.id, user.fullName, user.avatarUrl);
+    }
+
     const channels = await this.chatService.getUserChannels(userId);
 
     return channels.map((channel) => ({
@@ -105,9 +177,18 @@ export class ChatController {
       type: channel.type,
       name: (channel.data as any)?.name,
       image: (channel.data as any)?.image,
+      familyId: (channel.data as any)?.family_id,
       memberCount: Object.keys(channel.state.members).length,
       lastMessageAt: channel.state.last_message_at,
       unreadCount: channel.countUnread(),
     }));
+  }
+
+  @Get('status')
+  @ApiOperation({ summary: 'Check if Stream Chat is configured' })
+  getStreamChatStatus() {
+    return {
+      configured: this.chatService.isConfigured(),
+    };
   }
 }

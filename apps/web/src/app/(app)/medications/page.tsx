@@ -103,7 +103,7 @@ export default function MedicationsPage() {
 
   // Delete medication mutation
   const deleteMedicationMutation = useMutation({
-    mutationFn: (id: string) => medicationsApi.delete(id),
+    mutationFn: (id: string) => medicationsApi.delete(careRecipientId!, id),
     onSuccess: () => {
       toast.success('Medication deleted');
       queryClient.invalidateQueries({ queryKey: ['medications', careRecipientId] });

@@ -71,7 +71,7 @@ export default function CalendarPage() {
 
   // Delete appointment mutation
   const deleteAppointmentMutation = useMutation({
-    mutationFn: (id: string) => appointmentsApi.delete(id),
+    mutationFn: (id: string) => appointmentsApi.delete(careRecipientId!, id),
     onSuccess: () => {
       toast.success('Appointment deleted');
       queryClient.invalidateQueries({ queryKey: ['appointments', careRecipientId] });
@@ -83,7 +83,7 @@ export default function CalendarPage() {
 
   // Cancel appointment mutation
   const cancelAppointmentMutation = useMutation({
-    mutationFn: (id: string) => appointmentsApi.cancel(id),
+    mutationFn: (id: string) => appointmentsApi.cancel(careRecipientId!, id),
     onSuccess: () => {
       toast.success('Appointment cancelled');
       queryClient.invalidateQueries({ queryKey: ['appointments', careRecipientId] });

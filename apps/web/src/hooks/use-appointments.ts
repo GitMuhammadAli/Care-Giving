@@ -28,11 +28,11 @@ export function useAppointmentsForDay(careRecipientId: string, date: string) {
   });
 }
 
-export function useAppointment(id: string) {
+export function useAppointment(careRecipientId: string, id: string) {
   return useQuery({
-    queryKey: ['appointments', 'detail', id],
-    queryFn: () => appointmentsApi.get(id),
-    enabled: !!id,
+    queryKey: ['appointments', careRecipientId, 'detail', id],
+    queryFn: () => appointmentsApi.get(careRecipientId, id),
+    enabled: !!careRecipientId && !!id,
   });
 }
 
@@ -56,7 +56,7 @@ export function useUpdateAppointment(careRecipientId: string) {
 
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<CreateAppointmentInput> }) =>
-      appointmentsApi.update(id, data),
+      appointmentsApi.update(careRecipientId, id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments', careRecipientId] });
       toast.success('Appointment updated');
@@ -71,7 +71,7 @@ export function useCancelAppointment(careRecipientId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => appointmentsApi.cancel(id),
+    mutationFn: (id: string) => appointmentsApi.cancel(careRecipientId, id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments', careRecipientId] });
       toast.success('Appointment cancelled');
@@ -87,7 +87,7 @@ export function useAssignTransport(careRecipientId: string) {
 
   return useMutation({
     mutationFn: ({ appointmentId, data }: { appointmentId: string; data: AssignTransportInput }) =>
-      appointmentsApi.assignTransport(appointmentId, data),
+      appointmentsApi.assignTransport(careRecipientId, appointmentId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments', careRecipientId] });
       toast.success('Transport assigned');

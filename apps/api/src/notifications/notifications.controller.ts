@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { NotificationsService } from './notifications.service';
+import { WebPushService, PushSubscriptionInput } from './web-push.service';
 import { CurrentUser } from '../system/decorator/current-user.decorator';
 import { Platform as PushPlatform } from '@prisma/client';
 
@@ -32,7 +33,10 @@ interface PushSubscriptionDto {
 @ApiBearerAuth('JWT-auth')
 @Controller('notifications')
 export class NotificationsController {
-  constructor(private readonly notificationsService: NotificationsService) {}
+  constructor(
+    private readonly notificationsService: NotificationsService,
+    private readonly webPushService: WebPushService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Get all notifications for current user' })
@@ -87,24 +91,33 @@ export class NotificationsController {
   }
 
   @Post('push-subscription')
-  @ApiOperation({ summary: 'Subscribe to push notifications (web push)' })
-  subscribeToPush(
+  @ApiOperation({ summary: 'Subscribe to push notifications (web push with full keys)' })
+  async subscribeToPush(
     @CurrentUser() user: CurrentUserPayload,
     @Body() dto: PushSubscriptionDto,
   ) {
-    // Store the endpoint as the token for web push subscriptions
-    const platform = (dto.platform?.toUpperCase() || 'WEB') as PushPlatform;
-    return this.notificationsService.registerPushToken(user.id, dto.endpoint, platform);
+    // Use WebPushService to store the full subscription with encryption keys
+    const subscription: PushSubscriptionInput = {
+      endpoint: dto.endpoint,
+      keys: dto.keys,
+    };
+
+    await this.webPushService.subscribe(user.id, subscription);
+    return { success: true, message: 'Push subscription registered' };
   }
 
   @Delete('push-subscription')
   @ApiOperation({ summary: 'Unsubscribe from push notifications (web push)' })
-  unsubscribeFromPush(@Body() dto: { endpoint: string }) {
-    return this.notificationsService.removePushToken(dto.endpoint);
+  async unsubscribeFromPush(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: { endpoint: string },
+  ) {
+    await this.webPushService.unsubscribe(user.id, dto.endpoint);
+    return { success: true, message: 'Push subscription removed' };
   }
 
   @Post('push-token')
-  @ApiOperation({ summary: 'Register push notification token' })
+  @ApiOperation({ summary: 'Register push notification token (mobile apps)' })
   registerPushToken(
     @CurrentUser() user: CurrentUserPayload,
     @Body() dto: { token: string; platform: PushPlatform },
@@ -116,5 +129,18 @@ export class NotificationsController {
   @ApiOperation({ summary: 'Remove push notification token' })
   removePushToken(@Body('token') token: string) {
     return this.notificationsService.removePushToken(token);
+  }
+
+  @Post('test-push')
+  @ApiOperation({ summary: 'Send a test push notification to current user' })
+  async sendTestPush(@CurrentUser() user: CurrentUserPayload) {
+    await this.webPushService.sendGenericNotification(
+      [user.id],
+      '🔔 Test Notification',
+      'Push notifications are working! You will receive real-time updates for emergencies, medications, and appointments.',
+      '/dashboard',
+      { type: 'TEST' }
+    );
+    return { success: true, message: 'Test notification sent' };
   }
 }

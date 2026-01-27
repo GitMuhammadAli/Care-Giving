@@ -12,6 +12,9 @@ import {
   UserCog,
   Heart,
   Edit,
+  Clock,
+  FileText,
+  Activity,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Notification, NotificationType } from '@/lib/api/notifications';
@@ -26,10 +29,17 @@ interface NotificationListProps {
 
 const notificationIcons: Record<NotificationType, React.ElementType> = {
   MEDICATION_REMINDER: Pill,
+  MEDICATION_MISSED: Pill,
   APPOINTMENT_REMINDER: Calendar,
+  SHIFT_REMINDER: Clock,
+  SHIFT_HANDOFF: Users,
   EMERGENCY_ALERT: AlertTriangle,
-  FAMILY_UPDATE: Users,
-  SYSTEM: Info,
+  FAMILY_INVITE: Users,
+  DOCUMENT_SHARED: FileText,
+  TIMELINE_UPDATE: Activity,
+  REFILL_NEEDED: Pill,
+  REFILL_ALERT: Pill,
+  GENERAL: Info,
   CARE_RECIPIENT_DELETED: Trash2,
   CARE_RECIPIENT_UPDATED: Edit,
   MEDICATION_DELETED: Pill,
@@ -41,10 +51,17 @@ const notificationIcons: Record<NotificationType, React.ElementType> = {
 
 const notificationColors: Record<NotificationType, string> = {
   MEDICATION_REMINDER: 'bg-blue-100 text-blue-600',
+  MEDICATION_MISSED: 'bg-orange-100 text-orange-600',
   APPOINTMENT_REMINDER: 'bg-purple-100 text-purple-600',
+  SHIFT_REMINDER: 'bg-cyan-100 text-cyan-600',
+  SHIFT_HANDOFF: 'bg-teal-100 text-teal-600',
   EMERGENCY_ALERT: 'bg-red-100 text-red-600',
-  FAMILY_UPDATE: 'bg-green-100 text-green-600',
-  SYSTEM: 'bg-gray-100 text-gray-600',
+  FAMILY_INVITE: 'bg-green-100 text-green-600',
+  DOCUMENT_SHARED: 'bg-blue-100 text-blue-600',
+  TIMELINE_UPDATE: 'bg-purple-100 text-purple-600',
+  REFILL_NEEDED: 'bg-yellow-100 text-yellow-600',
+  REFILL_ALERT: 'bg-orange-100 text-orange-600',
+  GENERAL: 'bg-gray-100 text-gray-600',
   CARE_RECIPIENT_DELETED: 'bg-red-100 text-red-600',
   CARE_RECIPIENT_UPDATED: 'bg-yellow-100 text-yellow-600',
   MEDICATION_DELETED: 'bg-red-100 text-red-600',

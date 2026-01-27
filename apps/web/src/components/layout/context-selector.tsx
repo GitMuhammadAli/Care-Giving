@@ -159,7 +159,7 @@ export function ContextSelector({ compact = false, className }: ContextSelectorP
                 <Avatar
                   name={selectedCareRecipient.preferredName || selectedCareRecipient.fullName}
                   src={selectedCareRecipient.photoUrl}
-                  size="xs"
+                  size="sm"
                 />
                 <span className="truncate">
                   {selectedCareRecipient.preferredName || selectedCareRecipient.fullName?.split(' ')[0]}

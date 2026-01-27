@@ -7,6 +7,7 @@ import { toast } from 'react-hot-toast';
 import { cn, formatDate } from '@/lib/utils';
 import { FamilySpaceSelector } from '@/components/layout/family-space-selector';
 import { useFamilySpace } from '@/contexts/family-space-context';
+import { useAuth } from '@/hooks/use-auth';
 import { shiftsApi, familyApi, type CaregiverShift, type CreateShiftDto } from '@/lib/api';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent } from '@/components/ui/card';
@@ -63,6 +64,7 @@ const statusConfig = {
 
 export default function CaregiversPage() {
   const { selectedFamilyId: familyId, selectedCareRecipientId: careRecipientId } = useFamilySpace();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const [currentWeek, setCurrentWeek] = useState(new Date());

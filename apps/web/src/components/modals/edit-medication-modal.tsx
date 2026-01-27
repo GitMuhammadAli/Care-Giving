@@ -77,7 +77,7 @@ export function EditMedicationModal({ isOpen, onClose, medication, careRecipient
   }, [medication]);
 
   const mutation = useMutation({
-    mutationFn: (data: any) => medicationsApi.update(medication!.id, data),
+    mutationFn: (data: any) => medicationsApi.update(careRecipientId, medication!.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['medications', careRecipientId] });
       queryClient.invalidateQueries({ queryKey: ['medications-schedule', careRecipientId] });

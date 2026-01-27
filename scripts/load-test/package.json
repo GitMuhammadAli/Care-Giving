@@ -1,0 +1,16 @@
+{
+  "name": "carecircle-load-test",
+  "version": "1.0.0",
+  "description": "Load testing scripts for CareCircle",
+  "type": "module",
+  "scripts": {
+    "test": "node --experimental-specifier-resolution=node load-test.js",
+    "test:10": "NUM_USERS=10 node load-test.js",
+    "test:50": "NUM_USERS=50 node load-test.js",
+    "test:100": "NUM_USERS=100 node load-test.js"
+  },
+  "dependencies": {
+    "pg": "^8.11.3",
+    "socket.io-client": "^4.7.2"
+  }
+}

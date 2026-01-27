@@ -160,7 +160,7 @@ const Dashboard = () => {
 
 
   // Fetch active alerts
-  const { data: activeAlerts, isLoading: alertsLoading } = useActiveAlerts(familyId || '');
+  const { data: activeAlerts, isLoading: alertsLoading } = useActiveAlerts(careRecipientId || '');
 
   // Fetch timeline (recent updates)
   const { data: timelineData, isLoading: timelineLoading } = useTimeline(careRecipientId || '', { limit: 5 });
@@ -171,7 +171,7 @@ const Dashboard = () => {
   const createAppointment = useCreateAppointment(careRecipientId || '');
 
   // Resolve alert mutation
-  const resolveAlert = useResolveAlert(familyId || '');
+  const resolveAlert = useResolveAlert(careRecipientId || '');
 
   // Local state
   const [showNotifications, setShowNotifications] = useState(false);

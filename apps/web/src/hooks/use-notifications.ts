@@ -50,7 +50,7 @@ export function useMarkAsRead() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (ids: string[]) => notificationsApi.markAsRead(ids),
+    mutationFn: (ids: string[]) => notificationsApi.markMultipleAsRead(ids),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },

@@ -3,10 +3,17 @@ import { ConfigService } from '@nestjs/config';
 import { StreamChat, Channel } from 'stream-chat';
 import { PrismaService } from '../../prisma/prisma.service';
 
+interface StreamUserData {
+  id: string;
+  name: string;
+  image?: string;
+  role?: string;
+}
+
 @Injectable()
 export class ChatService {
   private readonly logger = new Logger(ChatService.name);
-  private streamClient: StreamChat;
+  private streamClient: StreamChat | null = null;
 
   constructor(
     private readonly configService: ConfigService,
@@ -24,6 +31,114 @@ export class ChatService {
 
     this.streamClient = StreamChat.getInstance(apiKey, apiSecret);
     this.logger.log('Stream Chat service initialized');
+  }
+
+  /**
+   * Check if Stream Chat is configured
+   */
+  isConfigured(): boolean {
+    return this.streamClient !== null;
+  }
+
+  /**
+   * Sync/upsert a single user to Stream Chat
+   * MUST be called before user can join channels
+   */
+  async syncUser(userId: string, name: string, avatarUrl?: string | null, role?: string): Promise<void> {
+    if (!this.streamClient) {
+      this.logger.warn('Stream Chat not configured, skipping user sync');
+      return;
+    }
+
+    try {
+      const userData: StreamUserData = {
+        id: userId,
+        name: name,
+        image: avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`,
+      };
+
+      if (role) {
+        userData.role = role;
+      }
+
+      await this.streamClient.upsertUser(userData);
+      this.logger.debug(`Synced user ${userId} (${name}) to Stream Chat`);
+    } catch (error: any) {
+      this.logger.error(`Failed to sync user ${userId} to Stream Chat: ${error.message}`);
+      // Don't throw - chat sync failures shouldn't break the main flow
+    }
+  }
+
+  /**
+   * Sync multiple users to Stream Chat
+   * Efficient batch operation
+   */
+  async syncUsers(users: Array<{ id: string; name: string; avatarUrl?: string | null; role?: string }>): Promise<void> {
+    if (!this.streamClient) {
+      this.logger.warn('Stream Chat not configured, skipping users sync');
+      return;
+    }
+
+    if (users.length === 0) return;
+
+    try {
+      const streamUsers = users.map(user => ({
+        id: user.id,
+        name: user.name,
+        image: user.avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.name)}`,
+        role: user.role,
+      }));
+
+      await this.streamClient.upsertUsers(streamUsers);
+      this.logger.log(`Synced ${users.length} users to Stream Chat`);
+    } catch (error: any) {
+      this.logger.error(`Failed to sync users to Stream Chat: ${error.message}`);
+    }
+  }
+
+  /**
+   * Sync all members of a family to Stream Chat and return their user IDs
+   */
+  async syncFamilyMembers(familyId: string): Promise<string[]> {
+    const members = await this.prisma.familyMember.findMany({
+      where: { familyId, isActive: true },
+      include: {
+        user: {
+          select: { id: true, fullName: true, avatarUrl: true },
+        },
+      },
+    });
+
+    if (members.length === 0) return [];
+
+    const users = members.map(m => ({
+      id: m.user.id,
+      name: m.user.fullName,
+      avatarUrl: m.user.avatarUrl,
+      role: m.role,
+    }));
+
+    await this.syncUsers(users);
+    return members.map(m => m.userId);
+  }
+
+  /**
+   * Sync a system user for sending system messages
+   */
+  async ensureSystemUser(): Promise<void> {
+    if (!this.streamClient) return;
+
+    try {
+      await this.streamClient.upsertUser({
+        id: 'system',
+        name: 'CareCircle',
+        image: '/icons/carecircle-logo.png',
+        role: 'admin',
+      });
+      this.logger.debug('System user synced to Stream Chat');
+    } catch (error: any) {
+      this.logger.error(`Failed to create system user: ${error.message}`);
+    }
   }
 
   /**
@@ -111,6 +226,7 @@ export class ChatService {
   /**
    * Create or get family channel
    * All family members can communicate here
+   * Automatically syncs users before creating channel
    */
   async createFamilyChannel(
     familyId: string,
@@ -122,8 +238,32 @@ export class ChatService {
       throw new Error('Stream Chat not configured');
     }
 
+    // First, sync all family members to Stream Chat
+    await this.syncFamilyMembers(familyId);
+    await this.ensureSystemUser();
+
     const channelId = `family-${familyId}`;
     const members = memberIds || [];
+
+    // Check if channel already exists
+    try {
+      const existingChannels = await this.streamClient.queryChannels({
+        id: channelId,
+        type: 'messaging',
+      });
+
+      if (existingChannels.length > 0) {
+        this.logger.log(`Family channel ${channelId} already exists, returning existing`);
+        // Update members if needed
+        const channel = existingChannels[0];
+        if (members.length > 0) {
+          await channel.addMembers(members);
+        }
+        return channel;
+      }
+    } catch (error) {
+      // Channel doesn't exist, create it
+    }
 
     const channel = this.streamClient.channel('messaging', channelId, {
       name: `${familyName || 'Family'} Chat`,
@@ -141,19 +281,69 @@ export class ChatService {
   }
 
   /**
+   * Get or create family channel - safe method that handles both cases
+   */
+  async getOrCreateFamilyChannel(familyId: string, familyName: string, creatorId: string): Promise<Channel | null> {
+    if (!this.streamClient) {
+      this.logger.warn('Stream Chat not configured');
+      return null;
+    }
+
+    try {
+      // Sync family members first
+      const memberIds = await this.syncFamilyMembers(familyId);
+      await this.ensureSystemUser();
+
+      const channelId = `family-${familyId}`;
+
+      const channel = this.streamClient.channel('messaging', channelId, {
+        name: `${familyName} Chat`,
+        image: '/icons/family-chat.png',
+        created_by_id: creatorId,
+        members: memberIds,
+        family_id: familyId,
+      } as any);
+
+      // watch() will create if doesn't exist, or return existing
+      await channel.watch();
+
+      this.logger.log(`Got/created family channel: ${channelId}`);
+      return channel;
+    } catch (error: any) {
+      this.logger.error(`Failed to get/create family channel: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
    * Add member to family channel
+   * Syncs user to Stream Chat first
    */
   async addMemberToFamilyChannel(familyId: string, userId: string): Promise<void> {
     if (!this.streamClient) {
-      throw new Error('Stream Chat not configured');
+      this.logger.warn('Stream Chat not configured');
+      return;
+    }
+
+    // Get user info and sync to Stream Chat first
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, fullName: true, avatarUrl: true },
+    });
+
+    if (user) {
+      await this.syncUser(user.id, user.fullName, user.avatarUrl);
     }
 
     const channelId = `family-${familyId}`;
     const channel = this.streamClient.channel('messaging', channelId);
 
-    await channel.addMembers([userId]);
-
-    this.logger.log(`Added user ${userId} to family channel ${channelId}`);
+    try {
+      await channel.addMembers([userId]);
+      this.logger.log(`Added user ${userId} to family channel ${channelId}`);
+    } catch (error: any) {
+      this.logger.error(`Failed to add user to channel: ${error.message}`);
+    }
   }
 
   /**
@@ -161,15 +351,19 @@ export class ChatService {
    */
   async removeMemberFromFamilyChannel(familyId: string, userId: string): Promise<void> {
     if (!this.streamClient) {
-      throw new Error('Stream Chat not configured');
+      this.logger.warn('Stream Chat not configured');
+      return;
     }
 
     const channelId = `family-${familyId}`;
     const channel = this.streamClient.channel('messaging', channelId);
 
-    await channel.removeMembers([userId]);
-
-    this.logger.log(`Removed user ${userId} from family channel ${channelId}`);
+    try {
+      await channel.removeMembers([userId]);
+      this.logger.log(`Removed user ${userId} from family channel ${channelId}`);
+    } catch (error: any) {
+      this.logger.error(`Failed to remove user from channel: ${error.message}`);
+    }
   }
 
   /**
@@ -186,6 +380,9 @@ export class ChatService {
     if (!this.streamClient) {
       throw new Error('Stream Chat not configured');
     }
+
+    // Sync members first
+    await this.syncFamilyMembers(familyId);
 
     const channelId = `${familyId}-${topic}`;
 
@@ -219,6 +416,8 @@ export class ChatService {
     }
 
     try {
+      await this.ensureSystemUser();
+
       const channelId = `family-${familyId}`;
       const channel = this.streamClient.channel('messaging', channelId);
 
@@ -230,7 +429,7 @@ export class ChatService {
       });
 
       this.logger.debug(`Sent system message to family ${familyId}`);
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Failed to send system message: ${error.message}`);
     }
   }
@@ -248,9 +447,16 @@ export class ChatService {
       await channel.delete();
 
       this.logger.log(`Deleted channel: ${channelId}`);
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Failed to delete channel ${channelId}: ${error.message}`);
     }
+  }
+
+  /**
+   * Delete family channel
+   */
+  async deleteFamilyChannel(familyId: string): Promise<void> {
+    await this.deleteChannel(`family-${familyId}`);
   }
 
   /**
