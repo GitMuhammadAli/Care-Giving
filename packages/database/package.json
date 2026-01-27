@@ -10,13 +10,20 @@
     "push": "prisma db push",
     "studio": "prisma studio",
     "migrate": "prisma migrate dev",
-    "migrate:deploy": "prisma migrate deploy"
+    "migrate:deploy": "prisma migrate deploy",
+    "seed": "ts-node prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.10.0"
   },
   "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "bcrypt": "^5.1.1",
     "prisma": "^5.10.0",
+    "ts-node": "^10.9.2",
     "typescript": "^5.3.0",
     "@types/node": "^20.11.0"
   }
