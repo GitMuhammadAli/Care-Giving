@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { HeroBackground } from '@/components/three';
+import { AnimatedBackground } from '@/components/ui/animated-background';
 import { ArrowRight, LayoutDashboard } from 'lucide-react';
 import { useAuthContext } from '@/components/providers/auth-provider';
 
@@ -116,8 +116,8 @@ export default function LandingPage() {
       <main>
         {/* Hero Section - Pixel Perfect */}
         <section className="min-h-screen pt-20 texture-paper relative overflow-hidden">
-          {/* Three.js Animated Background */}
-          <HeroBackground />
+          {/* Animated Background */}
+          <AnimatedBackground />
           
           <div className="container mx-auto px-6 relative z-10">
             {/* Editorial masthead */}
