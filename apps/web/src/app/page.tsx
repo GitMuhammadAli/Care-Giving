@@ -124,8 +124,8 @@ export default function LandingPage() {
             {/* Editorial masthead */}
             <div className="border-b border-border pb-6 mb-12">
               <div className="flex items-end justify-between">
-                <p className="label-caps text-slate">For the ones who show up</p>
-                <p className="text-sm text-muted-foreground hidden md:block">Since 2024</p>
+                <p className="label-caps text-sage-600">Family Care</p>
+                <p className="text-sm text-sage-500/70 hidden md:block">Est. 2024</p>
               </div>
             </div>
 
@@ -137,7 +137,7 @@ export default function LandingPage() {
                 transition={{ duration: 0.8 }}
                 className="font-editorial text-5xl md:text-7xl lg:text-8xl text-foreground leading-[0.95] tracking-editorial mb-8 max-w-5xl"
               >
-                Caring for someone you love shouldn&apos;t feel <em className="not-italic text-sage">this hard</em>
+                Where families <em className="not-italic text-sage">gather</em> to care for those who matter most
               </motion.h1>
             </div>
 
@@ -151,8 +151,8 @@ export default function LandingPage() {
                 className="lg:col-span-4"
               >
                 <p className="text-muted-foreground text-lg leading-relaxed mb-8">
-                  Finally, a place where your whole family can stay informed, share the load, and 
-                  support each other—without the chaos of group texts and missed calls.
+                  We believe that caring for someone you love shouldn&apos;t come with chaos. 
+                  CareCircle is where families find peace of mind—together.
                 </p>
 
                 <div className="flex flex-wrap items-center gap-3">
@@ -212,9 +212,9 @@ export default function LandingPage() {
               >
                 <div className="space-y-8">
                   {stats.map((stat, index) => (
-                    <div key={stat.label} className={index > 0 ? 'pt-8 border-t border-border' : ''}>
-                      <p className="font-editorial text-4xl text-foreground mb-1">{stat.value}</p>
-                      <p className="text-sm text-muted-foreground">{stat.label}</p>
+                    <div key={stat.label} className={index > 0 ? 'pt-8 border-t border-border/50' : ''}>
+                      <p className="font-editorial text-4xl text-sage mb-1">{stat.value}</p>
+                      <p className="text-sm text-sage-600/80">{stat.label}</p>
                     </div>
                   ))}
                 </div>
