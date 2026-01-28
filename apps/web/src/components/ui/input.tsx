@@ -180,8 +180,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             </motion.div>
           )}
           
-          {/* Input field */}
-          <motion.input
+          {/* Input field - using CSS transitions for better type compatibility */}
+          <input
             ref={ref}
             id={inputId}
             type={isPassword && showPassword ? 'text' : type}
@@ -192,9 +192,9 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             onBlur={handleBlur}
             onChange={handleChange}
             className={cn(
-              'flex w-full rounded-lg border bg-background relative z-10',
+              'flex w-full border bg-background relative z-10',
               'text-foreground placeholder:text-muted-foreground/60',
-              'transition-colors duration-200 ease-out',
+              'transition-all duration-200 ease-out',
               'focus-visible:outline-none',
               'disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-accent',
               sizes[inputSize],
@@ -203,12 +203,9 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
               error
                 ? 'border-destructive'
                 : 'border-sage-200 hover:border-sage-400 focus:border-sage-700',
+              isFocused ? 'rounded-xl' : 'rounded-lg',
               className
             )}
-            animate={{
-              borderRadius: isFocused ? '12px' : '8px',
-            }}
-            transition={{ duration: 0.2 }}
             {...props}
           />
           
