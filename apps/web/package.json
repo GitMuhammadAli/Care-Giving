@@ -27,6 +27,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "date-fns": "^3.0.6",
+    "dotenv": "^16.4.0",
     "framer-motion": "^10.17.9",
     "js-cookie": "^3.0.5",
     "localforage": "^1.10.0",

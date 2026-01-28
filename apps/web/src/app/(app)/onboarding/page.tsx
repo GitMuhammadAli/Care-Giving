@@ -45,7 +45,7 @@ interface InviteMemberData {
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { user, isLoading: authLoading, fetchUser } = useAuth();
+  const { user, isLoading: authLoading, syncWithServer } = useAuth();
   const queryClient = useQueryClient();
 
   const [currentStep, setCurrentStep] = useState<Step>('family');
@@ -228,11 +228,11 @@ export default function OnboardingPage() {
       // Mark onboarding as completed in the database
       await authApi.completeOnboarding();
 
-      console.log('Onboarding marked complete, refreshing user data...');
-      // Refresh auth context to get updated user data
-      await fetchUser();
+      console.log('Onboarding marked complete, syncing with server...');
+      // Force sync with server to get all updated data with cache invalidation
+      await syncWithServer();
 
-      console.log('User data refreshed, navigating to dashboard...');
+      console.log('User data synced, navigating to dashboard...');
       toast.success('Welcome to CareCircle! 🎉');
 
       // Navigate to dashboard

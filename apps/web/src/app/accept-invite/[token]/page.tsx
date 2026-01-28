@@ -25,7 +25,7 @@ export default function AcceptInvitePage() {
   const token = params.token as string;
 
   const { isAuthenticated, isInitialized, user } = useAuthContext();
-  const { refetchUser } = useAuth();
+  const { syncWithServer } = useAuth();
   const [status, setStatus] = useState<'loading' | 'valid' | 'accepted' | 'declined' | 'error'>('loading');
   const [invitation, setInvitation] = useState<InvitationDetails | null>(null);
   const [error, setError] = useState<string>('');
@@ -79,8 +79,9 @@ export default function AcceptInvitePage() {
     setIsProcessing(true);
     try {
       await api.post(`/families/invitations/${token}/accept`, {});
-      // Refresh user data to get updated onboardingCompleted status
-      await refetchUser();
+      // Force sync with server to get updated family data with cache invalidation
+      // This ensures we get fresh data including the newly joined family
+      await syncWithServer();
       setStatus('accepted');
       setTimeout(() => router.push('/dashboard'), 2000);
     } catch (err: any) {

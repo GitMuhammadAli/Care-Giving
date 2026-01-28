@@ -394,6 +394,29 @@ Now all protected endpoints will use this token automatically.
     return this.authService.completeOnboarding(user.id);
   }
 
+  @Post("invalidate-cache")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Invalidate user cache",
+    description:
+      "Clears the Redis cache for the current user. Use this when you need guaranteed fresh data.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Cache invalidated successfully",
+    type: MessageResponseDto,
+  })
+  @ApiResponse({
+    status: 401,
+    description: "Unauthorized",
+    type: ErrorResponseDto,
+  })
+  @HttpCode(HttpStatus.OK)
+  async invalidateCache(@GetUser() user: CurrentUser) {
+    return this.authService.invalidateUserCache(user.id);
+  }
+
   private setTokenCookies(
     res: Response,
     tokens: { accessToken: string; refreshToken: string },

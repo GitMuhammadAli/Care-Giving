@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { UserFamily, CareRecipient } from '@/lib/api';
 
@@ -33,12 +33,17 @@ interface FamilySpaceContextValue {
 
   // Loading state
   isLoading: boolean;
+
+  // Refresh method - force sync with server
+  refreshFamilies: () => Promise<void>;
 }
 
 const FamilySpaceContext = createContext<FamilySpaceContextValue | null>(null);
 
 export function FamilySpaceProvider({ children }: { children: React.ReactNode }) {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, syncWithServer, refetchUser } = useAuth();
+  const hasInitializedRef = useRef(false);
+  const previousFamiliesRef = useRef<string[]>([]);
 
   // Load initial selection from localStorage
   const [selection, setSelection] = useState<FamilySpaceSelection>(() => {
@@ -71,6 +76,35 @@ export function FamilySpaceProvider({ children }: { children: React.ReactNode })
 
   // Get user's role in the selected family
   const currentRole = selectedFamily?.role ?? null;
+
+  // Auto-sync on mount if user is authenticated but has no families
+  // This handles the case where storage has auth data but family data wasn't loaded
+  useEffect(() => {
+    if (authLoading || !user || hasInitializedRef.current) return;
+    
+    hasInitializedRef.current = true;
+
+    // If user is authenticated but has no families, try syncing with server
+    // This handles stale data or cache issues
+    if (user && families.length === 0) {
+      console.log('FamilySpaceProvider - User has no families, attempting sync...');
+      syncWithServer().catch(console.error);
+    }
+  }, [authLoading, user, families.length, syncWithServer]);
+
+  // Track family changes and auto-sync when needed
+  useEffect(() => {
+    const currentFamilyIds = families.map(f => f.id).sort().join(',');
+    const previousFamilyIds = previousFamiliesRef.current.sort().join(',');
+
+    if (currentFamilyIds !== previousFamilyIds) {
+      console.log('FamilySpaceProvider - Families changed:', {
+        previous: previousFamiliesRef.current,
+        current: families.map(f => ({ id: f.id, name: f.name })),
+      });
+      previousFamiliesRef.current = families.map(f => f.id);
+    }
+  }, [families]);
 
   // Auto-select first family and care recipient if none selected
   useEffect(() => {
@@ -136,6 +170,19 @@ export function FamilySpaceProvider({ children }: { children: React.ReactNode })
     }));
   }, []);
 
+  // Refresh families from server - use this when you expect family data to have changed
+  const refreshFamilies = useCallback(async () => {
+    console.log('FamilySpaceProvider - Refreshing families from server...');
+    try {
+      await syncWithServer();
+      console.log('FamilySpaceProvider - Families refreshed successfully');
+    } catch (error) {
+      console.error('FamilySpaceProvider - Failed to refresh families:', error);
+      // Fall back to simple refetch
+      await refetchUser();
+    }
+  }, [syncWithServer, refetchUser]);
+
   const value: FamilySpaceContextValue = {
     selectedFamilyId: selection.familyId,
     selectedCareRecipientId: selection.careRecipientId,
@@ -147,6 +194,7 @@ export function FamilySpaceProvider({ children }: { children: React.ReactNode })
     setSelectedFamily,
     setSelectedCareRecipient,
     isLoading: authLoading,
+    refreshFamilies,
   };
 
   return (

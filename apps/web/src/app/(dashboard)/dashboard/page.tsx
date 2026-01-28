@@ -64,6 +64,7 @@ import { useTimeline, useCreateTimelineEntry } from '@/hooks/use-timeline';
 import { useUpcomingAppointments, useCreateAppointment } from '@/hooks/use-appointments';
 import { useQuery } from '@tanstack/react-query';
 import { careRecipientsApi, CareRecipient } from '@/lib/api';
+import { useFamilySpace } from '@/contexts/family-space-context';
 
 // Quick actions with proper theme colors
 const quickActions = [
@@ -77,64 +78,31 @@ const Dashboard = () => {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
 
-  // Get all families from user data
-  const families = user?.families || [];
+  // Use centralized family space context for consistent state across all pages
+  const {
+    families,
+    selectedFamilyId,
+    selectedCareRecipientId,
+    selectedFamily: currentFamily,
+    selectedCareRecipient: careRecipientFromUser,
+    careRecipients: careRecipientsInFamily,
+    setSelectedFamily,
+    setSelectedCareRecipient,
+    isLoading: familySpaceLoading,
+  } = useFamilySpace();
 
-  // State for selected family and care recipient (persisted to localStorage)
-  const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(null);
-  const [selectedCareRecipientId, setSelectedCareRecipientId] = useState<string | null>(null);
-
-  // Initialize from localStorage on mount
-  useEffect(() => {
-    const storedFamilyId = localStorage.getItem('selectedFamilyId');
-    const storedCareRecipientId = localStorage.getItem('selectedCareRecipientId');
-    if (storedFamilyId) setSelectedFamilyId(storedFamilyId);
-    if (storedCareRecipientId) setSelectedCareRecipientId(storedCareRecipientId);
-  }, []);
-
-  // Auto-select first family if none selected or invalid
-  useEffect(() => {
-    if (families.length > 0) {
-      const validFamily = families.find(f => f.id === selectedFamilyId);
-      if (!validFamily) {
-        setSelectedFamilyId(families[0].id);
-        localStorage.setItem('selectedFamilyId', families[0].id);
-      }
-    }
-  }, [families, selectedFamilyId]);
-
-  // Get current family and its care recipients
-  const currentFamily = families.find(f => f.id === selectedFamilyId) || families[0];
+  // Derive IDs for API calls
   const familyId = currentFamily?.id;
-  const careRecipientsInFamily = currentFamily?.careRecipients || [];
-
-  // Auto-select first care recipient if none selected or invalid
-  useEffect(() => {
-    if (careRecipientsInFamily.length > 0 && familyId) {
-      const validCareRecipient = careRecipientsInFamily.find(cr => cr.id === selectedCareRecipientId);
-      if (!validCareRecipient) {
-        setSelectedCareRecipientId(careRecipientsInFamily[0].id);
-        localStorage.setItem('selectedCareRecipientId', careRecipientsInFamily[0].id);
-      }
-    }
-  }, [careRecipientsInFamily, selectedCareRecipientId, familyId]);
-
-  const careRecipientFromUser = careRecipientsInFamily.find(cr => cr.id === selectedCareRecipientId) || careRecipientsInFamily[0];
   const careRecipientId = careRecipientFromUser?.id;
 
-  // Handle family switch
+  // Handle family switch using context
   const handleFamilySwitch = (newFamilyId: string) => {
-    setSelectedFamilyId(newFamilyId);
-    localStorage.setItem('selectedFamilyId', newFamilyId);
-    // Reset care recipient selection when switching families
-    setSelectedCareRecipientId(null);
-    localStorage.removeItem('selectedCareRecipientId');
+    setSelectedFamily(newFamilyId);
   };
 
-  // Handle care recipient switch
+  // Handle care recipient switch using context
   const handleCareRecipientSwitch = (newCareRecipientId: string) => {
-    setSelectedCareRecipientId(newCareRecipientId);
-    localStorage.setItem('selectedCareRecipientId', newCareRecipientId);
+    setSelectedCareRecipient(newCareRecipientId);
   };
 
   // Redirect to onboarding if user hasn't completed onboarding

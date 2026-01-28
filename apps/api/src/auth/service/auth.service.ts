@@ -411,12 +411,17 @@ export class AuthService {
   /**
    * Invalidate user profile cache
    * Call this when user data changes
+   * Returns a message for API response
    */
-  async invalidateUserCache(userId: string): Promise<void> {
+  async invalidateUserCache(userId: string): Promise<{ message: string }> {
     await this.cacheService.del([
       CACHE_KEYS.USER_PROFILE(userId),
       CACHE_KEYS.USER_FAMILIES(userId),
     ]);
+    // Also use pattern-based invalidation for thorough cleanup
+    await this.cacheService.delPattern(`user:*${userId}*`);
+    console.log(`Invalidated all cache for user: ${userId}`);
+    return { message: 'Cache invalidated successfully' };
   }
 
   async validateUser(userId: string) {
