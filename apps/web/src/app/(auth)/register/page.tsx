@@ -14,12 +14,60 @@ import { Eye, EyeOff, Heart, Check } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { ApiError } from '@/lib/api/client';
 
+/**
+ * UNIQUE "Growth Journey" Register Animation
+ * - Staggered benefit reveals
+ * - Growing strength indicator
+ * - Celebration on valid password
+ */
+
 const benefits = [
   'Coordinate care with your family circle',
   'Share updates and photos securely',
   'Track medications and appointments',
   'Access 24/7 caregiver support',
 ];
+
+// Unique container animation
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.15,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20, filter: 'blur(4px)' },
+  visible: {
+    opacity: 1,
+    y: 0,
+    filter: 'blur(0px)',
+    transition: {
+      type: 'spring',
+      stiffness: 300,
+      damping: 24,
+    },
+  },
+};
+
+// Benefit item animation
+const benefitVariants = {
+  hidden: { opacity: 0, x: -20 },
+  visible: (i: number) => ({
+    opacity: 1,
+    x: 0,
+    transition: {
+      type: 'spring',
+      stiffness: 300,
+      damping: 24,
+      delay: 0.3 + i * 0.1,
+    },
+  }),
+};
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -106,81 +154,156 @@ export default function RegisterPage() {
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
       className="w-full"
     >
       <div className="py-8 md:py-16">
         <div className="container max-w-6xl mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
-            {/* Left: Benefits */}
-            <div className="hidden md:block">
-              <span className="inline-block label-caps text-sage mb-4">Join Our Community</span>
-              <h1 className="font-serif text-4xl lg:text-5xl text-foreground mb-6 leading-tight">
+            {/* Left: Benefits with staggered animation */}
+            <motion.div
+              className="hidden md:block"
+              variants={itemVariants}
+            >
+              <motion.span
+                className="inline-block label-caps text-sage mb-4"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.3 }}
+              >
+                Join Our Community
+              </motion.span>
+              
+              <motion.h1
+                className="font-serif text-4xl lg:text-5xl text-foreground mb-6 leading-tight"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25, duration: 0.4 }}
+              >
                 Start your caregiving journey today
-              </h1>
-              <p className="text-lg text-muted-foreground mb-8">
+              </motion.h1>
+              
+              <motion.p
+                className="text-lg text-muted-foreground mb-8"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.35, duration: 0.3 }}
+              >
                 Join thousands of families who trust CareCircle to coordinate care for their loved
                 ones with compassion and ease.
-              </p>
+              </motion.p>
 
               <ul className="space-y-4">
                 {benefits.map((benefit, index) => (
-                  <li key={index} className="flex items-start gap-3">
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-sage/20 flex items-center justify-center mt-0.5">
+                  <motion.li
+                    key={index}
+                    className="flex items-start gap-3"
+                    custom={index}
+                    variants={benefitVariants}
+                    initial="hidden"
+                    animate="visible"
+                  >
+                    <motion.div
+                      className="flex-shrink-0 w-6 h-6 rounded-full bg-sage/20 flex items-center justify-center mt-0.5"
+                      whileHover={{ scale: 1.1, backgroundColor: 'rgba(139, 154, 126, 0.3)' }}
+                    >
                       <Check className="w-4 h-4 text-sage" />
-                    </div>
+                    </motion.div>
                     <span className="text-foreground">{benefit}</span>
-                  </li>
+                  </motion.li>
                 ))}
               </ul>
 
-              <div className="mt-10 p-6 bg-terracotta/10 rounded-xl border border-border">
-                <p className="text-muted-foreground italic">
+              <motion.div
+                className="mt-10 p-6 bg-terracotta/10 rounded-xl border border-border relative overflow-hidden"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8, duration: 0.4 }}
+              >
+                {/* Subtle shine effect */}
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"
+                  initial={{ x: '-100%' }}
+                  animate={{ x: '200%' }}
+                  transition={{ duration: 2, delay: 1.2, ease: 'easeOut' }}
+                />
+                <p className="text-muted-foreground italic relative">
                   &ldquo;CareCircle brought our family together during a difficult time. We
                   couldn&apos;t have managed without it.&rdquo;
                 </p>
-                <p className="text-sm text-foreground mt-3 font-medium">— Sarah M., Family Caregiver</p>
-              </div>
-            </div>
+                <p className="text-sm text-foreground mt-3 font-medium relative">— Sarah M., Family Caregiver</p>
+              </motion.div>
+            </motion.div>
 
             {/* Right: Form */}
             <motion.div 
               className="w-full max-w-md mx-auto md:mx-0"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.1 }}
+              variants={itemVariants}
             >
-              <div className="text-center md:text-left mb-8 md:hidden">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-sage/20 mb-4">
+              {/* Mobile header */}
+              <motion.div
+                className="text-center md:text-left mb-8 md:hidden"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1, duration: 0.3 }}
+              >
+                <motion.div
+                  className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-sage/20 mb-4 relative"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 15, delay: 0.2 }}
+                >
+                  <motion.div
+                    className="absolute inset-0 rounded-full bg-sage/10"
+                    animate={{
+                      scale: [1, 1.4, 1.4],
+                      opacity: [0.5, 0, 0],
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      repeatDelay: 3,
+                    }}
+                  />
                   <Heart className="w-8 h-8 text-sage" />
-                </div>
+                </motion.div>
                 <h1 className="font-serif text-3xl text-foreground mb-2">Create Account</h1>
                 <p className="text-muted-foreground">Start caring together today</p>
-              </div>
+              </motion.div>
 
               <Card padding="spacious" className="shadow-sm">
-                <h2 className="font-serif text-2xl text-foreground mb-6 hidden md:block">
+                <motion.h2
+                  className="font-serif text-2xl text-foreground mb-6 hidden md:block"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3, duration: 0.3 }}
+                >
                   Create your account
-                </h2>
+                </motion.h2>
 
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <AnimatePresence mode="wait">
                     {error && (
                       <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20"
+                        initial={{ opacity: 0, height: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, height: 'auto', scale: 1 }}
+                        exit={{ opacity: 0, height: 0, scale: 0.95 }}
+                        transition={{ duration: 0.25, ease: 'easeOut' }}
+                        className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20 origin-top"
                       >
                         {error}
                       </motion.div>
                     )}
                   </AnimatePresence>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <motion.div
+                    className="grid grid-cols-2 gap-4"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.35, duration: 0.3 }}
+                  >
                     <div className="space-y-2">
                       <Label htmlFor="firstName" className="text-sm font-medium">
                         First Name
@@ -211,9 +334,14 @@ export default function RegisterPage() {
                         autoComplete="family-name"
                       />
                     </div>
-                  </div>
+                  </motion.div>
 
-                  <div className="space-y-2">
+                  <motion.div
+                    className="space-y-2"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4, duration: 0.3 }}
+                  >
                     <Label htmlFor="email" className="text-sm font-medium">
                       Email Address
                     </Label>
@@ -227,9 +355,14 @@ export default function RegisterPage() {
                       required
                       autoComplete="email"
                     />
-                  </div>
+                  </motion.div>
 
-                  <div className="space-y-2">
+                  <motion.div
+                    className="space-y-2"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.45, duration: 0.3 }}
+                  >
                     <Label htmlFor="password" className="text-sm font-medium">
                       Password
                     </Label>
@@ -254,31 +387,36 @@ export default function RegisterPage() {
                       </button>
                     </div>
 
-                    {/* Password Strength */}
+                    {/* Password Strength with unique animation */}
                     <AnimatePresence>
                       {formData.password && (
                         <motion.div
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="mt-3"
+                          transition={{ duration: 0.25 }}
+                          className="mt-3 overflow-hidden"
                         >
-                          {/* Strength Bar */}
+                          {/* Animated strength bar */}
                           <div className="flex gap-1 mb-3">
                             {[1, 2, 3, 4].map((level) => (
-                              <div
+                              <motion.div
                                 key={level}
-                                className={cn(
-                                  'h-1.5 flex-1 rounded-full transition-colors duration-150',
-                                  passwordStrength.score >= level
-                                    ? passwordStrength.score <= 2
-                                      ? 'bg-destructive'
-                                      : passwordStrength.score === 3
-                                      ? 'bg-terracotta'
-                                      : 'bg-sage'
-                                    : 'bg-accent'
-                                )}
+                                className="h-1.5 flex-1 rounded-full bg-accent"
+                                initial={{ scaleX: 0 }}
+                                animate={{
+                                  scaleX: passwordStrength.score >= level ? 1 : 0.3,
+                                  backgroundColor:
+                                    passwordStrength.score >= level
+                                      ? passwordStrength.score <= 2
+                                        ? 'hsl(var(--destructive))'
+                                        : passwordStrength.score === 3
+                                        ? 'hsl(var(--terracotta))'
+                                        : 'hsl(var(--sage))'
+                                      : 'hsl(var(--accent))',
+                                }}
+                                transition={{ duration: 0.3, delay: level * 0.05 }}
+                                style={{ originX: 0 }}
                               />
                             ))}
                           </div>
@@ -291,30 +429,44 @@ export default function RegisterPage() {
                               { check: passwordStrength.checks.uppercase, label: 'One uppercase letter' },
                               { check: passwordStrength.checks.number, label: 'One digit (0-9)' },
                             ].map((item, index) => (
-                              <div key={index} className="flex items-center gap-2">
-                                <Check
-                                  className={cn(
-                                    'w-4 h-4 transition-colors duration-150',
-                                    item.check ? 'text-sage' : 'text-muted-foreground/40'
-                                  )}
-                                />
+                              <motion.div
+                                key={index}
+                                className="flex items-center gap-2"
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: index * 0.05, duration: 0.2 }}
+                              >
+                                <motion.div
+                                  animate={{
+                                    scale: item.check ? [1, 1.2, 1] : 1,
+                                    color: item.check ? 'hsl(var(--sage))' : 'hsl(var(--muted-foreground) / 0.4)',
+                                  }}
+                                  transition={{ duration: 0.2 }}
+                                >
+                                  <Check className="w-4 h-4" />
+                                </motion.div>
                                 <span
                                   className={cn(
-                                    'text-xs transition-colors duration-150',
+                                    'text-xs transition-colors duration-200',
                                     item.check ? 'text-foreground' : 'text-muted-foreground'
                                   )}
                                 >
                                   {item.label}
                                 </span>
-                              </div>
+                              </motion.div>
                             ))}
                           </div>
                         </motion.div>
                       )}
                     </AnimatePresence>
-                  </div>
+                  </motion.div>
 
-                  <div className="flex items-start gap-3">
+                  <motion.div
+                    className="flex items-start gap-3"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.5, duration: 0.3 }}
+                  >
                     <input
                       id="terms"
                       type="checkbox"
@@ -335,21 +487,32 @@ export default function RegisterPage() {
                         Privacy Policy
                       </Link>
                     </Label>
-                  </div>
+                  </motion.div>
 
-                  <Button
-                    type="submit"
-                    variant="editorial"
-                    size="lg"
-                    fullWidth
-                    isLoading={isLoading}
-                    disabled={!agreed}
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.55, duration: 0.3 }}
                   >
-                    Create Account
-                  </Button>
+                    <Button
+                      type="submit"
+                      variant="editorial"
+                      size="lg"
+                      fullWidth
+                      isLoading={isLoading}
+                      disabled={!agreed}
+                    >
+                      Create Account
+                    </Button>
+                  </motion.div>
                 </form>
 
-                <div className="mt-6 text-center">
+                <motion.div
+                  className="mt-6 text-center"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.6, duration: 0.3 }}
+                >
                   <p className="text-muted-foreground">
                     Already have an account?{' '}
                     <Link
@@ -359,7 +522,7 @@ export default function RegisterPage() {
                       Sign in
                     </Link>
                   </p>
-                </div>
+                </motion.div>
               </Card>
             </motion.div>
           </div>
