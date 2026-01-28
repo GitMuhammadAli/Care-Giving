@@ -87,21 +87,16 @@ export function FamilySpaceProvider({ children }: { children: React.ReactNode })
     // If user is authenticated but has no families, try syncing with server
     // This handles stale data or cache issues
     if (user && families.length === 0) {
-      console.log('FamilySpaceProvider - User has no families, attempting sync...');
-      syncWithServer().catch(console.error);
+      syncWithServer().catch(() => {});
     }
   }, [authLoading, user, families.length, syncWithServer]);
 
-  // Track family changes and auto-sync when needed
+  // Track family changes for selection updates
   useEffect(() => {
     const currentFamilyIds = families.map(f => f.id).sort().join(',');
     const previousFamilyIds = previousFamiliesRef.current.sort().join(',');
 
     if (currentFamilyIds !== previousFamilyIds) {
-      console.log('FamilySpaceProvider - Families changed:', {
-        previous: previousFamiliesRef.current,
-        current: families.map(f => ({ id: f.id, name: f.name })),
-      });
       previousFamiliesRef.current = families.map(f => f.id);
     }
   }, [families]);
@@ -172,12 +167,9 @@ export function FamilySpaceProvider({ children }: { children: React.ReactNode })
 
   // Refresh families from server - use this when you expect family data to have changed
   const refreshFamilies = useCallback(async () => {
-    console.log('FamilySpaceProvider - Refreshing families from server...');
     try {
       await syncWithServer();
-      console.log('FamilySpaceProvider - Families refreshed successfully');
-    } catch (error) {
-      console.error('FamilySpaceProvider - Failed to refresh families:', error);
+    } catch {
       // Fall back to simple refetch
       await refetchUser();
     }

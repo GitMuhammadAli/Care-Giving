@@ -192,7 +192,7 @@ Now all protected endpoints will use this token automatically.
     @Res() res: Response
   ) {
     const refreshToken = dto.refreshToken || req.cookies?.["refresh_token"];
-
+    
     if (!refreshToken) {
       return res.status(401).json({ message: "Refresh token required" });
     }
@@ -223,7 +223,7 @@ Now all protected endpoints will use this token automatically.
     @Res() res: Response
   ) {
     const refreshToken = dto.refreshToken || req.cookies?.["refresh_token"];
-
+    
     if (refreshToken) {
       await this.authService.logout(refreshToken);
     }

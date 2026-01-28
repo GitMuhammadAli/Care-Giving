@@ -321,7 +321,7 @@ export const useAuth = create<AuthState>()(
           // If we have persisted auth state, mark as initially authenticated
           // but still need to verify with server
           if (state.user && state.isAuthenticated) {
-            console.log('Auth hydrated from storage with user:', state.user.email);
+            devLog('Auth hydrated from storage with user:', state.user.email);
           }
         }
       },

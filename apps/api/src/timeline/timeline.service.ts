@@ -244,6 +244,180 @@ export class TimelineService {
     // Also invalidate vitals cache patterns
     await this.cacheService.delPattern(`recipient:vitals:${careRecipientId}:*`);
   }
+
+  /**
+   * Get activity feed for a family - aggregates recent activities from multiple sources
+   */
+  async getActivityFeed(familyId: string, userId: string, limit: number = 20) {
+    // Verify user belongs to the family
+    const membership = await this.prisma.familyMember.findUnique({
+      where: { familyId_userId: { familyId, userId } },
+    });
+
+    if (!membership) {
+      throw new ForbiddenException('You do not have access to this family');
+    }
+
+    // Get care recipients in this family
+    const careRecipients = await this.prisma.careRecipient.findMany({
+      where: { familyId },
+      select: { id: true, fullName: true, preferredName: true },
+    });
+    const careRecipientIds = careRecipients.map(cr => cr.id);
+    const careRecipientMap = new Map(careRecipients.map(cr => [cr.id, cr]));
+
+    // Fetch recent activities from different sources in parallel
+    const [timelineEntries, medicationLogs, appointments, emergencyAlerts] = await Promise.all([
+      // Timeline entries
+      this.prisma.timelineEntry.findMany({
+        where: { careRecipientId: { in: careRecipientIds } },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        include: {
+          createdBy: { select: { id: true, fullName: true } },
+        },
+      }),
+
+      // Medication logs
+      this.prisma.medicationLog.findMany({
+        where: {
+          medication: { careRecipientId: { in: careRecipientIds } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        include: {
+          medication: { select: { id: true, name: true, dosage: true, careRecipientId: true } },
+          givenBy: { select: { id: true, fullName: true } },
+        },
+      }),
+
+      // Recent/upcoming appointments
+      this.prisma.appointment.findMany({
+        where: {
+          careRecipientId: { in: careRecipientIds },
+          startTime: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }, // Last 7 days
+        },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        include: {
+          doctor: { select: { name: true, specialty: true } },
+        },
+      }),
+
+      // Emergency alerts
+      this.prisma.emergencyAlert.findMany({
+        where: { careRecipientId: { in: careRecipientIds } },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        include: {
+          createdBy: { select: { id: true, fullName: true } },
+        },
+      }),
+    ]);
+
+    // Transform and combine into unified activity format
+    const activities: Array<{
+      id: string;
+      type: string;
+      category: 'timeline' | 'medication' | 'appointment' | 'emergency';
+      title: string;
+      description?: string;
+      careRecipientId: string;
+      careRecipientName: string;
+      actorName?: string;
+      severity?: string;
+      status?: string;
+      timestamp: Date;
+      metadata?: any;
+    }> = [];
+
+    // Add timeline entries
+    timelineEntries.forEach(entry => {
+      const cr = careRecipientMap.get(entry.careRecipientId);
+      activities.push({
+        id: entry.id,
+        type: entry.type,
+        category: 'timeline',
+        title: entry.title,
+        description: entry.description || undefined,
+        careRecipientId: entry.careRecipientId,
+        careRecipientName: cr?.preferredName || cr?.fullName || 'Unknown',
+        actorName: entry.createdBy.fullName,
+        severity: entry.severity || undefined,
+        timestamp: entry.createdAt,
+      });
+    });
+
+    // Add medication logs
+    medicationLogs.forEach(log => {
+      const cr = careRecipientMap.get(log.medication.careRecipientId);
+      activities.push({
+        id: log.id,
+        type: 'MEDICATION_LOG',
+        category: 'medication',
+        title: `${log.medication.name} - ${log.status}`,
+        description: log.notes || `Dosage: ${log.medication.dosage}`,
+        careRecipientId: log.medication.careRecipientId,
+        careRecipientName: cr?.preferredName || cr?.fullName || 'Unknown',
+        actorName: log.givenBy.fullName,
+        status: log.status,
+        timestamp: log.createdAt,
+        metadata: {
+          medicationId: log.medication.id,
+          scheduledTime: log.scheduledTime,
+          givenTime: log.givenTime,
+        },
+      });
+    });
+
+    // Add appointments
+    appointments.forEach(apt => {
+      const cr = careRecipientMap.get(apt.careRecipientId);
+      activities.push({
+        id: apt.id,
+        type: apt.type,
+        category: 'appointment',
+        title: apt.title,
+        description: apt.doctor ? `with Dr. ${apt.doctor.name} (${apt.doctor.specialty})` : apt.location || undefined,
+        careRecipientId: apt.careRecipientId,
+        careRecipientName: cr?.preferredName || cr?.fullName || 'Unknown',
+        status: apt.status,
+        timestamp: apt.createdAt,
+        metadata: {
+          startTime: apt.startTime,
+          endTime: apt.endTime,
+          location: apt.location,
+        },
+      });
+    });
+
+    // Add emergency alerts
+    emergencyAlerts.forEach(alert => {
+      const cr = careRecipientMap.get(alert.careRecipientId);
+      activities.push({
+        id: alert.id,
+        type: alert.type,
+        category: 'emergency',
+        title: alert.title,
+        description: alert.description,
+        careRecipientId: alert.careRecipientId,
+        careRecipientName: cr?.preferredName || cr?.fullName || 'Unknown',
+        actorName: alert.createdBy.fullName,
+        status: alert.status,
+        severity: 'CRITICAL',
+        timestamp: alert.createdAt,
+      });
+    });
+
+    // Sort by timestamp descending and limit
+    activities.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+
+    return {
+      activities: activities.slice(0, limit),
+      total: activities.length,
+      familyId,
+    };
+  }
 }
 
 

@@ -129,3 +129,28 @@ export class TimelineController {
     return this.timelineService.delete(id, user.id);
   }
 }
+
+// Activity Feed controller for dashboard
+@ApiTags('Activity Feed')
+@ApiBearerAuth('JWT-auth')
+@Controller('families/:familyId/activity')
+export class ActivityFeedController {
+  constructor(private readonly timelineService: TimelineService) {}
+
+  @Get()
+  @ApiOperation({ 
+    summary: 'Get activity feed for a family',
+    description: 'Returns recent activities including timeline entries, medication logs, appointments, and emergency alerts.',
+  })
+  getActivityFeed(
+    @Param('familyId', ParseUUIDPipe) familyId: string,
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('limit') limit?: string,
+  ) {
+    return this.timelineService.getActivityFeed(
+      familyId, 
+      user.id, 
+      limit ? parseInt(limit, 10) : 20
+    );
+  }
+}

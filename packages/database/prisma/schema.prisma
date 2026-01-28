@@ -248,8 +248,10 @@ model Appointment {
   notes     String?
 
   // Recurrence
-  isRecurring    Boolean @default(false)
-  recurrenceRule String?
+  isRecurring       Boolean @default(false)
+  recurrenceRule    String?
+  recurringSeriesId String?  // Links appointments in the same recurring series
+  recurringIndex    Int?     // Index of this occurrence in the series
 
   // Reminders (minutes before)
   reminderMinutes Int[] @default([60, 1440])
@@ -265,6 +267,7 @@ model Appointment {
 
   @@index([careRecipientId])
   @@index([startTime])
+  @@index([recurringSeriesId])
 }
 
 enum AppointmentType {

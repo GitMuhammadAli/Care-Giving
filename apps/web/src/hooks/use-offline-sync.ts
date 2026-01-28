@@ -41,7 +41,7 @@ export function useOfflineSync() {
     return unsubscribe;
   }, []);
 
-  // Check pending actions count
+  // Check pending actions count - reduced frequency to avoid performance issues
   useEffect(() => {
     const checkPending = async () => {
       const pending = await getPendingActions();
@@ -49,7 +49,8 @@ export function useOfflineSync() {
     };
     
     checkPending();
-    const interval = setInterval(checkPending, 10000);
+    // Check every 60 seconds instead of 10 to reduce IndexedDB access
+    const interval = setInterval(checkPending, 60000);
     
     return () => clearInterval(interval);
   }, []);

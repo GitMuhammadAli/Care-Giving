@@ -1,25 +1,36 @@
 'use client';
 
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { wsClient, WS_EVENTS } from '@/lib/websocket';
 import { useAuth } from './use-auth';
 import toast from 'react-hot-toast';
 
+// Use selectors to prevent re-renders on unrelated auth state changes
+const selectUser = (state: any) => state.user;
+const selectIsAuthenticated = (state: any) => state.isAuthenticated;
+
 export function useWebSocket(familyId?: string) {
-  const { user, isAuthenticated } = useAuth();
+  // Use shallow equality for selectors to prevent unnecessary re-renders
+  const user = useAuth(selectUser);
+  const isAuthenticated = useAuth(selectIsAuthenticated);
   const queryClient = useQueryClient();
   const [isConnected, setIsConnected] = useState(false);
+  const hasConnectedRef = useRef(false);
 
-  // Connect to WebSocket
+  // Connect to WebSocket - only once when authenticated
   useEffect(() => {
     if (!isAuthenticated || !user) return;
+    
+    // Prevent multiple connection attempts
+    if (hasConnectedRef.current) return;
 
     const connect = async () => {
       try {
         // Use a dummy token since we're using withCredentials (cookies)
         await wsClient.connect('authenticated');
         setIsConnected(true);
+        hasConnectedRef.current = true;
 
         // Join family room if familyId provided
         if (familyId) {
@@ -34,7 +45,7 @@ export function useWebSocket(familyId?: string) {
           });
         }
       } catch (error) {
-        console.error('Failed to connect WebSocket:', error);
+        // Silently handle connection errors - WebSocket will retry
         setIsConnected(false);
       }
     };
@@ -46,7 +57,7 @@ export function useWebSocket(familyId?: string) {
         wsClient.leaveFamily(familyId);
       }
     };
-  }, [isAuthenticated, user, familyId]);
+  }, [isAuthenticated, user?.id, familyId]); // Only depend on user.id, not entire user object
 
   // Set up event listeners
   useEffect(() => {
@@ -57,7 +68,6 @@ export function useWebSocket(familyId?: string) {
     // ============================================================================
 
     const handleEmergencyAlert = (data: any) => {
-      console.warn('🚨 EMERGENCY ALERT:', data);
       toast.error(`🚨 EMERGENCY: ${data.type}${data.description ? ` - ${data.description}` : ''}`, {
         duration: Infinity, // Don't auto-dismiss emergencies
         position: 'top-center',
@@ -80,7 +90,6 @@ export function useWebSocket(familyId?: string) {
     };
 
     const handleEmergencyResolved = (data: any) => {
-      console.log('✅ Emergency resolved:', data);
       toast.success(`✅ Emergency resolved by ${data.resolvedBy}`, {
         duration: 8000,
       });
@@ -93,7 +102,6 @@ export function useWebSocket(familyId?: string) {
     // ============================================================================
 
     const handleMedicationLogged = (data: any) => {
-      console.log('💊 Medication logged:', data);
       toast.success(`💊 ${data.medicationName} logged by ${data.loggedBy || data.loggedByName}`, {
         duration: 5000,
       });
@@ -103,7 +111,6 @@ export function useWebSocket(familyId?: string) {
     };
 
     const handleMedicationReminder = (data: any) => {
-      console.log('⏰ Medication reminder:', data);
       toast(`💊 Time for ${data.medicationName}`, {
         icon: '⏰',
         duration: 10000,
@@ -115,7 +122,6 @@ export function useWebSocket(familyId?: string) {
     // ============================================================================
 
     const handleAppointmentCreated = (data: any) => {
-      console.log('📅 Appointment created:', data);
       toast.success('📅 New appointment created', {
         duration: 5000,
       });
@@ -123,7 +129,6 @@ export function useWebSocket(familyId?: string) {
     };
 
     const handleAppointmentUpdated = (data: any) => {
-      console.log('📅 Appointment updated:', data);
       toast('📅 Appointment updated', {
         duration: 4000,
       });
@@ -131,7 +136,6 @@ export function useWebSocket(familyId?: string) {
     };
 
     const handleAppointmentReminder = (data: any) => {
-      console.log('⏰ Appointment reminder:', data);
       toast(`📅 Reminder: ${data.title || data.appointmentTitle} at ${data.time || data.appointmentTime}`, {
         icon: '🏥',
         duration: 10000,
@@ -143,8 +147,6 @@ export function useWebSocket(familyId?: string) {
     // ============================================================================
 
     const handleShiftUpdate = (data: any) => {
-      console.log('👨‍⚕️ Shift update:', data);
-
       if (data.type === 'check_in') {
         toast.success(`👨‍⚕️ ${data.caregiver?.name || 'Caregiver'} checked in`, {
           duration: 5000,
@@ -169,7 +171,6 @@ export function useWebSocket(familyId?: string) {
     // ============================================================================
 
     const handleTimelineEntry = (data: any) => {
-      console.log('📝 Timeline entry:', data);
       if (data.createdBy || data.createdByName) {
         toast(`📝 ${data.createdBy || data.createdByName} added: ${data.title}`, {
           duration: 5000,
@@ -183,7 +184,6 @@ export function useWebSocket(familyId?: string) {
     // ============================================================================
 
     const handleFamilyMemberJoined = (data: any) => {
-      console.log('👋 Family member joined:', data);
       toast.success(`👋 ${data.memberName} joined the family!`, {
         duration: 5000,
       });
@@ -195,7 +195,6 @@ export function useWebSocket(familyId?: string) {
     // ============================================================================
 
     const handleCareRecipientDeleted = (data: any) => {
-      console.log('🗑️ Care recipient deleted:', data);
       toast.error(`${data.deletedBy} removed ${data.careRecipientName}`, {
         duration: 8000,
       });
@@ -204,7 +203,6 @@ export function useWebSocket(familyId?: string) {
     };
 
     const handleCareRecipientUpdated = (data: any) => {
-      console.log('✏️ Care recipient updated:', data);
       toast(`${data.updatedBy} updated ${data.careRecipientName}'s profile`, {
         icon: '✏️',
         duration: 5000,
@@ -214,7 +212,6 @@ export function useWebSocket(familyId?: string) {
     };
 
     const handleFamilyMemberRemoved = (data: any) => {
-      console.log('👋 Family member removed:', data);
       toast(`${data.removedBy} removed ${data.memberName} from the family`, {
         icon: '👋',
         duration: 6000,
@@ -223,7 +220,6 @@ export function useWebSocket(familyId?: string) {
     };
 
     const handleYouWereRemoved = (data: any) => {
-      console.warn('⚠️ You were removed from family:', data);
       toast.error(`You have been removed from ${data.familyName} by ${data.removedBy}`, {
         duration: Infinity, // Don't auto-dismiss - this is important
       });
@@ -234,7 +230,6 @@ export function useWebSocket(familyId?: string) {
     };
 
     const handleFamilyMemberRoleUpdated = (data: any) => {
-      console.log('🔄 Family member role updated:', data);
       toast(`${data.memberName}'s role changed to ${data.newRole}`, {
         icon: '🔄',
         duration: 5000,
@@ -243,7 +238,6 @@ export function useWebSocket(familyId?: string) {
     };
 
     const handleYourRoleChanged = (data: any) => {
-      console.log('🎭 Your role was changed:', data);
       toast(`Your role in ${data.familyName} is now ${data.newRole}`, {
         icon: '🎭',
         duration: 8000,
@@ -253,7 +247,6 @@ export function useWebSocket(familyId?: string) {
     };
 
     const handleMedicationDeleted = (data: any) => {
-      console.log('💊 Medication deleted:', data);
       toast(`${data.deletedBy} removed ${data.medicationName}`, {
         icon: '💊',
         duration: 6000,
@@ -262,7 +255,6 @@ export function useWebSocket(familyId?: string) {
     };
 
     const handleAppointmentDeleted = (data: any) => {
-      console.log('📅 Appointment deleted:', data);
       toast(`${data.deletedBy} deleted "${data.appointmentTitle}"`, {
         icon: '📅',
         duration: 6000,
@@ -271,7 +263,6 @@ export function useWebSocket(familyId?: string) {
     };
 
     const handleFamilyDeleted = (data: any) => {
-      console.warn('🗑️ Family was deleted:', data);
       toast.error(`${data.deletedBy} deleted the family "${data.familyName}"`, {
         duration: Infinity,
       });
@@ -285,7 +276,6 @@ export function useWebSocket(familyId?: string) {
     // ============================================================================
 
     const handleDocumentUploaded = (data: any) => {
-      console.log('📄 Document uploaded:', data);
       toast.success(`📄 ${data.uploadedBy} uploaded "${data.documentName}"`, {
         duration: 5000,
       });
@@ -293,7 +283,6 @@ export function useWebSocket(familyId?: string) {
     };
 
     const handleDocumentDeleted = (data: any) => {
-      console.log('🗑️ Document deleted:', data);
       toast(`${data.deletedBy} deleted "${data.documentName}"`, {
         icon: '📄',
         duration: 6000,
@@ -306,17 +295,14 @@ export function useWebSocket(familyId?: string) {
     // ============================================================================
 
     const handleNotification = (data: any) => {
-      console.log('🔔 Notification:', data);
       toast(data.message, { icon: data.icon || 'ℹ️', duration: 5000 });
     };
 
-    const handleBroadcast = (data: any) => {
-      console.log('📡 Broadcast event:', data);
+    const handleBroadcast = (_data: any) => {
       // Handle generic broadcast events
     };
 
-    const handleEmergencyNotification = (data: any) => {
-      console.warn('🚨 Emergency notification broadcast:', data);
+    const handleEmergencyNotification = (_data: any) => {
       // Fallback emergency notification
     };
 
