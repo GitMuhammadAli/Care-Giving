@@ -11,11 +11,11 @@ import { AnimatedBackground } from '@/components/ui/animated-background';
 import { ArrowRight, LayoutDashboard } from 'lucide-react';
 import { useAuthContext } from '@/components/providers/auth-provider';
 
-// Static data matching pixel-perfect exactly
+// Static data - emotionally compelling
 const stats = [
-  { value: '50,000+', label: 'Families' },
-  { value: '4.9', label: 'App Store rating' },
-  { value: '100%', label: 'Free forever' },
+  { value: '50,000+', label: 'Families united' },
+  { value: '4.9★', label: 'Loved by caregivers' },
+  { value: '100%', label: 'Free, forever' },
 ];
 
 const features = [
@@ -124,8 +124,8 @@ export default function LandingPage() {
             {/* Editorial masthead */}
             <div className="border-b border-border pb-6 mb-12">
               <div className="flex items-end justify-between">
-                <p className="label-caps text-slate">Issue No. 01 — Family Care</p>
-                <p className="text-sm text-muted-foreground hidden md:block">Est. 2024</p>
+                <p className="label-caps text-slate">For the ones who show up</p>
+                <p className="text-sm text-muted-foreground hidden md:block">Since 2024</p>
               </div>
             </div>
 
@@ -137,8 +137,7 @@ export default function LandingPage() {
                 transition={{ duration: 0.8 }}
                 className="font-editorial text-5xl md:text-7xl lg:text-8xl text-foreground leading-[0.95] tracking-editorial mb-8 max-w-5xl"
               >
-                Where families <em className="not-italic text-sage">gather</em> to care for those who
-                matter most
+                Caring for someone you love shouldn&apos;t feel <em className="not-italic text-sage">this hard</em>
               </motion.h1>
             </div>
 
@@ -152,8 +151,8 @@ export default function LandingPage() {
                 className="lg:col-span-4"
               >
                 <p className="text-muted-foreground text-lg leading-relaxed mb-8">
-                  A private space for coordinating care with grace. Share updates, organize tasks,
-                  and stay connected—without the noise.
+                  Finally, a place where your whole family can stay informed, share the load, and 
+                  support each other—without the chaos of group texts and missed calls.
                 </p>
 
                 <div className="flex flex-wrap items-center gap-3">
@@ -167,13 +166,13 @@ export default function LandingPage() {
                   ) : (
                     <Link href="/register">
                       <Button variant="editorial" size="lg">
-                        Create your circle
+                        Start your circle — it&apos;s free
                       </Button>
                     </Link>
                   )}
                   <Link href="/how-it-works">
                     <Button variant="editorial-outline" size="lg" className="group">
-                      Learn more
+                      See how it works
                       <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                     </Button>
                   </Link>
@@ -187,17 +186,18 @@ export default function LandingPage() {
                 transition={{ duration: 0.8, delay: 0.2 }}
                 className="lg:col-span-4 lg:col-start-6"
               >
-                <div className="border border-border bg-card p-6">
-                  <p className="label-caps text-slate mb-4">Latest update</p>
+                <div className="border border-border bg-card/80 backdrop-blur-sm p-6 rounded-lg shadow-sm">
+                  <p className="label-caps text-sage mb-4">A moment worth sharing</p>
                   <p className="font-editorial text-xl text-foreground leading-snug mb-6">
-                    &ldquo;Mom had her best day in weeks. She walked to the garden and sat in the sun
-                    for an hour.&rdquo;
+                    &ldquo;Mom smiled today. Really smiled. She recognized the song we used to sing together.&rdquo;
                   </p>
                   <div className="flex items-center gap-3 pt-4 border-t border-border">
-                    <div className="w-10 h-10 rounded-full bg-sage/30" />
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-sage/40 to-sage/20 flex items-center justify-center text-sage-700 font-medium text-sm">
+                      SM
+                    </div>
                     <div>
                       <p className="text-sm font-medium text-foreground">Sarah M.</p>
-                      <p className="text-xs text-muted-foreground">2 hours ago</p>
+                      <p className="text-xs text-muted-foreground">Shared with her circle</p>
                     </div>
                   </div>
                 </div>
@@ -226,8 +226,11 @@ export default function LandingPage() {
           <div className="border-t border-border">
             <div className="container mx-auto px-6">
               <div className="flex items-center justify-between py-4 text-sm text-muted-foreground">
-                <span>Scroll to explore</span>
-                <span className="hidden md:block">Private · Simple · Together</span>
+                <span className="flex items-center gap-2">
+                  <span className="w-1 h-1 rounded-full bg-sage animate-pulse" />
+                  Scroll to discover more
+                </span>
+                <span className="hidden md:block">Private · Peaceful · Together</span>
               </div>
             </div>
           </div>
