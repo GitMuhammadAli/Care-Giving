@@ -28,19 +28,19 @@ const team = [
   {
     name: 'Sarah Chen',
     role: 'Founder & CEO',
-    bio: 'Cared for her grandmother through Alzheimer's. Built CareCircle when she realized how broken family coordination was.',
+    bio: "Cared for her grandmother through Alzheimer's. Built CareCircle when she realized how broken family coordination was.",
     avatar: 'SC',
   },
   {
     name: 'Michael Torres',
     role: 'Head of Product',
-    bio: 'Former hospice volunteer. Believes technology should reduce friction, not add to it.',
+    bio: "Former hospice volunteer. Believes technology should reduce friction, not add to it.",
     avatar: 'MT',
   },
   {
     name: 'Dr. Emily Walsh',
     role: 'Care Advisor',
-    bio: 'Geriatrician with 20 years of experience. Ensures CareCircle reflects real caregiving needs.',
+    bio: "Geriatrician with 20 years of experience. Ensures CareCircle reflects real caregiving needs.",
     avatar: 'EW',
   },
 ];
