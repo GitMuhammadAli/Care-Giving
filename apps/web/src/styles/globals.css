@@ -588,7 +588,59 @@
      UNIQUE ANIMATIONS - "Living Canvas"
      ======================================== */
 
-  /* Morphing float - organic blob movement */
+  /* Sphere float - soft, gentle drifting motion */
+  .animate-sphere-float {
+    animation: sphere-float ease-in-out infinite;
+  }
+
+  @keyframes sphere-float {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+    }
+    25% {
+      transform: translate(15px, -20px) scale(1.02);
+    }
+    50% {
+      transform: translate(-10px, 10px) scale(0.98);
+    }
+    75% {
+      transform: translate(20px, 5px) scale(1.01);
+    }
+  }
+
+  /* Gradient shift - gentle color flow */
+  .animate-gradient-shift {
+    animation: gradient-shift 20s ease-in-out infinite;
+  }
+
+  @keyframes gradient-shift {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.85;
+      transform: scale(1.02);
+    }
+  }
+
+  /* Care pulse - subtle heartbeat indicator */
+  .animate-care-pulse {
+    animation: care-pulse 4s ease-in-out infinite;
+  }
+
+  @keyframes care-pulse {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 0.2;
+    }
+    50% {
+      transform: scale(1.8);
+      opacity: 0.4;
+    }
+  }
+
+  /* Legacy - Morphing float (kept for compatibility) */
   .animate-morph-float {
     animation: morph-float 24s ease-in-out infinite;
   }
