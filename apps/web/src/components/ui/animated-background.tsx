@@ -1,15 +1,17 @@
 'use client';
 
+import { memo, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { useMemo } from 'react';
 
 /**
- * Clean floating leaves background - like the original Three.js version
- * Simple, elegant, not over-engineered
+ * Optimized floating leaves background
+ * - Uses GPU-accelerated transforms only
+ * - Reduced number of elements for performance
+ * - CSS will-change hints
  */
 
-// Simple leaf SVG
-function Leaf({ color }: { color: string }) {
+// Memoized leaf component to prevent re-renders
+const Leaf = memo(function Leaf({ color }: { color: string }) {
   return (
     <svg viewBox="0 0 32 48" className="w-full h-full">
       <path
@@ -24,10 +26,10 @@ function Leaf({ color }: { color: string }) {
       />
     </svg>
   );
-}
+});
 
-// Single floating leaf - simple upward float with drift
-function FloatingLeaf({
+// Optimized floating leaf - uses only transform and opacity (GPU accelerated)
+const FloatingLeaf = memo(function FloatingLeaf({
   delay,
   duration,
   startX,
@@ -50,6 +52,8 @@ function FloatingLeaf({
         bottom: -80,
         width: size,
         height: size * 1.5,
+        willChange: 'transform, opacity',
+        backfaceVisibility: 'hidden',
       }}
       initial={{ 
         opacity: 0, 
@@ -60,12 +64,12 @@ function FloatingLeaf({
       animate={{
         opacity: [0, 0.7, 0.7, 0.7, 0],
         y: [0, -250, -500, -750, -1000],
-        x: [0, 30, -20, 40, 0],
+        x: [0, 25, -15, 30, 0],
         rotate: [
           initialRotation, 
+          initialRotation + 12, 
+          initialRotation - 8, 
           initialRotation + 15, 
-          initialRotation - 10, 
-          initialRotation + 20, 
           initialRotation
         ],
       }}
@@ -79,35 +83,42 @@ function FloatingLeaf({
       <Leaf color={color} />
     </motion.div>
   );
-}
+});
 
-export function AnimatedBackground() {
-  // Sage green color palette (matching the original)
+// Main component - memoized
+export const AnimatedBackground = memo(function AnimatedBackground() {
+  // Sage green color palette
   const colors = useMemo(() => [
-    '#8B9A7E', // sage-500
-    '#6B7A5E', // sage-600
-    '#525E48', // sage-700
-    '#9AAA8D', // sage-400
-    '#A8B5A0', // sage-light
-    '#996B4D', // terracotta accent (sparingly)
+    '#8B9A7E',
+    '#6B7A5E', 
+    '#525E48',
+    '#9AAA8D',
+    '#A8B5A0',
+    '#996B4D',
   ], []);
 
-  // Generate 18 leaves like the original
+  // Reduced to 12 leaves for better performance
   const leaves = useMemo(() => {
-    return Array.from({ length: 18 }, (_, i) => ({
+    return Array.from({ length: 12 }, (_, i) => ({
       id: i,
-      delay: i * 1.2, // Staggered start
-      duration: 14 + Math.random() * 8, // 14-22 seconds to float up
-      startX: 5 + (i * 5.5) % 90, // Spread across screen
-      size: 28 + Math.random() * 16, // 28-44px
-      color: i % 7 === 0 ? colors[5] : colors[Math.floor(Math.random() * 5)], // Occasional terracotta
-      initialRotation: -40 + Math.random() * 80, // -40 to 40 degrees
+      delay: i * 1.5,
+      duration: 16 + (i % 4) * 2, // 16-22 seconds
+      startX: 8 + (i * 7.5) % 85,
+      size: 30 + (i % 3) * 6, // 30-42px
+      color: i % 6 === 0 ? colors[5] : colors[i % 5],
+      initialRotation: -35 + (i * 12) % 70,
     }));
   }, [colors]);
 
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {/* Soft gradient background */}
+    <div 
+      className="absolute inset-0 overflow-hidden pointer-events-none"
+      style={{ 
+        contain: 'layout style paint',
+        willChange: 'auto',
+      }}
+    >
+      {/* Static gradient background - no animation for performance */}
       <div 
         className="absolute inset-0"
         style={{
@@ -125,4 +136,4 @@ export function AnimatedBackground() {
       ))}
     </div>
   );
-}
+});
