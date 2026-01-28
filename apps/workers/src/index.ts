@@ -11,7 +11,7 @@
 
 import 'dotenv/config';
 import * as http from 'http';
-import { getConfig, getRedisConnection, logger } from './config';
+import { getConfig, getRedisConnection, logger, getDefaultWorkerOptions, shouldDisableQueueEvents } from './config';
 import { closeAllQueues } from './queues';
 
 // Workers
@@ -238,12 +238,17 @@ async function shutdown(signal: string): Promise<void> {
 function printBanner(): void {
   const redisHost = config.REDIS_HOST;
   const redisPort = config.REDIS_PORT;
+  const workerOptions = getDefaultWorkerOptions();
+  const eventsDisabled = shouldDisableQueueEvents();
   
   logger.info({
     redis: `${redisHost}:${redisPort}`,
     healthPort: HEALTH_PORT,
     environment: config.NODE_ENV,
     logLevel: config.LOG_LEVEL,
+    drainDelay: workerOptions.drainDelay,
+    stalledInterval: workerOptions.stalledInterval,
+    queueEventsDisabled: eventsDisabled,
   }, '');
 
   console.log('');
@@ -255,6 +260,14 @@ function printBanner(): void {
   console.log('║                                                              ║');
   console.log(`║   🔗  Redis: ${redisHost}:${redisPort}`.padEnd(63) + '║');
   console.log(`║   🏥  Health: http://localhost:${HEALTH_PORT}/health`.padEnd(63) + '║');
+  console.log('║                                                              ║');
+  console.log('╠══════════════════════════════════════════════════════════════╣');
+  console.log('║                                                              ║');
+  console.log('║   ⚡ Redis Optimization (Upstash-friendly):                  ║');
+  console.log('║                                                              ║');
+  console.log(`║   📊  Drain Delay: ${(workerOptions.drainDelay / 1000).toFixed(1)}s (polls when queue empty)`.padEnd(63) + '║');
+  console.log(`║   🔍  Stalled Check: ${(workerOptions.stalledInterval / 1000).toFixed(0)}s`.padEnd(63) + '║');
+  console.log(`║   📡  Queue Events: ${eventsDisabled ? 'Disabled (saves requests)' : 'Enabled'}`.padEnd(63) + '║');
   console.log('║                                                              ║');
   console.log('╠══════════════════════════════════════════════════════════════╣');
   console.log('║                                                              ║');

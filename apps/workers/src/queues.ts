@@ -1,10 +1,21 @@
 /**
  * Queue Definitions
  * All queues with proper default options and DLQ support
+ * 
+ * OPTIMIZED: Reduced Redis polling for Upstash free tier compatibility
  */
 
 import { Queue, QueueEvents } from 'bullmq';
-import { getRedisConnection, QUEUE_NAMES, getDefaultJobOptions, logger } from './config';
+import { 
+  getRedisConnection, 
+  QUEUE_NAMES, 
+  getDefaultJobOptions, 
+  logger 
+} from './config';
+import { 
+  shouldDisableQueueEvents,
+  getQueueEventsOptions,
+} from '@carecircle/config';
 import type {
   MedicationReminderJob,
   AppointmentReminderJob,
@@ -37,10 +48,15 @@ export interface DeadLetterJob {
 }
 
 // ============================================================================
-// QUEUE FACTORY
+// QUEUE FACTORY - OPTIMIZED
 // ============================================================================
 
 const defaultJobOptions = getDefaultJobOptions();
+const disableEvents = shouldDisableQueueEvents();
+const queueEventsOptions = getQueueEventsOptions();
+
+// Store QueueEvents instances for cleanup
+const queueEventsInstances: QueueEvents[] = [];
 
 function createQueue<T>(name: string): Queue<T> {
   const queue = new Queue<T>(name, {
@@ -48,16 +64,25 @@ function createQueue<T>(name: string): Queue<T> {
     defaultJobOptions,
   });
 
-  // Log queue events
-  const events = new QueueEvents(name, { connection: getRedisConnection() });
-  
-  events.on('failed', ({ jobId, failedReason }) => {
-    logger.warn({ queue: name, jobId, failedReason }, 'Job failed');
-  });
+  // Only create QueueEvents if not disabled (saves Redis requests in dev!)
+  if (!disableEvents) {
+    const events = new QueueEvents(name, { 
+      connection: getRedisConnection(),
+      ...queueEventsOptions,
+    });
+    
+    queueEventsInstances.push(events);
+    
+    events.on('failed', ({ jobId, failedReason }) => {
+      logger.warn({ queue: name, jobId, failedReason }, 'Job failed');
+    });
 
-  events.on('stalled', ({ jobId }) => {
-    logger.warn({ queue: name, jobId }, 'Job stalled');
-  });
+    events.on('stalled', ({ jobId }) => {
+      logger.warn({ queue: name, jobId }, 'Job stalled');
+    });
+  } else {
+    logger.debug({ queue: name }, 'QueueEvents disabled (development mode)');
+  }
 
   return queue;
 }
@@ -147,6 +172,12 @@ const queues = [
 
 export async function closeAllQueues(): Promise<void> {
   logger.info('Closing all queues...');
+  
+  // Close QueueEvents first
+  await Promise.all(queueEventsInstances.map((events) => events.close()));
+  logger.debug({ count: queueEventsInstances.length }, 'QueueEvents closed');
+  
+  // Close queues
   await Promise.all(queues.map((q) => q.close()));
   logger.info('All queues closed');
 }
