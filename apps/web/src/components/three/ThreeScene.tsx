@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
 // Sage green color palette from the theme
@@ -80,7 +80,7 @@ interface FloatingLeavesProps {
   count?: number;
 }
 
-export function FloatingLeaves({ count = 18 }: FloatingLeavesProps) {
+function FloatingLeaves({ count = 18 }: FloatingLeavesProps) {
   const leaves = useMemo(() => {
     return Array.from({ length: count }, (_, i) => {
       // Distribute leaves across the scene
@@ -140,4 +140,27 @@ export function FloatingLeaves({ count = 18 }: FloatingLeavesProps) {
   );
 }
 
+export function ThreeScene() {
+  return (
+    <Canvas
+      camera={{ position: [0, 0, 8], fov: 50 }}
+      style={{ 
+        background: 'transparent',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+      }}
+      gl={{ 
+        alpha: true, 
+        antialias: true,
+        powerPreference: 'low-power',
+      }}
+      dpr={[1, 1.5]} // Limit pixel ratio for performance
+    >
+      <FloatingLeaves count={15} />
+    </Canvas>
+  );
+}
 

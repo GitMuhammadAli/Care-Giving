@@ -1,18 +1,15 @@
 'use client';
 
-import React, { Suspense, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 
-// Dynamically import Canvas with SSR disabled to prevent Three.js from running on server
-const Canvas = dynamic(
-  () => import('@react-three/fiber').then((mod) => mod.Canvas),
-  { ssr: false }
-);
-
-// Dynamically import FloatingLeaves with SSR disabled
-const FloatingLeaves = dynamic(
-  () => import('./FloatingLeaves').then((mod) => mod.FloatingLeaves),
-  { ssr: false }
+// Dynamically import the entire Three.js scene with SSR disabled
+const ThreeScene = dynamic(
+  () => import('./ThreeScene').then((mod) => mod.ThreeScene),
+  { 
+    ssr: false,
+    loading: () => <LoadingFallback />
+  }
 );
 
 function useReducedMotion() {
@@ -98,6 +95,38 @@ interface HeroBackgroundProps {
   className?: string;
 }
 
+export function HeroBackground({ className = '' }: HeroBackgroundProps) {
+  const prefersReducedMotion = useReducedMotion();
+  const isLowEnd = useIsLowEndDevice();
+  const [hasError, setHasError] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Don't render anything on server
+  if (!isClient) {
+    return <LoadingFallback />;
+  }
+
+  // Show static background for reduced motion, low-end devices, or errors
+  if (prefersReducedMotion || isLowEnd || hasError) {
+    return <StaticBackground />;
+  }
+
+  return (
+    <div 
+      className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}
+      style={{ zIndex: 0 }}
+    >
+      <ErrorBoundary onError={() => setHasError(true)}>
+        <ThreeScene />
+      </ErrorBoundary>
+    </div>
+  );
+}
+
 // Simple error boundary component
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -128,56 +157,4 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
     }
     return this.props.children;
   }
-}
-
-export function HeroBackground({ className = '' }: HeroBackgroundProps) {
-  const prefersReducedMotion = useReducedMotion();
-  const isLowEnd = useIsLowEndDevice();
-  const [hasError, setHasError] = useState(false);
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  // Don't render anything on server
-  if (!isClient) {
-    return <LoadingFallback />;
-  }
-
-  // Show static background for reduced motion, low-end devices, or errors
-  if (prefersReducedMotion || isLowEnd || hasError) {
-    return <StaticBackground />;
-  }
-
-  return (
-    <div 
-      className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}
-      style={{ zIndex: 0 }}
-    >
-      <Suspense fallback={<LoadingFallback />}>
-        <ErrorBoundary onError={() => setHasError(true)}>
-          <Canvas
-            camera={{ position: [0, 0, 8], fov: 50 }}
-            style={{ 
-              background: 'transparent',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-            }}
-            gl={{ 
-              alpha: true, 
-              antialias: true,
-              powerPreference: 'low-power',
-            }}
-            dpr={[1, 1.5]} // Limit pixel ratio for performance
-          >
-            <FloatingLeaves count={15} />
-          </Canvas>
-        </ErrorBoundary>
-      </Suspense>
-    </div>
-  );
 }
