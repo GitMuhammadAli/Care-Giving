@@ -2,9 +2,9 @@
   "watch": ["src"],
   "ext": "ts,json",
   "ignore": ["src/**/*.spec.ts"],
-  "exec": "ts-node -r tsconfig-paths/register src/main.ts",
+  "exec": "npx kill-port 4000 >nul 2>&1 & ts-node -r tsconfig-paths/register src/main.ts",
   "signal": "SIGTERM",
-  "delay": "500",
+  "delay": "1000",
   "env": {
     "NODE_ENV": "development"
   }

@@ -239,8 +239,21 @@ export class MailService {
     return templateFn(context);
   }
 
+  // Helper to check dev mode
+  private get isDev(): boolean {
+    return this.configService.get('NODE_ENV') === 'development';
+  }
+
   // Template-based emails
   async sendWelcome(email: string, name: string): Promise<void> {
+    if (this.isDev) {
+      console.log('\n╔════════════════════════════════════════════════════════╗');
+      console.log('║  📧 DEV MODE - Welcome Email                            ║');
+      console.log('╠════════════════════════════════════════════════════════╣');
+      console.log(`║  To:   ${email.padEnd(44)}║`);
+      console.log(`║  Name: ${name.padEnd(44)}║`);
+      console.log('╚════════════════════════════════════════════════════════╝\n');
+    }
     await this.send({
       to: email,
       subject: 'Welcome to CareCircle',
@@ -251,7 +264,18 @@ export class MailService {
 
   async sendPasswordReset(email: string, token: string, name: string): Promise<void> {
     const resetUrl = `${this.configService.get('app.frontendUrl')}/reset-password?token=${token}`;
-    
+
+    if (this.isDev) {
+      console.log('\n╔════════════════════════════════════════════════════════╗');
+      console.log('║  🔑 DEV MODE - Password Reset                           ║');
+      console.log('╠════════════════════════════════════════════════════════╣');
+      console.log(`║  Email: ${email.padEnd(43)}║`);
+      console.log(`║  Name:  ${name.padEnd(43)}║`);
+      console.log(`║  Token: ${token.substring(0, 40).padEnd(43)}║`);
+      console.log(`║  URL:   ${resetUrl.substring(0, 43).padEnd(43)}║`);
+      console.log('╚════════════════════════════════════════════════════════╝\n');
+    }
+
     await this.send({
       to: email,
       subject: 'Reset Your Password - CareCircle',
@@ -261,6 +285,15 @@ export class MailService {
   }
 
   async sendEmailVerification(email: string, otp: string, name: string): Promise<void> {
+    if (this.isDev) {
+      console.log('\n╔════════════════════════════════════════════════════════╗');
+      console.log('║  🔐 DEV MODE - Email Verification OTP                   ║');
+      console.log('╠════════════════════════════════════════════════════════╣');
+      console.log(`║  Email: ${email.padEnd(43)}║`);
+      console.log(`║  OTP:   ${otp.padEnd(43)}║`);
+      console.log('╚════════════════════════════════════════════════════════╝\n');
+    }
+
     const verificationUrl = `${this.configService.get('app.frontendUrl')}/verify-email?email=${encodeURIComponent(email)}`;
 
     await this.send({
@@ -278,7 +311,20 @@ export class MailService {
     inviteToken: string,
   ): Promise<void> {
     const inviteUrl = `${this.configService.get('app.frontendUrl')}/accept-invite/${inviteToken}`;
-    
+
+    if (this.isDev) {
+      console.log('\n╔════════════════════════════════════════════════════════╗');
+      console.log('║  👨‍👩‍👧 DEV MODE - Family Invitation                        ║');
+      console.log('╠════════════════════════════════════════════════════════╣');
+      console.log(`║  To:      ${email.padEnd(41)}║`);
+      console.log(`║  From:    ${inviterName.padEnd(41)}║`);
+      console.log(`║  Family:  ${familyName.padEnd(41)}║`);
+      console.log(`║  Token:   ${inviteToken.padEnd(41)}║`);
+      console.log('╠════════════════════════════════════════════════════════╣');
+      console.log(`║  URL: ${inviteUrl.padEnd(45)}║`);
+      console.log('╚════════════════════════════════════════════════════════╝\n');
+    }
+
     await this.send({
       to: email,
       subject: `${inviterName} invited you to join ${familyName} on CareCircle`,
@@ -294,6 +340,18 @@ export class MailService {
     message: string,
     alertedByName: string,
   ): Promise<void> {
+    if (this.isDev) {
+      console.log('\n╔════════════════════════════════════════════════════════╗');
+      console.log('║  🚨 DEV MODE - Emergency Alert                          ║');
+      console.log('╠════════════════════════════════════════════════════════╣');
+      console.log(`║  To:        ${emails.join(', ').substring(0, 39).padEnd(39)}║`);
+      console.log(`║  Patient:   ${careRecipientName.padEnd(39)}║`);
+      console.log(`║  Type:      ${alertType.padEnd(39)}║`);
+      console.log(`║  By:        ${alertedByName.padEnd(39)}║`);
+      console.log(`║  Message:   ${message.substring(0, 39).padEnd(39)}║`);
+      console.log('╚════════════════════════════════════════════════════════╝\n');
+    }
+
     await this.send({
       to: emails,
       subject: `🚨 EMERGENCY ALERT - ${careRecipientName}`,
@@ -315,6 +373,18 @@ export class MailService {
     dosage: string,
     time: string,
   ): Promise<void> {
+    if (this.isDev) {
+      console.log('\n╔════════════════════════════════════════════════════════╗');
+      console.log('║  💊 DEV MODE - Medication Reminder                      ║');
+      console.log('╠════════════════════════════════════════════════════════╣');
+      console.log(`║  To:         ${email.padEnd(38)}║`);
+      console.log(`║  Patient:    ${careRecipientName.padEnd(38)}║`);
+      console.log(`║  Medication: ${medicationName.padEnd(38)}║`);
+      console.log(`║  Dosage:     ${dosage.padEnd(38)}║`);
+      console.log(`║  Time:       ${time.padEnd(38)}║`);
+      console.log('╚════════════════════════════════════════════════════════╝\n');
+    }
+
     await this.send({
       to: email,
       subject: `Medication Reminder - ${medicationName} for ${careRecipientName}`,
@@ -335,6 +405,18 @@ export class MailService {
     adminName: string,
   ): Promise<void> {
     const loginUrl = `${this.configService.get('app.frontendUrl')}/login`;
+
+    if (this.isDev) {
+      console.log('\n╔════════════════════════════════════════════════════════╗');
+      console.log('║  🔐 DEV MODE - Admin Password Reset                     ║');
+      console.log('╠════════════════════════════════════════════════════════╣');
+      console.log(`║  Email:        ${email.padEnd(36)}║`);
+      console.log(`║  User:         ${userName.padEnd(36)}║`);
+      console.log(`║  Reset By:     ${adminName.padEnd(36)}║`);
+      console.log(`║  Temp Password: ${tempPassword.padEnd(35)}║`);
+      console.log(`║  Login URL:    ${loginUrl.substring(0, 36).padEnd(36)}║`);
+      console.log('╚════════════════════════════════════════════════════════╝\n');
+    }
 
     await this.send({
       to: email,

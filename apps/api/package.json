@@ -5,10 +5,12 @@
   "scripts": {
     "build": "nest build",
     "clean": "node -e \"require('fs').rmSync('dist', {recursive: true, force: true})\"",
+    "predev": "npx kill-port 4000 || echo Port 4000 was free",
     "dev": "nodemon",
     "dev:nest": "nest start --watch",
     "dev:clean": "powershell -ExecutionPolicy Bypass -File ./scripts/dev-clean.ps1",
     "start": "nest start",
+    "prestart:dev": "npx kill-port 4000 || echo Port 4000 was free",
     "start:dev": "nodemon",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",

@@ -99,6 +99,12 @@ async function bootstrap() {
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   // Windows-specific signal
   process.on('SIGBREAK', () => shutdown('SIGBREAK'));
+  // Nodemon restart signal
+  process.once('SIGUSR2', async () => {
+    logger.log('Received SIGUSR2 (nodemon restart), shutting down...');
+    await app.close();
+    process.kill(process.pid, 'SIGUSR2');
+  });
 
   // Pretty startup logs
   console.log('');

@@ -1,9 +1,8 @@
 'use client';
 
-import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { PageHeader } from '@/components/layout/page-header';
-import { useFamilies } from '@/hooks/use-family';
+import { useFamilySpace } from '@/contexts/family-space-context';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { MessageCircle, Users, AlertCircle } from 'lucide-react';
@@ -25,17 +24,13 @@ const FamilyChat = dynamic(
 );
 
 export default function ChatPage() {
-  const { data: families = [], isLoading } = useFamilies();
-  const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(
-    families.length > 0 ? families[0].id : null
-  );
-
-  // Auto-select first family when families load
-  useState(() => {
-    if (families.length > 0 && !selectedFamilyId) {
-      setSelectedFamilyId(families[0].id);
-    }
-  });
+  const { 
+    families, 
+    selectedFamilyId, 
+    selectedFamily,
+    setSelectedFamily,
+    isLoading 
+  } = useFamilySpace();
 
   if (isLoading) {
     return (
@@ -84,8 +79,6 @@ export default function ChatPage() {
     );
   }
 
-  const selectedFamily = families.find((f) => f.id === selectedFamilyId);
-
   return (
     <div className="pb-6">
       <PageHeader
@@ -107,7 +100,7 @@ export default function ChatPage() {
                   key={family.id}
                   variant={selectedFamilyId === family.id ? 'primary' : 'secondary'}
                   size="sm"
-                  onClick={() => setSelectedFamilyId(family.id)}
+                  onClick={() => setSelectedFamily(family.id)}
                   className="whitespace-nowrap"
                 >
                   <Users className="w-4 h-4 mr-2" />

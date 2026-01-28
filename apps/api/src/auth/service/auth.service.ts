@@ -46,14 +46,14 @@ export class AuthService {
         passwordHash,
         fullName: dto.fullName,
         phone: dto.phone,
-        status: 'PENDING', // User must verify email first
+        status: 'PENDING',
         emailVerified: false,
         emailVerificationCode: otp,
         emailVerificationExpiresAt: otpExpiresAt,
       },
     });
 
-    // Send verification email
+    // Send verification email (mail service logs OTP in dev mode)
     await this.mailService.sendEmailVerification(
       user.email,
       otp,
@@ -64,7 +64,7 @@ export class AuthService {
     await this.logAudit(user.id, 'REGISTER', 'user', user.id);
 
     return {
-      message: 'Registration successful. Please check your email to verify your account.',
+      message: 'Registration successful. Please check your email (or API console in dev mode) to verify your account.',
       user: {
         email: user.email,
         fullName: user.fullName,
@@ -109,10 +109,34 @@ export class AuthService {
     // Log audit
     await this.logAudit(user.id, 'LOGIN', 'user', user.id);
 
+    // Fetch user with family memberships for complete response
+    const userWithFamilies = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      include: {
+        familyMemberships: {
+          include: {
+            family: {
+              include: {
+                careRecipients: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    preferredName: true,
+                    dateOfBirth: true,
+                    photoUrl: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
     return {
       tokens, // Used by controller to set httpOnly cookie
       accessToken: tokens.accessToken, // Returned to frontend
-      user: this.sanitizeUser(user),
+      user: this.sanitizeUser(userWithFamilies),
     };
   }
 
@@ -463,15 +487,35 @@ export class AuthService {
     // Log audit
     await this.logAudit(user.id, 'EMAIL_VERIFIED', 'user', user.id);
 
+    // Fetch user with family memberships (new users won't have any, but keep consistent)
+    const userWithFamilies = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      include: {
+        familyMemberships: {
+          include: {
+            family: {
+              include: {
+                careRecipients: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    preferredName: true,
+                    dateOfBirth: true,
+                    photoUrl: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
     return {
       message: 'Email verified successfully',
       tokens, // Used by controller to set httpOnly cookie
       accessToken: tokens.accessToken, // Returned to frontend
-      user: this.sanitizeUser({
-        ...user,
-        emailVerified: true,
-        status: 'ACTIVE',
-      }),
+      user: this.sanitizeUser(userWithFamilies),
     };
   }
 
