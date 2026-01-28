@@ -180,7 +180,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             </motion.div>
           )}
           
-          {/* Input field - using CSS transitions for better type compatibility */}
+          {/* Input field - using regular input with CSS transitions */}
           <input
             ref={ref}
             id={inputId}
