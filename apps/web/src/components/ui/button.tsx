@@ -3,11 +3,12 @@
 import * as React from 'react';
 import { Slot } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
+import { motion, HTMLMotionProps } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap font-body text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 active:scale-[0.98]',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap font-body text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
   {
     variants: {
       variant: {
@@ -53,13 +54,16 @@ const buttonVariants = cva(
 );
 
 export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+  extends Omit<HTMLMotionProps<'button'>, 'children'>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   isLoading?: boolean;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   fullWidth?: boolean;
+  children?: React.ReactNode;
+  // Disable animations for specific cases
+  noAnimation?: boolean;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -75,24 +79,60 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       fullWidth = false,
       disabled,
       children,
+      noAnimation = false,
       ...props
     },
     ref
   ) => {
-    const Comp = asChild ? Slot : 'button';
     const isDisabled = disabled || isLoading;
 
+    // For asChild, use Slot without motion - extract only valid HTML props
+    if (asChild) {
+      const { 
+        onDrag, onDragStart, onDragEnd, onAnimationStart, onAnimationComplete,
+        whileHover, whileTap, whileFocus, whileDrag, whileInView,
+        animate, initial, exit, transition, variants,
+        ...htmlProps 
+      } = props as Record<string, unknown>;
+      
+      return (
+        <Slot
+          className={cn(
+            buttonVariants({ variant, size, className }),
+            fullWidth && 'w-full',
+            'touch-target'
+          )}
+          ref={ref as React.Ref<HTMLElement>}
+          {...(htmlProps as React.HTMLAttributes<HTMLElement>)}
+        >
+          {children as React.ReactElement}
+        </Slot>
+      );
+    }
+
+    // Motion button with hover/tap animations
     return (
-      <Comp
+      <motion.button
         className={cn(
           buttonVariants({ variant, size, className }),
           fullWidth && 'w-full',
-          'touch-target'
+          'touch-target relative overflow-hidden'
         )}
         ref={ref}
         disabled={isDisabled}
+        whileHover={!isDisabled && !noAnimation ? { scale: 1.02, y: -1 } : undefined}
+        whileTap={!isDisabled && !noAnimation ? { scale: 0.98 } : undefined}
+        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
         {...props}
       >
+        {/* Shine effect on hover */}
+        <motion.span
+          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full"
+          initial={false}
+          whileHover={{ translateX: '200%' }}
+          transition={{ duration: 0.6, ease: 'easeInOut' }}
+        />
+        
         {isLoading ? (
           <>
             <Loader2 className="animate-spin" />
@@ -100,12 +140,28 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           </>
         ) : (
           <>
-            {leftIcon && <span className="[&_svg]:size-5">{leftIcon}</span>}
+            {leftIcon && (
+              <motion.span 
+                className="[&_svg]:size-5"
+                whileHover={{ x: -2 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              >
+                {leftIcon}
+              </motion.span>
+            )}
             {children}
-            {rightIcon && <span className="[&_svg]:size-5">{rightIcon}</span>}
+            {rightIcon && (
+              <motion.span 
+                className="[&_svg]:size-5"
+                whileHover={{ x: 2 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              >
+                {rightIcon}
+              </motion.span>
+            )}
           </>
         )}
-      </Comp>
+      </motion.button>
     );
   }
 );

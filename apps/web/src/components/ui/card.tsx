@@ -1,26 +1,28 @@
 'use client';
 
 import * as React from 'react';
+import { motion, HTMLMotionProps } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
-export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: 'default' | 'interactive' | 'highlighted' | 'urgent' | 'success';
+export interface CardProps extends Omit<HTMLMotionProps<'div'>, 'children'> {
+  variant?: 'default' | 'interactive' | 'highlighted' | 'urgent' | 'success' | 'glass';
   padding?: 'none' | 'compact' | 'default' | 'spacious';
+  children?: React.ReactNode;
+  // Disable hover animations
+  noHover?: boolean;
 }
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ className, variant = 'default', padding = 'default', children, ...props }, ref) => {
+  ({ className, variant = 'default', padding = 'default', children, noHover = false, ...props }, ref) => {
+    const isInteractive = variant === 'interactive';
+    
     const variants = {
       default: 'bg-card border border-border shadow-sm',
-      interactive: `
-        bg-card border border-border shadow-sm
-        hover:shadow-md hover:-translate-y-0.5
-        active:shadow-sm active:translate-y-0
-        cursor-pointer transition-all duration-200
-      `,
+      interactive: 'bg-card border border-border shadow-sm cursor-pointer',
       highlighted: 'bg-card border border-border shadow-sm border-l-4 border-l-secondary',
       urgent: 'bg-destructive/10 border border-destructive/20 shadow-sm border-l-4 border-l-destructive',
       success: 'bg-primary/10 border border-primary/20 shadow-sm border-l-4 border-l-primary',
+      glass: 'bg-card/80 backdrop-blur-md border border-border/50 shadow-lg',
     };
 
     const paddings = {
@@ -30,19 +32,36 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
       spacious: 'p-6',
     };
 
+    const shouldAnimate = isInteractive && !noHover;
+
     return (
-      <div
+      <motion.div
         ref={ref}
         className={cn(
-          'rounded-lg text-card-foreground',
+          'rounded-xl text-card-foreground transition-colors duration-200',
           variants[variant],
           paddings[padding],
           className
         )}
+        initial={false}
+        whileHover={shouldAnimate ? {
+          y: -4,
+          boxShadow: '0 8px 30px rgba(82, 94, 72, 0.12), 0 4px 12px rgba(82, 94, 72, 0.08)',
+          borderColor: 'hsl(92 14% 32%)',
+        } : undefined}
+        whileTap={shouldAnimate ? { 
+          scale: 0.98,
+          y: -2,
+        } : undefined}
+        transition={{
+          type: 'spring',
+          stiffness: 400,
+          damping: 25,
+        }}
         {...props}
       >
         {children}
-      </div>
+      </motion.div>
     );
   }
 );
