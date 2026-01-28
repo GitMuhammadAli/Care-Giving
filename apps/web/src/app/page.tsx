@@ -110,16 +110,17 @@ export default function LandingPage() {
   }, [isInitialized, isAuthenticated, user, router]);
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      {/* Animated Background - covers entire page including header */}
+      <AnimatedBackground />
+      
+      <div className="relative z-10">
+        <Header />
 
-      <main>
-        {/* Hero Section - Pixel Perfect */}
-        <section className="min-h-screen pt-20 texture-paper relative overflow-hidden">
-          {/* Animated Background */}
-          <AnimatedBackground />
-          
-          <div className="container mx-auto px-6 relative z-10">
+        <main>
+          {/* Hero Section - Pixel Perfect */}
+          <section className="min-h-screen pt-20 texture-paper relative">
+            <div className="container mx-auto px-6 relative">
             {/* Editorial masthead */}
             <div className="border-b border-border pb-6 mb-12">
               <div className="flex items-end justify-between">
@@ -485,9 +486,10 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
-      </main>
+        </main>
 
-      <Footer />
+        <Footer />
+      </div>
     </div>
   );
 }
