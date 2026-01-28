@@ -53,7 +53,16 @@ let fetchUserPromise: Promise<void> | null = null;
 let syncPromise: Promise<void> | null = null;
 
 // Stale data threshold - if data is older than this, auto-refresh in background
-const STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+// Set to 30 minutes to reduce unnecessary API calls
+const STALE_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes
+
+// Development logging helper - only logs in development
+const devLog = (...args: any[]) => {
+  if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+    // Disabled by default to reduce console noise - enable for debugging:
+    // console.log('[Auth]', ...args);
+  }
+};
 
 export const useAuth = create<AuthState>()(
   persist(
@@ -149,9 +158,9 @@ export const useAuth = create<AuthState>()(
           if (isAuthenticated && lastSyncedAt) {
             const isStale = Date.now() - lastSyncedAt > STALE_THRESHOLD_MS;
             if (isStale) {
-              console.log('fetchUser - Data is stale, triggering background sync');
+              devLog('fetchUser - Data is stale, triggering background sync');
               // Don't await - let it happen in background
-              get().syncWithServer().catch(console.error);
+              get().syncWithServer().catch(() => {});
             }
           }
           return;
@@ -207,23 +216,14 @@ export const useAuth = create<AuthState>()(
         // NOTE: Don't set isLoading: true here - this is a background refresh
         // Setting isLoading causes components to show loading UI which can
         // interfere with local state updates (e.g., onboarding step navigation)
-        console.log('refetchUser - Starting...');
+        devLog('refetchUser - Starting...');
         try {
           const user = await authApi.getProfile();
-          console.log('refetchUser - Got user:', {
-            id: user.id,
-            email: user.email,
-            familiesCount: user.families?.length || 0,
-            families: user.families?.map((f: any) => ({
-              id: f.id,
-              name: f.name,
-              careRecipientsCount: f.careRecipients?.length || 0,
-            })),
-          });
+          devLog('refetchUser - Got user:', user.email);
           set({ user, isAuthenticated: true, lastSyncedAt: Date.now() });
         } catch (err) {
           // If profile fetch fails, don't clear auth - user might still be authenticated
-          console.error('refetchUser - Error:', err);
+          devLog('refetchUser - Error:', err);
         }
       },
 
@@ -239,35 +239,26 @@ export const useAuth = create<AuthState>()(
           return;
         }
 
-        console.log('syncWithServer - Starting full sync with cache invalidation...');
+        devLog('syncWithServer - Starting...');
 
         syncPromise = (async () => {
           try {
             // Call the invalidate-cache endpoint first to clear backend Redis cache
             await api.post('/auth/invalidate-cache', {});
-            console.log('syncWithServer - Backend cache invalidated');
+            devLog('syncWithServer - Backend cache invalidated');
 
             // Now fetch fresh user profile
             const user = await authApi.getProfile();
-            console.log('syncWithServer - Got fresh user data:', {
-              id: user.id,
-              email: user.email,
-              familiesCount: user.families?.length || 0,
-              families: user.families?.map((f: any) => ({
-                id: f.id,
-                name: f.name,
-                careRecipientsCount: f.careRecipients?.length || 0,
-              })),
-            });
+            devLog('syncWithServer - Got fresh user data');
             set({ user, isAuthenticated: true, lastSyncedAt: Date.now() });
           } catch (err) {
-            console.error('syncWithServer - Error:', err);
+            devLog('syncWithServer - Error:', err);
             // On error, still try regular refetch
             try {
               const user = await authApi.getProfile();
               set({ user, isAuthenticated: true, lastSyncedAt: Date.now() });
             } catch (innerErr) {
-              console.error('syncWithServer - Fallback refetch also failed:', innerErr);
+              devLog('syncWithServer - Fallback refetch also failed:', innerErr);
             }
           }
         })();

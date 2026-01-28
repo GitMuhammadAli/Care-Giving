@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Bell, BellOff, Check, X, AlertCircle, Info } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { usePushNotifications } from '@/hooks/use-notifications';
+import { usePushNotifications } from '@/hooks/use-push-notifications';
 import { cn } from '@/lib/utils';
 
 export interface NotificationSettingsProps {

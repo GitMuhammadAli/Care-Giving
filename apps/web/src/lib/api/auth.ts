@@ -112,5 +112,17 @@ export const authApi = {
   completeOnboarding: async (): Promise<{ message: string }> => {
     return api.post('/auth/complete-onboarding', {});
   },
+
+  changePassword: async (currentPassword: string, newPassword: string): Promise<{ message: string }> => {
+    return api.post('/auth/change-password', { currentPassword, newPassword });
+  },
+
+  invalidateCache: async (): Promise<{ message: string }> => {
+    return api.post('/auth/invalidate-cache', {});
+  },
+
+  logoutAll: async (): Promise<{ message: string }> => {
+    return api.post('/auth/logout-all', {});
+  },
 };
 

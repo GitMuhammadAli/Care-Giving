@@ -282,32 +282,58 @@ export class ChatService {
 
   /**
    * Get or create family channel - safe method that handles both cases
+   * Also ensures the requesting user is a member of the channel
    */
-  async getOrCreateFamilyChannel(familyId: string, familyName: string, creatorId: string): Promise<Channel | null> {
+  async getOrCreateFamilyChannel(familyId: string, familyName: string, requestingUserId: string): Promise<Channel | null> {
     if (!this.streamClient) {
       this.logger.warn('Stream Chat not configured');
       return null;
     }
 
     try {
-      // Sync family members first
+      // Sync all family members to Stream Chat first
       const memberIds = await this.syncFamilyMembers(familyId);
       await this.ensureSystemUser();
 
       const channelId = `family-${familyId}`;
 
+      // Check if channel already exists
+      const existingChannels = await this.streamClient.queryChannels({
+        id: channelId,
+        type: 'messaging',
+      });
+
+      if (existingChannels.length > 0) {
+        const channel = existingChannels[0];
+        
+        // Ensure all current family members are in the channel
+        // This fixes any users who were added to the family but not to the channel
+        const currentMembers = Object.keys(channel.state.members);
+        const missingMembers = memberIds.filter(id => !currentMembers.includes(id));
+        
+        if (missingMembers.length > 0) {
+          this.logger.log(`Adding ${missingMembers.length} missing members to channel ${channelId}: ${missingMembers.join(', ')}`);
+          await channel.addMembers(missingMembers);
+        }
+
+        this.logger.log(`Got existing family channel: ${channelId}`);
+        return channel;
+      }
+
+      // Channel doesn't exist, create it with all family members
+      this.logger.log(`Creating new family channel: ${channelId} with ${memberIds.length} members`);
+      
       const channel = this.streamClient.channel('messaging', channelId, {
         name: `${familyName} Chat`,
         image: '/icons/family-chat.png',
-        created_by_id: creatorId,
+        created_by_id: requestingUserId,
         members: memberIds,
         family_id: familyId,
       } as any);
 
-      // watch() will create if doesn't exist, or return existing
-      await channel.watch();
+      await channel.create();
 
-      this.logger.log(`Got/created family channel: ${channelId}`);
+      this.logger.log(`Created family channel: ${channelId}`);
       return channel;
     } catch (error: any) {
       this.logger.error(`Failed to get/create family channel: ${error.message}`);
@@ -317,7 +343,7 @@ export class ChatService {
 
   /**
    * Add member to family channel
-   * Syncs user to Stream Chat first
+   * Syncs user to Stream Chat first, then adds them to the channel
    */
   async addMemberToFamilyChannel(familyId: string, userId: string): Promise<void> {
     if (!this.streamClient) {
@@ -331,18 +357,53 @@ export class ChatService {
       select: { id: true, fullName: true, avatarUrl: true },
     });
 
-    if (user) {
-      await this.syncUser(user.id, user.fullName, user.avatarUrl);
+    if (!user) {
+      this.logger.error(`User ${userId} not found, cannot add to channel`);
+      return;
     }
 
+    // Sync user to Stream Chat - this is REQUIRED before adding to channel
+    await this.syncUser(user.id, user.fullName, user.avatarUrl);
+    this.logger.log(`Synced user ${userId} (${user.fullName}) to Stream Chat`);
+
     const channelId = `family-${familyId}`;
-    const channel = this.streamClient.channel('messaging', channelId);
 
     try {
-      await channel.addMembers([userId]);
-      this.logger.log(`Added user ${userId} to family channel ${channelId}`);
+      // First, query the channel to make sure it exists
+      const existingChannels = await this.streamClient.queryChannels({
+        id: channelId,
+        type: 'messaging',
+      });
+
+      if (existingChannels.length === 0) {
+        // Channel doesn't exist - get family info and create it
+        const family = await this.prisma.family.findUnique({
+          where: { id: familyId },
+          select: { name: true },
+        });
+
+        this.logger.log(`Family channel ${channelId} doesn't exist, creating it first`);
+        
+        // Create the channel with the new user as a member
+        const channel = this.streamClient.channel('messaging', channelId, {
+          name: `${family?.name || 'Family'} Chat`,
+          image: '/icons/family-chat.png',
+          created_by_id: userId,
+          members: [userId],
+          family_id: familyId,
+        } as any);
+        
+        await channel.create();
+        this.logger.log(`Created family channel ${channelId} with user ${userId}`);
+      } else {
+        // Channel exists - add the member
+        const channel = existingChannels[0];
+        await channel.addMembers([userId]);
+        this.logger.log(`Added user ${userId} to existing family channel ${channelId}`);
+      }
     } catch (error: any) {
-      this.logger.error(`Failed to add user to channel: ${error.message}`);
+      this.logger.error(`Failed to add user ${userId} to channel ${channelId}: ${error.message}`);
+      throw error; // Re-throw so caller knows it failed
     }
   }
 
@@ -356,11 +417,21 @@ export class ChatService {
     }
 
     const channelId = `family-${familyId}`;
-    const channel = this.streamClient.channel('messaging', channelId);
 
     try {
-      await channel.removeMembers([userId]);
-      this.logger.log(`Removed user ${userId} from family channel ${channelId}`);
+      // Query the channel first to ensure it exists
+      const existingChannels = await this.streamClient.queryChannels({
+        id: channelId,
+        type: 'messaging',
+      });
+
+      if (existingChannels.length > 0) {
+        const channel = existingChannels[0];
+        await channel.removeMembers([userId]);
+        this.logger.log(`Removed user ${userId} from family channel ${channelId}`);
+      } else {
+        this.logger.warn(`Family channel ${channelId} doesn't exist, nothing to remove from`);
+      }
     } catch (error: any) {
       this.logger.error(`Failed to remove user from channel: ${error.message}`);
     }
