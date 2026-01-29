@@ -461,6 +461,384 @@
     display: none;
   }
 
+  /* Link hover effect */
+  .link-hover {
+    @apply relative;
+  }
+  
+  .link-hover::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-0 h-0.5 bg-sage-700 transition-all duration-300;
+  }
+  
+  .link-hover:hover::after {
+    @apply w-full;
+  }
+
+  /* Smooth button press effect */
+  .btn-press {
+    @apply transition-transform duration-100 active:scale-[0.98];
+  }
+
+  /* Card lift on hover */
+  .card-lift {
+    @apply transition-all duration-300;
+  }
+  
+  .card-lift:hover {
+    @apply -translate-y-1 shadow-lg;
+  }
+
+  /* Glow effect on focus */
+  .focus-glow:focus {
+    @apply ring-2 ring-sage-500/30 ring-offset-2;
+  }
+
+  /* Shimmer loading effect */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--sage-100)) 0%,
+      hsl(var(--sage-50)) 50%,
+      hsl(var(--sage-100)) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* Bounce on hover */
+  .bounce-hover:hover {
+    animation: bounce-sm 0.5s ease-in-out;
+  }
+
+  @keyframes bounce-sm {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+
+  /* Wiggle animation for attention */
+  .wiggle {
+    animation: wiggle 0.5s ease-in-out;
+  }
+
+  @keyframes wiggle {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-3deg); }
+    75% { transform: rotate(3deg); }
+  }
+
+  /* Pulse ring animation */
+  .pulse-ring {
+    @apply relative;
+  }
+
+  .pulse-ring::before {
+    content: '';
+    @apply absolute inset-0 rounded-full;
+    animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes pulse-ring {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgba(139, 154, 126, 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 8px rgba(139, 154, 126, 0);
+    }
+  }
+
+  /* Slide up animation for list items */
+  .slide-up {
+    animation: slide-up 0.3s ease-out forwards;
+  }
+
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Scale in animation */
+  .scale-in {
+    animation: scale-in 0.2s ease-out forwards;
+  }
+
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* ========================================
+     UNIQUE ANIMATIONS - "Living Canvas"
+     ======================================== */
+
+  /* Sphere float - soft, gentle drifting motion */
+  .animate-sphere-float {
+    animation: sphere-float ease-in-out infinite;
+  }
+
+  @keyframes sphere-float {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+    }
+    25% {
+      transform: translate(15px, -20px) scale(1.02);
+    }
+    50% {
+      transform: translate(-10px, 10px) scale(0.98);
+    }
+    75% {
+      transform: translate(20px, 5px) scale(1.01);
+    }
+  }
+
+  /* Gradient shift - gentle color flow */
+  .animate-gradient-shift {
+    animation: gradient-shift 20s ease-in-out infinite;
+  }
+
+  @keyframes gradient-shift {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.85;
+      transform: scale(1.02);
+    }
+  }
+
+  /* Care pulse - subtle heartbeat indicator */
+  .animate-care-pulse {
+    animation: care-pulse 4s ease-in-out infinite;
+  }
+
+  @keyframes care-pulse {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 0.2;
+    }
+    50% {
+      transform: scale(1.8);
+      opacity: 0.4;
+    }
+  }
+
+  /* Legacy - Morphing float (kept for compatibility) */
+  .animate-morph-float {
+    animation: morph-float 24s ease-in-out infinite;
+  }
+
+  @keyframes morph-float {
+    0%, 100% {
+      border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+      transform: translate(0, 0) rotate(0deg) scale(1);
+    }
+    25% {
+      border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
+      transform: translate(20px, -30px) rotate(5deg) scale(1.05);
+    }
+    50% {
+      border-radius: 50% 60% 30% 60% / 30% 40% 70% 50%;
+      transform: translate(-20px, 20px) rotate(-5deg) scale(0.95);
+    }
+    75% {
+      border-radius: 40% 30% 60% 50% / 60% 50% 40% 30%;
+      transform: translate(30px, 10px) rotate(3deg) scale(1.02);
+    }
+  }
+
+  /* Leaf fall - falling from top with natural wind drift */
+  .animate-leaf-fall {
+    animation: leaf-fall linear infinite;
+  }
+
+  @keyframes leaf-fall {
+    0% {
+      opacity: 0;
+      transform: translateY(0) translateX(0) rotate(-15deg);
+    }
+    5% {
+      opacity: 0.7;
+    }
+    50% {
+      opacity: 0.8;
+      transform: translateY(50vh) translateX(var(--drift, 40px)) rotate(15deg);
+    }
+    95% {
+      opacity: 0.6;
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(110vh) translateX(calc(var(--drift, 40px) * 1.5)) rotate(45deg);
+    }
+  }
+
+  /* Legacy - Leaf rise (kept for backwards compatibility) */
+  .animate-leaf-rise {
+    animation: leaf-rise linear infinite;
+  }
+
+  @keyframes leaf-rise {
+    0% {
+      opacity: 0;
+      transform: translateY(0) translateX(0) rotate(-20deg);
+    }
+    10% {
+      opacity: 0.8;
+    }
+    90% {
+      opacity: 0.8;
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-1000px) translateX(50px) rotate(30deg);
+    }
+  }
+
+  /* Leaf sway - gentle rotation */
+  .animate-leaf-sway {
+    animation: leaf-sway 4s ease-in-out infinite;
+  }
+
+  @keyframes leaf-sway {
+    0%, 100% {
+      transform: rotate(-5deg);
+    }
+    50% {
+      transform: rotate(10deg);
+    }
+  }
+
+  /* Heartbeat pulse - care indicator */
+  .animate-heartbeat-pulse {
+    animation: heartbeat-pulse 3s ease-in-out infinite;
+  }
+
+  @keyframes heartbeat-pulse {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 0.3;
+    }
+    15% {
+      transform: scale(1.3);
+      opacity: 0.5;
+    }
+    30% {
+      transform: scale(1);
+      opacity: 0.3;
+    }
+    45% {
+      transform: scale(1.15);
+      opacity: 0.4;
+    }
+    60%, 100% {
+      transform: scale(1);
+      opacity: 0.3;
+    }
+  }
+
+  /* Heartbeat ring - expanding circle */
+  .animate-heartbeat-ring {
+    animation: heartbeat-ring 3s ease-out infinite;
+  }
+
+  @keyframes heartbeat-ring {
+    0%, 60% {
+      transform: scale(1);
+      opacity: 0;
+    }
+    15% {
+      opacity: 0.4;
+    }
+    30% {
+      transform: scale(3);
+      opacity: 0;
+    }
+    45% {
+      transform: scale(1);
+      opacity: 0.3;
+    }
+    60% {
+      transform: scale(2);
+      opacity: 0;
+    }
+  }
+
+  /* Mesh breathe - subtle background pulse */
+  .animate-mesh-breathe {
+    animation: mesh-breathe 8s ease-in-out infinite;
+  }
+
+  @keyframes mesh-breathe {
+    0%, 100% {
+      opacity: 0.7;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.9;
+      transform: scale(1.02);
+    }
+  }
+
+  /* Embrace glow - warm hover effect */
+  .animate-embrace-glow {
+    animation: embrace-glow 2s ease-in-out infinite;
+  }
+
+  @keyframes embrace-glow {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(139, 154, 126, 0.2);
+    }
+    50% {
+      box-shadow: 0 0 40px rgba(139, 154, 126, 0.4), 0 0 60px rgba(139, 154, 126, 0.2);
+    }
+  }
+
+  /* Connection thread - flowing dash */
+  .animate-connection-flow {
+    animation: connection-flow 3s linear infinite;
+  }
+
+  @keyframes connection-flow {
+    0% {
+      stroke-dashoffset: 0;
+    }
+    100% {
+      stroke-dashoffset: -30;
+    }
+  }
+
+  /* Warmth wave - color shift */
+  .animate-warmth-wave {
+    animation: warmth-wave 6s ease-in-out infinite;
+  }
+
+  @keyframes warmth-wave {
+    0%, 100% {
+      filter: hue-rotate(0deg) brightness(1);
+    }
+    50% {
+      filter: hue-rotate(10deg) brightness(1.05);
+    }
+  }
+
   /* Animation utilities - optimized for performance */
   .animate-fade {
     animation: fade-in 0.2s ease-out forwards;

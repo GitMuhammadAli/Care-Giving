@@ -25,7 +25,8 @@ if (fs.existsSync(baseEnvFile)) {
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  output: 'standalone',
+  // Note: 'standalone' output disabled on Windows due to symlink permission issues
+  // Re-enable for Docker/production deployments: output: 'standalone',
   experimental: {
     instrumentationHook: true,
   },
