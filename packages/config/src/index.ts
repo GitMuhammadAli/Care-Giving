@@ -361,47 +361,61 @@ export function shouldDisableQueueEvents(config?: WorkersEnv): boolean {
 // ============================================================================
 
 /**
- * Get Redis connection options with cloud-friendly settings
- * Includes retry strategy, keepalive, and proper timeouts
+ * Get Redis connection options
+ * Supports both local (Docker) and cloud (Upstash) Redis
  */
 export function getRedisConfig(config?: WorkersEnv) {
   const cfg = config || getWorkersConfig();
+  const isLocal = !cfg.REDIS_TLS && !cfg.REDIS_PASSWORD;
 
-  // Common options for cloud Redis (Upstash, etc.)
-  const commonOptions: Record<string, unknown> = {
+  // Base options - required for BullMQ
+  const baseOptions: Record<string, unknown> = {
     maxRetriesPerRequest: null, // Required for BullMQ
     enableReadyCheck: false, // Faster startup
-    connectTimeout: 20000, // 20 second connect timeout for cloud
-    commandTimeout: 10000, // 10 second command timeout
-    keepAlive: 30000, // Send keepalive every 30 seconds
-    
-    // Lazy connect - don't connect until first command
-    lazyConnect: true,
-    
     retryStrategy: (times: number) => {
-      // Exponential backoff with max 30 second delay
-      const delay = Math.min(times * 1000, 30000);
+      // Exponential backoff with max 10 second delay
+      const delay = Math.min(times * 500, 10000);
       return delay;
     },
+  };
+
+  // Local Redis (Docker) - simpler, faster settings
+  if (isLocal) {
+    return {
+      host: cfg.REDIS_HOST,
+      port: cfg.REDIS_PORT,
+      ...baseOptions,
+      connectTimeout: 5000, // 5 seconds for local
+      // No command timeout for local - let it complete
+    };
+  }
+
+  // Cloud Redis (Upstash, etc.) - more robust settings
+  const cloudOptions: Record<string, unknown> = {
+    ...baseOptions,
+    connectTimeout: 20000, // 20 seconds for cloud
+    commandTimeout: 15000, // 15 seconds for cloud
+    keepAlive: 30000, // Send keepalive every 30 seconds
+    lazyConnect: true, // Don't connect until first command
     reconnectOnError: (err: Error) => {
-      // Reconnect on connection reset
       const targetErrors = ['ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED'];
       return targetErrors.some((e) => err.message.includes(e));
     },
   };
 
-  // If REDIS_URL is provided, parse it
+  // If REDIS_URL is provided (cloud), use it
   if (cfg.REDIS_URL) {
     return {
       url: cfg.REDIS_URL,
-      ...commonOptions,
+      ...cloudOptions,
     };
   }
 
+  // Otherwise build from host/port
   const options: Record<string, unknown> = {
     host: cfg.REDIS_HOST,
     port: cfg.REDIS_PORT,
-    ...commonOptions,
+    ...cloudOptions,
   };
 
   if (cfg.REDIS_PASSWORD) {
