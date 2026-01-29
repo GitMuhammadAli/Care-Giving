@@ -150,9 +150,33 @@ const healthServer = http.createServer(async (req, res) => {
 async function runStartupTests(): Promise<boolean> {
   logger.info('Running startup self-tests...');
 
-  // Test Redis connection
+  // Test Redis connection with explicit timeout
   try {
     const redis = getRedisConnection();
+    
+    // Wait for connection to be ready (with timeout)
+    const connectPromise = new Promise<void>((resolve, reject) => {
+      if (redis.status === 'ready') {
+        resolve();
+        return;
+      }
+      
+      const timeout = setTimeout(() => {
+        reject(new Error('Redis connection timeout after 10s'));
+      }, 10000);
+      
+      redis.once('ready', () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+      
+      redis.once('error', (err) => {
+        clearTimeout(timeout);
+        reject(err);
+      });
+    });
+    
+    await connectPromise;
     await redis.ping();
     logger.info('✓ Redis connection OK');
   } catch (error) {

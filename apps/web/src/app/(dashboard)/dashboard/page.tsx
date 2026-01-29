@@ -55,6 +55,7 @@ import { DocumentsVault } from '@/components/dashboard/documents-vault';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AddCareRecipientModal } from '@/components/modals/add-care-recipient-modal';
 import { EditCareRecipientModal } from '@/components/modals/edit-care-recipient-modal';
+import { FamilySpaceSelector } from '@/components/layout/family-space-selector';
 
 // Hooks
 import { useAuth } from '@/hooks/use-auth';
@@ -412,98 +413,7 @@ const Dashboard = () => {
       />
 
       {/* Family Space Selector */}
-      {families.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3 mb-6 animate-fade">
-          {/* Family Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="h-10 px-4 rounded-xl border-border/60 hover:bg-accent">
-                <Home className="w-4 h-4 mr-2 text-primary" />
-                <span className="font-medium">{currentFamily?.name || 'Select Family'}</span>
-                <ChevronDown className="w-4 h-4 ml-2 text-muted-foreground" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56 rounded-xl">
-              <DropdownMenuLabel className="text-xs text-muted-foreground uppercase tracking-wide">
-                Your Family Spaces
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {families.map((family) => (
-                <DropdownMenuItem
-                  key={family.id}
-                  onClick={() => handleFamilySwitch(family.id)}
-                  className="cursor-pointer rounded-lg"
-                >
-                  <Home className="w-4 h-4 mr-2 text-muted-foreground" />
-                  <span className="flex-1">{family.name}</span>
-                  {family.id === familyId && (
-                    <Check className="w-4 h-4 text-primary" />
-                  )}
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild className="cursor-pointer rounded-lg">
-                <Link href="/care-recipients">
-                  <Home className="w-4 h-4 mr-2 text-muted-foreground" />
-                  Manage Spaces
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild className="cursor-pointer rounded-lg">
-                <Link href="/family">
-                  <Users className="w-4 h-4 mr-2 text-muted-foreground" />
-                  Manage Members
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Loved Ones Pills */}
-          {careRecipientsInFamily.length > 0 && (
-            <>
-              <span className="text-muted-foreground text-sm">•</span>
-              <div className="flex items-center gap-2 flex-wrap">
-                {careRecipientsInFamily.map((cr) => (
-                  <button
-                    key={cr.id}
-                    onClick={() => handleCareRecipientSwitch(cr.id)}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-                      cr.id === careRecipientId
-                        ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
-                    }`}
-                  >
-                    <Heart className="w-3.5 h-3.5" />
-                    {cr.preferredName || cr.fullName?.split(' ')[0] || 'Unknown'}
-                  </button>
-                ))}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setAddCareRecipientOpen(true)}
-                  className="h-8 px-2 rounded-full text-muted-foreground hover:text-foreground"
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            </>
-          )}
-
-          {careRecipientsInFamily.length === 0 && (
-            <>
-              <span className="text-muted-foreground text-sm">•</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setAddCareRecipientOpen(true)}
-                className="h-8 px-3 rounded-full text-primary hover:text-primary hover:bg-primary/10"
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Add Loved One
-              </Button>
-            </>
-          )}
-        </div>
-      )}
+      <FamilySpaceSelector onAddCareRecipient={() => setAddCareRecipientOpen(true)} />
 
       {/* Welcome Header - Enhanced */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8 animate-fade">
