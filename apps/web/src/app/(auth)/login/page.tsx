@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,63 @@ import { Card } from '@/components/ui/card';
 import { Eye, EyeOff, Heart } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { ApiError } from '@/lib/api/client';
+
+/**
+ * UNIQUE "Welcome Embrace" Login Animation
+ * - Heartbeat icon animation
+ * - Organic staggered reveals
+ * - Warmth wave across form
+ */
+
+// Unique stagger animation
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20, filter: 'blur(4px)' },
+  visible: {
+    opacity: 1,
+    y: 0,
+    filter: 'blur(0px)',
+    transition: {
+      type: 'spring',
+      stiffness: 300,
+      damping: 24,
+    },
+  },
+};
+
+// Heartbeat animation
+const heartbeatVariants = {
+  hidden: { scale: 0, opacity: 0 },
+  visible: {
+    scale: 1,
+    opacity: 1,
+    transition: {
+      type: 'spring',
+      stiffness: 400,
+      damping: 15,
+      delay: 0.2,
+    },
+  },
+  pulse: {
+    scale: [1, 1.15, 1, 1.1, 1],
+    transition: {
+      duration: 1.5,
+      repeat: Infinity,
+      repeatDelay: 3,
+      ease: 'easeInOut',
+    },
+  },
+};
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
@@ -33,15 +90,11 @@ export default function LoginPage() {
 
     try {
       await login(formData);
-      // Show success toast
       toast.success('Welcome back! Redirecting...');
-      // Don't set isLoading to false - PublicRoute wrapper will handle redirect
-      // and keep showing loading state until redirect completes
     } catch (err) {
       if (err instanceof ApiError) {
         const errorMsg = err.message || 'Invalid email or password';
 
-        // Check if error is about unverified email
         if (errorMsg.toLowerCase().includes('verify') || errorMsg.toLowerCase().includes('verified')) {
           setUnverifiedEmail(formData.email);
           const verifyMsg = 'Please verify your email address before logging in.';
@@ -58,129 +111,189 @@ export default function LoginPage() {
       }
       setIsLoading(false);
     }
-    // Don't set isLoading to false on success - keep showing loading until redirect
   };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
       className="w-full max-w-md mx-auto"
     >
-      {/* Logo/Brand */}
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-sage/20 mb-4">
-          <Heart className="w-8 h-8 text-sage" />
-        </div>
-        <h1 className="font-serif text-3xl md:text-4xl text-foreground mb-2">Welcome Back</h1>
-        <p className="text-muted-foreground">Sign in to continue caring together</p>
-      </div>
+      {/* Logo/Brand with heartbeat */}
+      <motion.div variants={itemVariants} className="text-center mb-8">
+        <motion.div
+          variants={heartbeatVariants}
+          initial="hidden"
+          animate={['visible', 'pulse']}
+          className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-sage/20 mb-4 relative"
+        >
+          {/* Pulse rings */}
+          <motion.div
+            className="absolute inset-0 rounded-full bg-sage/10"
+            animate={{
+              scale: [1, 1.5, 1.5],
+              opacity: [0.5, 0, 0],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              repeatDelay: 2,
+            }}
+          />
+          <Heart className="w-8 h-8 text-sage relative z-10" />
+        </motion.div>
+        
+        <motion.h1
+          className="font-serif text-3xl md:text-4xl text-foreground mb-2"
+          variants={itemVariants}
+        >
+          Welcome Back
+        </motion.h1>
+        <motion.p
+          className="text-muted-foreground"
+          variants={itemVariants}
+        >
+          Sign in to continue caring together
+        </motion.p>
+      </motion.div>
 
       {/* Form Card */}
-      <Card padding="spacious" className="shadow-sm">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20"
-            >
-              {error}
-              {unverifiedEmail && (
-                <div className="mt-3 pt-3 border-t border-destructive/20">
-                  <Link
-                    href={`/verify-email?email=${encodeURIComponent(unverifiedEmail)}`}
-                    className="inline-flex items-center gap-2 text-sage hover:text-sage/80 font-medium transition-colors"
-                  >
-                    Verify Email Now →
-                  </Link>
-                </div>
+      <motion.div variants={itemVariants}>
+        <Card padding="spacious" className="shadow-sm">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <AnimatePresence mode="wait">
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, height: 'auto', scale: 1 }}
+                  exit={{ opacity: 0, height: 0, scale: 0.95 }}
+                  transition={{ duration: 0.25, ease: 'easeOut' }}
+                  className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20 origin-top"
+                >
+                  {error}
+                  {unverifiedEmail && (
+                    <div className="mt-3 pt-3 border-t border-destructive/20">
+                      <Link
+                        href={`/verify-email?email=${encodeURIComponent(unverifiedEmail)}`}
+                        className="inline-flex items-center gap-2 text-sage hover:text-sage/80 font-medium transition-colors"
+                      >
+                        Verify Email Now →
+                      </Link>
+                    </div>
+                  )}
+                </motion.div>
               )}
-            </motion.div>
-          )}
+            </AnimatePresence>
 
-          <div className="space-y-2">
-            <Label htmlFor="email" className="text-sm font-medium">
-              Email Address
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              inputSize="lg"
-              required
-              autoComplete="email"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password" className="text-sm font-medium">
-                Password
+            <motion.div
+              className="space-y-2"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3, duration: 0.3 }}
+            >
+              <Label htmlFor="email" className="text-sm font-medium">
+                Email Address
               </Label>
-              <Link
-                href="/forgot-password"
-                className="text-sm text-sage hover:text-sage/80 transition-colors"
-              >
-                Forgot password?
-              </Link>
-            </div>
-            <div className="relative">
               <Input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Enter your password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 inputSize="lg"
                 required
-                autoComplete="current-password"
-                className="pr-12"
+                autoComplete="email"
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            </motion.div>
+
+            <motion.div
+              className="space-y-2"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.4, duration: 0.3 }}
+            >
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-sm font-medium">
+                  Password
+                </Label>
+                <Link
+                  href="/forgot-password"
+                  className="text-sm text-sage hover:text-sage/80 transition-colors"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Enter your password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  inputSize="lg"
+                  required
+                  autoComplete="current-password"
+                  className="pr-12"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 0.3 }}
+            >
+              <Button type="submit" variant="editorial" size="lg" fullWidth isLoading={isLoading}>
+                Sign In
+              </Button>
+            </motion.div>
+          </form>
+
+          <motion.div
+            className="mt-6 space-y-3 text-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6, duration: 0.3 }}
+          >
+            <p className="text-muted-foreground">
+              Don&apos;t have an account?{' '}
+              <Link
+                href="/register"
+                className="text-sage hover:text-sage/80 font-medium transition-colors"
               >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-            </div>
-          </div>
-
-          <Button type="submit" variant="editorial" size="lg" fullWidth isLoading={isLoading}>
-            Sign In
-          </Button>
-        </form>
-
-        <div className="mt-6 space-y-3 text-center">
-          <p className="text-muted-foreground">
-            Don&apos;t have an account?{' '}
-            <Link
-              href="/register"
-              className="text-sage hover:text-sage/80 font-medium transition-colors"
-            >
-              Create one
-            </Link>
-          </p>
-          <p className="text-muted-foreground text-sm">
-            Need to verify your email?{' '}
-            <Link
-              href="/verify-email"
-              className="text-sage hover:text-sage/80 font-medium transition-colors"
-            >
-              Click here
-            </Link>
-          </p>
-        </div>
-      </Card>
+                Create one
+              </Link>
+            </p>
+            <p className="text-muted-foreground text-sm">
+              Need to verify your email?{' '}
+              <Link
+                href="/verify-email"
+                className="text-sage hover:text-sage/80 font-medium transition-colors"
+              >
+                Click here
+              </Link>
+            </p>
+          </motion.div>
+        </Card>
+      </motion.div>
 
       {/* Trust message */}
-      <p className="text-center text-sm text-muted-foreground mt-6">
+      <motion.p
+        className="text-center text-sm text-muted-foreground mt-6"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.7, duration: 0.3 }}
+      >
         Your data is protected with enterprise-grade security
-      </p>
+      </motion.p>
     </motion.div>
   );
 }

@@ -7,97 +7,98 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { ArrowRight, LayoutDashboard } from 'lucide-react';
+import { AnimatedBackground } from '@/components/ui/animated-background';
+import {
+  ArrowRight,
+  LayoutDashboard,
+  MessageSquareX,
+  Pill,
+  Users,
+  Bell,
+  Shield,
+  Clock,
+  Heart,
+  CheckCircle2,
+  Sparkles,
+  Star,
+} from 'lucide-react';
 import { useAuthContext } from '@/components/providers/auth-provider';
 
-// Static data matching pixel-perfect exactly
+// Pain points that resonate with caregivers
+const painPoints = [
+  {
+    icon: MessageSquareX,
+    problem: 'Group text chaos',
+    solution: 'One shared space for updates',
+    description: 'No more scrolling through 147 unread messages to find out if Dad took his medication.',
+  },
+  {
+    icon: Pill,
+    problem: '"Did anyone give Mom her pills?"',
+    solution: 'Medication tracking & reminders',
+    description: 'See at a glance what\'s been given, what\'s due, and who\'s handling it.',
+  },
+  {
+    icon: Users,
+    problem: 'Sibling coordination nightmare',
+    solution: 'Task assignment without guilt',
+    description: 'Fair distribution of care duties. Everyone sees who\'s doing what—no awkward asks.',
+  },
+  {
+    icon: Bell,
+    problem: 'Feeling out of the loop',
+    solution: 'Real-time updates to everyone',
+    description: 'Doctor visits, mood changes, small wins—everyone in the circle knows instantly.',
+  },
+];
+
+// Trust signals
+const trustBadges = [
+  { icon: Shield, text: 'Bank-level encryption' },
+  { icon: Clock, text: 'Set up in 2 minutes' },
+  { icon: Heart, text: '100% free forever' },
+];
+
+// Social proof stats
 const stats = [
-  { value: '50,000+', label: 'Families' },
-  { value: '4.9', label: 'App Store rating' },
-  { value: '100%', label: 'Free forever' },
+  { value: '50,000+', label: 'Families trusting us' },
+  { value: '4.9', label: 'App Store rating', stars: true },
+  { value: '2 min', label: 'Average setup time' },
 ];
 
-const features = [
-  {
-    number: '01',
-    title: 'Private by design',
-    description: 'Your circle is yours alone. No ads, no data harvesting, no strangers. Just family.',
-  },
-  {
-    number: '02',
-    title: 'Shared awareness',
-    description: "Everyone stays informed without the endless text chains. One place, one truth.",
-  },
-  {
-    number: '03',
-    title: 'Gentle coordination',
-    description: 'Assign tasks without guilt. Request help without friction. Care without burnout.',
-  },
-  {
-    number: '04',
-    title: 'Lasting memory',
-    description: "Every update becomes part of your family's story. A record of love, preserved.",
-  },
-  {
-    number: '05',
-    title: 'Simple by choice',
-    description: 'No learning curve. No feature overload. Just the tools you actually need.',
-  },
-  {
-    number: '06',
-    title: 'Always free',
-    description: "Caring for family shouldn't cost extra. CareCircle is free, today and always.",
-  },
+// Feature highlights for the app preview section
+const appFeatures = [
+  'Shared care timeline',
+  'Medication reminders',
+  'Task coordination',
+  'Document storage',
+  'Family chat',
+  'Emergency contacts',
 ];
 
-const howItWorks = [
-  {
-    step: 'First',
-    title: 'Create your circle',
-    description: "Name it after your loved one. Add a photo if you'd like. It takes thirty seconds.",
-  },
-  {
-    step: 'Then',
-    title: 'Invite your people',
-    description: 'Send a simple link. Siblings, spouses, nurses, neighbors—anyone who helps.',
-  },
-  {
-    step: 'Finally',
-    title: 'Care together',
-    description:
-      'Share updates. Coordinate visits. Track medications. Celebrate small wins. Grieve together when needed.',
-  },
-];
-
+// Testimonials - real pain, real relief
 const testimonials = [
   {
-    id: 1,
-    quote:
-      "When Dad was diagnosed, our family scattered across four states suddenly needed to become a team. CareCircle gave us a home base. It's been two years now, and I can't imagine doing this without it.",
-    author: 'Jennifer Walsh',
-    role: 'Caring for her father in Portland, OR',
-    featured: true,
+    quote: "I was drowning in group texts and spreadsheets. Within a week of using CareCircle, I finally felt like I could breathe.",
+    author: 'Jennifer W.',
+    role: 'Caring for her mother with dementia',
+    avatar: 'JW',
   },
   {
-    id: 2,
-    quote: "No more group text chaos. No more 'did anyone call the pharmacy?' Now we just know.",
-    author: 'Michael & David Chen',
-    role: 'Brothers, San Francisco',
-    featured: false,
+    quote: "My brothers and I live in different states. CareCircle is how we stay connected to Dad's care without the 'who's doing what' arguments.",
+    author: 'Michael C.',
+    role: 'Long-distance caregiver',
+    avatar: 'MC',
   },
   {
-    id: 3,
-    quote:
-      "As her hospice nurse, being invited into the family's circle helped me provide better care. I could see the full picture.",
-    author: 'Nurse Patricia Okonkwo',
+    quote: "As a hospice nurse, being part of families' circles helps me provide better care. I see the full picture.",
+    author: 'Patricia O., RN',
     role: 'Hospice care provider',
-    featured: false,
+    avatar: 'PO',
   },
 ];
 
 export default function LandingPage() {
-  const featured = testimonials.find((t) => t.featured);
-  const secondary = testimonials.filter((t) => !t.featured).slice(0, 2);
   const { isAuthenticated, isInitialized, user } = useAuthContext();
   const router = useRouter();
 
@@ -108,382 +109,504 @@ export default function LandingPage() {
     }
   }, [isInitialized, isAuthenticated, user, router]);
 
+  const MainCTA = ({ size = 'lg' as const, className = '' }) => (
+    isInitialized && isAuthenticated && user ? (
+      <Link href="/dashboard">
+        <Button variant="editorial" size={size} className={`gap-2 ${className}`}>
+          <LayoutDashboard className="w-4 h-4" />
+          Go to Dashboard
+        </Button>
+      </Link>
+    ) : (
+      <Link href="/register">
+        <Button variant="editorial" size={size} className={className}>
+          Get organized in 2 minutes — free
+        </Button>
+      </Link>
+    )
+  );
+
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      {/* Animated Background - covers entire page */}
+      <AnimatedBackground />
+      
+      <div className="relative z-10">
+        <Header />
 
-      <main>
-        {/* Hero Section - Pixel Perfect */}
-        <section className="min-h-screen pt-20 texture-paper">
-          <div className="container mx-auto px-6">
-            {/* Editorial masthead */}
-            <div className="border-b border-border pb-6 mb-12">
-              <div className="flex items-end justify-between">
-                <p className="label-caps text-slate">Issue No. 01 — Family Care</p>
-                <p className="text-sm text-muted-foreground hidden md:block">Est. 2024</p>
-              </div>
-            </div>
-
-            {/* Main headline - full width impact */}
-            <div className="mb-16">
-              <motion.h1
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.8 }}
-                className="font-editorial text-5xl md:text-7xl lg:text-8xl text-foreground leading-[0.95] tracking-editorial mb-8 max-w-5xl"
-              >
-                Where families <em className="not-italic text-sage">gather</em> to care for those who
-                matter most
-              </motion.h1>
-            </div>
-
-            {/* Split content */}
-            <div className="grid lg:grid-cols-12 gap-12 lg:gap-8 pb-20">
-              {/* Left - Intro text */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.1 }}
-                className="lg:col-span-4"
-              >
-                <p className="text-muted-foreground text-lg leading-relaxed mb-8">
-                  A private space for coordinating care with grace. Share updates, organize tasks,
-                  and stay connected—without the noise.
-                </p>
-
-                <div className="flex flex-wrap items-center gap-3">
-                  {isInitialized && isAuthenticated && user ? (
-                    <Link href="/dashboard">
-                      <Button variant="editorial" size="lg" className="gap-2">
-                        <LayoutDashboard className="w-4 h-4" />
-                        Go to Dashboard
-                      </Button>
-                    </Link>
-                  ) : (
-                    <Link href="/register">
-                      <Button variant="editorial" size="lg">
-                        Create your circle
-                      </Button>
-                    </Link>
-                  )}
-                  <Link href="/how-it-works">
-                    <Button variant="editorial-outline" size="lg" className="group">
-                      Learn more
-                      <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                    </Button>
-                  </Link>
-                </div>
-              </motion.div>
-
-              {/* Center - Visual card */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.2 }}
-                className="lg:col-span-4 lg:col-start-6"
-              >
-                <div className="border border-border bg-card p-6">
-                  <p className="label-caps text-slate mb-4">Latest update</p>
-                  <p className="font-editorial text-xl text-foreground leading-snug mb-6">
-                    &ldquo;Mom had her best day in weeks. She walked to the garden and sat in the sun
-                    for an hour.&rdquo;
-                  </p>
-                  <div className="flex items-center gap-3 pt-4 border-t border-border">
-                    <div className="w-10 h-10 rounded-full bg-sage/30" />
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Sarah M.</p>
-                      <p className="text-xs text-muted-foreground">2 hours ago</p>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Right - Stats */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.3 }}
-                className="lg:col-span-3 lg:col-start-10"
-              >
-                <div className="space-y-8">
-                  {stats.map((stat, index) => (
-                    <div key={stat.label} className={index > 0 ? 'pt-8 border-t border-border' : ''}>
-                      <p className="font-editorial text-4xl text-foreground mb-1">{stat.value}</p>
-                      <p className="text-sm text-muted-foreground">{stat.label}</p>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            </div>
-          </div>
-
-          {/* Bottom rule with accent */}
-          <div className="border-t border-border">
+        <main>
+          {/* ═══════════════════════════════════════════════════════════════
+              HERO SECTION - Hit the pain point HARD
+          ═══════════════════════════════════════════════════════════════ */}
+          <section className="min-h-screen pt-24 pb-16 texture-paper relative flex items-center">
             <div className="container mx-auto px-6">
-              <div className="flex items-center justify-between py-4 text-sm text-muted-foreground">
-                <span>Scroll to explore</span>
-                <span className="hidden md:block">Private · Simple · Together</span>
-              </div>
-            </div>
-          </div>
-        </section>
+              <div className="grid lg:grid-cols-12 gap-12 items-center">
+                {/* Left - Main message */}
+                <div className="lg:col-span-7">
+                  {/* Empathy hook */}
+                  <motion.p
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="text-sage-600 font-medium mb-4 flex items-center gap-2"
+                  >
+                    <Heart className="w-4 h-4 text-sage fill-sage/30" />
+                    For the 53 million Americans caring for loved ones
+                  </motion.p>
 
-        {/* Features Section - Pixel Perfect */}
-        <section id="about" className="py-24 bg-card">
-          <div className="container mx-auto px-6">
-            {/* Section header - editorial style */}
-            <div className="border-b border-border pb-8 mb-16">
-              <div className="grid lg:grid-cols-2 gap-8">
-                <div>
-                  <p className="label-caps text-terracotta mb-4">What we offer</p>
-                  <h2 className="font-editorial text-3xl md:text-4xl text-foreground leading-tight tracking-editorial">
-                    Care should feel <em className="not-italic text-sage">intentional</em>, not
-                    overwhelming
-                  </h2>
-                </div>
-                <div className="flex items-end">
-                  <p className="text-muted-foreground text-lg leading-relaxed max-w-md">
-                    We believe that caring for someone you love shouldn&apos;t come with chaos.
-                    CareCircle is where families find peace of mind—together.
-                  </p>
-                </div>
-              </div>
-            </div>
+                  {/* Main headline - direct, emotional */}
+                  <motion.h1
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.1 }}
+                    className="font-editorial text-4xl sm:text-5xl md:text-6xl lg:text-7xl text-foreground leading-[1.05] tracking-editorial mb-6"
+                  >
+                    Stop drowning in{' '}
+                    <span className="relative inline-block">
+                      <span className="text-terracotta">group texts.</span>
+                      <svg className="absolute -bottom-1 left-0 w-full" viewBox="0 0 200 8" fill="none">
+                        <path d="M2 6C50 2 150 2 198 6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="text-terracotta/30" />
+                      </svg>
+                    </span>
+                    <br />
+                    Start caring{' '}
+                    <em className="not-italic text-sage">together.</em>
+                  </motion.h1>
 
-            {/* Feature list - editorial numbered list */}
-            <div className="space-y-0">
-              {features.map((feature) => (
+                  {/* Sub-headline - empathy + solution */}
+                  <motion.p
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.2 }}
+                    className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-8 max-w-xl"
+                  >
+                    CareCircle brings your family together in one private space—so you can 
+                    coordinate care, share updates, and actually <em>support</em> each other 
+                    instead of chasing information.
+                  </motion.p>
+
+                  {/* CTA buttons */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.3 }}
+                    className="flex flex-wrap items-center gap-4 mb-10"
+                  >
+                    <MainCTA />
+                    <Link href="/how-it-works">
+                      <Button variant="editorial-outline" size="lg" className="group">
+                        See how it works
+                        <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                      </Button>
+                    </Link>
+                  </motion.div>
+
+                  {/* Trust badges - inline */}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.6, delay: 0.4 }}
+                    className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground"
+                  >
+                    {trustBadges.map((badge) => (
+                      <span key={badge.text} className="flex items-center gap-2">
+                        <badge.icon className="w-4 h-4 text-sage" />
+                        {badge.text}
+                      </span>
+                    ))}
+                  </motion.div>
+                </div>
+
+                {/* Right - Visual proof / App preview mockup */}
                 <motion.div
-                  key={feature.number}
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.8, delay: 0.3 }}
+                  className="lg:col-span-5"
+                >
+                  <div className="relative">
+                    {/* Phone mockup frame */}
+                    <div className="relative mx-auto w-[280px] md:w-[320px] bg-foreground rounded-[40px] p-3 shadow-2xl shadow-foreground/20">
+                      {/* Screen */}
+                      <div className="bg-background rounded-[32px] overflow-hidden">
+                        {/* Status bar */}
+                        <div className="bg-sage/10 px-6 py-3 flex items-center justify-between text-xs">
+                          <span className="text-foreground font-medium">CareCircle</span>
+                          <span className="text-muted-foreground">Today, 2:34 PM</span>
+                        </div>
+                        
+                        {/* App content preview */}
+                        <div className="p-4 space-y-3">
+                          {/* Update card */}
+                          <div className="bg-card border border-border rounded-xl p-3">
+                            <div className="flex items-start gap-3">
+                              <div className="w-8 h-8 rounded-full bg-sage/20 flex items-center justify-center text-xs font-medium text-sage-700">SM</div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-foreground">Sarah shared an update</p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  &quot;Mom had a great day! She remembered all our names at lunch 💚&quot;
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Medication reminder */}
+                          <div className="bg-sage/10 border border-sage/20 rounded-xl p-3">
+                            <div className="flex items-center gap-2 text-sage-700">
+                              <Pill className="w-4 h-4" />
+                              <span className="text-sm font-medium">Medication given ✓</span>
+                            </div>
+                            <p className="text-xs text-sage-600 mt-1">Metformin 500mg • 2:00 PM • by David</p>
+                          </div>
+
+                          {/* Task */}
+                          <div className="bg-card border border-border rounded-xl p-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <CheckCircle2 className="w-4 h-4 text-sage" />
+                                <span className="text-sm text-foreground">Pharmacy pickup</span>
+                              </div>
+                              <span className="text-xs bg-terracotta/10 text-terracotta px-2 py-0.5 rounded-full">Today</span>
+                            </div>
+                          </div>
+
+                          {/* Family activity */}
+                          <div className="flex items-center gap-2 px-1">
+                            <div className="flex -space-x-2">
+                              <div className="w-6 h-6 rounded-full bg-sage/30 border-2 border-background"></div>
+                              <div className="w-6 h-6 rounded-full bg-terracotta/30 border-2 border-background"></div>
+                              <div className="w-6 h-6 rounded-full bg-slate/30 border-2 border-background"></div>
+                            </div>
+                            <span className="text-xs text-muted-foreground">3 family members active</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Floating badges */}
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.5, delay: 0.6 }}
+                      className="absolute -left-4 top-1/4 bg-background border border-border rounded-lg px-3 py-2 shadow-lg"
+                    >
+                      <div className="flex items-center gap-2 text-sm">
+                        <Bell className="w-4 h-4 text-sage" />
+                        <span className="text-foreground font-medium">Never miss an update</span>
+                      </div>
+                    </motion.div>
+
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.5, delay: 0.8 }}
+                      className="absolute -right-4 bottom-1/4 bg-background border border-border rounded-lg px-3 py-2 shadow-lg"
+                    >
+                      <div className="flex items-center gap-2 text-sm">
+                        <Shield className="w-4 h-4 text-sage" />
+                        <span className="text-foreground font-medium">Private & secure</span>
+                      </div>
+                    </motion.div>
+                  </div>
+                </motion.div>
+              </div>
+            </div>
+          </section>
+
+          {/* ═══════════════════════════════════════════════════════════════
+              PAIN POINTS → SOLUTIONS SECTION
+          ═══════════════════════════════════════════════════════════════ */}
+          <section className="py-20 bg-card">
+            <div className="container mx-auto px-6">
+              {/* Section header */}
+              <div className="text-center mb-16">
+                <motion.p
                   initial={{ opacity: 0 }}
                   whileInView={{ opacity: 1 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.5 }}
-                  className="grid lg:grid-cols-12 gap-6 py-10 border-b border-border group hover:bg-background/50 transition-colors duration-300 -mx-6 px-6"
+                  className="label-caps text-terracotta mb-4"
                 >
-                  <div className="lg:col-span-1">
-                    <span className="font-editorial text-3xl text-terracotta/60">
-                      {feature.number}
-                    </span>
-                  </div>
-                  <div className="lg:col-span-4">
-                    <h3 className="font-editorial text-2xl text-foreground tracking-editorial">
-                      {feature.title}
-                    </h3>
-                  </div>
-                  <div className="lg:col-span-5 lg:col-start-7">
-                    <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* How It Works Section - Pixel Perfect */}
-        <section id="how-it-works" className="py-24 texture-paper">
-          <div className="container mx-auto px-6">
-            {/* Asymmetric layout */}
-            <div className="grid lg:grid-cols-12 gap-12">
-              {/* Left column - sticky intro */}
-              <div className="lg:col-span-4">
-                <div className="lg:sticky lg:top-24">
-                  <p className="label-caps text-slate mb-4">How it works</p>
-                  <h2 className="font-editorial text-3xl md:text-4xl text-foreground leading-tight tracking-editorial mb-6">
-                    Getting started takes{' '}
-                    <em className="not-italic text-sage">minutes</em>
-                  </h2>
-                  <p className="text-muted-foreground leading-relaxed mb-8">
-                    No complicated setup. No learning curve. Just a simple way to bring your family
-                    together around the care that matters.
-                  </p>
-                  {isInitialized && isAuthenticated && user ? (
-                    <Link href="/dashboard">
-                      <Button variant="editorial" size="lg" className="gap-2">
-                        <LayoutDashboard className="w-4 h-4" />
-                        Dashboard
-                      </Button>
-                    </Link>
-                  ) : (
-                    <Link href="/how-it-works">
-                      <Button variant="editorial-outline" size="lg">
-                        See full guide
-                      </Button>
-                    </Link>
-                  )}
-                </div>
+                  We understand the chaos
+                </motion.p>
+                <motion.h2
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  className="font-editorial text-3xl md:text-4xl lg:text-5xl text-foreground tracking-editorial max-w-3xl mx-auto"
+                >
+                  Caregiving is hard enough.
+                  <br />
+                  <span className="text-muted-foreground">Coordination shouldn't be.</span>
+                </motion.h2>
               </div>
 
-              {/* Right column - steps */}
-              <div className="lg:col-span-7 lg:col-start-6">
-                <div className="space-y-0">
-                  {howItWorks.map((step) => (
-                    <motion.div
-                      key={step.step}
-                      initial={{ opacity: 0, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      className="grid grid-cols-12 gap-6 py-12 border-t border-border"
-                    >
-                      <div className="col-span-2 md:col-span-1">
-                        <span className="font-editorial text-5xl text-terracotta/40">
-                          {step.step}
-                        </span>
+              {/* Pain points grid */}
+              <div className="grid md:grid-cols-2 gap-6 lg:gap-8 max-w-5xl mx-auto">
+                {painPoints.map((point, index) => (
+                  <motion.div
+                    key={point.problem}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1 }}
+                    className="bg-background border border-border rounded-2xl p-6 md:p-8 hover:border-sage/50 hover:shadow-lg transition-all duration-300"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-terracotta/10 flex items-center justify-center">
+                        <point.icon className="w-6 h-6 text-terracotta" />
                       </div>
-                      <div className="col-span-10 md:col-span-11 md:pl-8">
-                        <h3 className="font-editorial text-2xl text-foreground mb-4 tracking-editorial">
-                          {step.title}
+                      <div>
+                        {/* Problem */}
+                        <p className="text-sm text-terracotta font-medium mb-1 line-through decoration-terracotta/30">
+                          {point.problem}
+                        </p>
+                        {/* Solution */}
+                        <h3 className="font-editorial text-xl text-foreground mb-2 tracking-editorial">
+                          {point.solution}
                         </h3>
-                        <p className="text-muted-foreground leading-relaxed max-w-lg">
-                          {step.description}
+                        {/* Description */}
+                        <p className="text-muted-foreground text-sm leading-relaxed">
+                          {point.description}
                         </p>
                       </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Stories Section - Pixel Perfect */}
-        <section id="stories" className="py-24 bg-card">
-          <div className="container mx-auto px-6">
-            {/* Section header */}
-            <div className="border-b border-border pb-8 mb-16">
-              <div className="flex items-end justify-between">
-                <div>
-                  <p className="label-caps text-slate mb-4">Stories</p>
-                  <h2 className="font-editorial text-3xl md:text-4xl text-foreground tracking-editorial">
-                    From families who found their footing
-                  </h2>
-                </div>
-                <Link
-                  href="/stories"
-                  className="hidden md:block text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  View all stories →
-                </Link>
-              </div>
-            </div>
-
-            {/* Featured quote - full width */}
-            {featured && (
-              <div className="mb-16">
-                <blockquote className="max-w-4xl">
-                  <p className="font-editorial text-3xl md:text-4xl lg:text-5xl text-foreground leading-[1.15] tracking-editorial mb-10">
-                    &ldquo;{featured.quote}&rdquo;
-                  </p>
-                  <footer className="flex items-center gap-4 pt-8 border-t border-border">
-                    <div className="w-14 h-14 rounded-full bg-sage/30" />
-                    <div>
-                      <p className="font-medium text-foreground">{featured.author}</p>
-                      <p className="text-sm text-muted-foreground">{featured.role}</p>
                     </div>
-                  </footer>
-                </blockquote>
+                  </motion.div>
+                ))}
               </div>
-            )}
+            </div>
+          </section>
 
-            {/* Secondary testimonials - grid */}
-            <div className="grid md:grid-cols-2 gap-px bg-border mt-16">
-              {secondary.map((testimonial) => (
-                <div key={testimonial.id} className="bg-card p-8 md:p-10">
-                  <blockquote>
-                    <p className="text-foreground text-lg leading-relaxed mb-8">
+          {/* ═══════════════════════════════════════════════════════════════
+              SOCIAL PROOF - Stats & Trust
+          ═══════════════════════════════════════════════════════════════ */}
+          <section className="py-16 texture-paper border-y border-border">
+            <div className="container mx-auto px-6">
+              <div className="grid grid-cols-3 gap-8 max-w-3xl mx-auto text-center">
+                {stats.map((stat, index) => (
+                  <motion.div
+                    key={stat.label}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <p className="font-editorial text-3xl md:text-4xl text-foreground">{stat.value}</p>
+                      {stat.stars && (
+                        <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">{stat.label}</p>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* ═══════════════════════════════════════════════════════════════
+              HOW IT WORKS - Simple 3 Steps
+          ═══════════════════════════════════════════════════════════════ */}
+          <section className="py-20 bg-card">
+            <div className="container mx-auto px-6">
+              <div className="text-center mb-16">
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  whileInView={{ opacity: 1 }}
+                  viewport={{ once: true }}
+                  className="label-caps text-sage-600 mb-4"
+                >
+                  Getting started
+                </motion.p>
+                <motion.h2
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  className="font-editorial text-3xl md:text-4xl text-foreground tracking-editorial"
+                >
+                  Up and running in <span className="text-sage">2 minutes</span>
+                </motion.h2>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+                {[
+                  {
+                    step: '1',
+                    title: 'Create your circle',
+                    description: 'Name it after your loved one. Takes 30 seconds.',
+                    icon: Sparkles,
+                  },
+                  {
+                    step: '2',
+                    title: 'Invite family',
+                    description: 'Send a link. Siblings, nurses, anyone who helps.',
+                    icon: Users,
+                  },
+                  {
+                    step: '3',
+                    title: 'Care together',
+                    description: 'Share updates, coordinate tasks, stay connected.',
+                    icon: Heart,
+                  },
+                ].map((item, index) => (
+                  <motion.div
+                    key={item.step}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1 }}
+                    className="text-center"
+                  >
+                    <div className="w-16 h-16 rounded-2xl bg-sage/10 flex items-center justify-center mx-auto mb-4">
+                      <item.icon className="w-7 h-7 text-sage" />
+                    </div>
+                    <div className="inline-block bg-sage/20 text-sage-700 text-xs font-semibold px-2 py-0.5 rounded-full mb-3">
+                      Step {item.step}
+                    </div>
+                    <h3 className="font-editorial text-xl text-foreground mb-2 tracking-editorial">
+                      {item.title}
+                    </h3>
+                    <p className="text-muted-foreground text-sm">{item.description}</p>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* ═══════════════════════════════════════════════════════════════
+              TESTIMONIALS - Real Stories
+          ═══════════════════════════════════════════════════════════════ */}
+          <section className="py-20 texture-paper">
+            <div className="container mx-auto px-6">
+              <div className="text-center mb-16">
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  whileInView={{ opacity: 1 }}
+                  viewport={{ once: true }}
+                  className="label-caps text-terracotta mb-4"
+                >
+                  From families like yours
+                </motion.p>
+                <motion.h2
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  className="font-editorial text-3xl md:text-4xl text-foreground tracking-editorial"
+                >
+                  Real relief. Real families.
+                </motion.h2>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+                {testimonials.map((testimonial, index) => (
+                  <motion.div
+                    key={testimonial.author}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1 }}
+                    className="bg-card border border-border rounded-2xl p-6"
+                  >
+                    <div className="flex gap-0.5 mb-4">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star key={star} className="w-4 h-4 text-amber-400 fill-amber-400" />
+                      ))}
+                    </div>
+                    <blockquote className="text-foreground leading-relaxed mb-6">
                       &ldquo;{testimonial.quote}&rdquo;
-                    </p>
-                    <footer className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-terracotta/20" />
+                    </blockquote>
+                    <div className="flex items-center gap-3 pt-4 border-t border-border">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-sage/40 to-sage/20 flex items-center justify-center text-sage-700 font-medium text-sm">
+                        {testimonial.avatar}
+                      </div>
                       <div>
-                        <p className="font-medium text-foreground text-sm">{testimonial.author}</p>
+                        <p className="text-sm font-medium text-foreground">{testimonial.author}</p>
                         <p className="text-xs text-muted-foreground">{testimonial.role}</p>
                       </div>
-                    </footer>
-                  </blockquote>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Community Section - Pixel Perfect (Dark CTA) */}
-        <section className="py-32 bg-foreground text-background">
-          <div className="container mx-auto px-6">
-            <div className="grid lg:grid-cols-12 gap-12 items-center">
-              {/* Left - Main CTA */}
-              <div className="lg:col-span-7">
-                <p className="label-caps text-background/50 mb-6">Begin your journey</p>
-
-                <h2 className="font-editorial text-4xl md:text-5xl lg:text-6xl text-background leading-[1.1] tracking-editorial mb-8">
-                  Your family deserves a <em className="not-italic text-sage">quieter</em> way to
-                  care
-                </h2>
-
-                <p className="text-background/60 text-lg leading-relaxed mb-10 max-w-lg">
-                  Join thousands of families who&apos;ve found peace of mind through coordinated
-                  care. Start your circle today—it&apos;s free, private, and takes less than a
-                  minute.
-                </p>
-
-                <div className="flex flex-wrap gap-4">
-                  {isInitialized && isAuthenticated && user ? (
-                    <Link href="/dashboard">
-                      <Button
-                        variant="outline"
-                        size="xl"
-                        className="border-background/30 text-background hover:bg-background/10 hover:border-background/50 tracking-caps uppercase text-xs font-semibold gap-2"
-                      >
-                        <LayoutDashboard className="w-4 h-4" />
-                        Go to Dashboard
-                      </Button>
-                    </Link>
-                  ) : (
-                    <Link href="/register">
-                      <Button
-                        variant="outline"
-                        size="xl"
-                        className="border-background/30 text-background hover:bg-background/10 hover:border-background/50 tracking-caps uppercase text-xs font-semibold"
-                      >
-                        Create your circle
-                      </Button>
-                    </Link>
-                  )}
-                  <Link href="/how-it-works">
-                    <Button
-                      variant="ghost"
-                      size="xl"
-                      className="text-background/70 hover:text-background hover:bg-transparent tracking-caps uppercase text-xs font-semibold"
-                    >
-                      Learn more →
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-
-              {/* Right - Trust signals */}
-              <div className="lg:col-span-4 lg:col-start-9">
-                <div className="space-y-8 border-l border-background/20 pl-8">
-                  <div>
-                    <p className="font-editorial text-4xl text-background mb-2">Free</p>
-                    <p className="text-background/50 text-sm">Forever, no credit card</p>
-                  </div>
-                  <div>
-                    <p className="font-editorial text-4xl text-background mb-2">Private</p>
-                    <p className="text-background/50 text-sm">Your data stays yours</p>
-                  </div>
-                  <div>
-                    <p className="font-editorial text-4xl text-background mb-2">Simple</p>
-                    <p className="text-background/50 text-sm">Setup in under a minute</p>
-                  </div>
-                </div>
+                    </div>
+                  </motion.div>
+                ))}
               </div>
             </div>
-          </div>
-        </section>
-      </main>
+          </section>
 
-      <Footer />
+          {/* ═══════════════════════════════════════════════════════════════
+              FINAL CTA - Strong Close
+          ═══════════════════════════════════════════════════════════════ */}
+          <section className="py-24 md:py-32 bg-foreground text-background relative overflow-hidden">
+            {/* Subtle pattern */}
+            <div className="absolute inset-0 opacity-5">
+              <div className="absolute inset-0" style={{
+                backgroundImage: `radial-gradient(circle at 2px 2px, currentColor 1px, transparent 0)`,
+                backgroundSize: '32px 32px',
+              }} />
+            </div>
+
+            <div className="container mx-auto px-6 relative z-10">
+              <div className="max-w-3xl mx-auto text-center">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                >
+                  <p className="label-caps text-sage mb-6">Ready to get organized?</p>
+                  
+                  <h2 className="font-editorial text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-background leading-[1.1] tracking-editorial mb-6">
+                    Your family deserves{' '}
+                    <em className="not-italic text-sage">peace of mind.</em>
+                  </h2>
+
+                  <p className="text-background/70 text-lg leading-relaxed mb-10 max-w-xl mx-auto">
+                    Join 50,000+ families who&apos;ve replaced the chaos with calm. 
+                    Create your free circle today—no credit card, no catch.
+                  </p>
+
+                  <div className="flex flex-wrap justify-center gap-4 mb-10">
+                    {isInitialized && isAuthenticated && user ? (
+                      <Link href="/dashboard">
+                        <Button
+                          size="xl"
+                          className="bg-sage text-sage-900 hover:bg-sage/90 font-semibold gap-2"
+                        >
+                          <LayoutDashboard className="w-5 h-5" />
+                          Go to Dashboard
+                        </Button>
+                      </Link>
+                    ) : (
+                      <Link href="/register">
+                        <Button
+                          size="xl"
+                          className="bg-sage text-sage-900 hover:bg-sage/90 font-semibold"
+                        >
+                          Create your free circle
+                          <ArrowRight className="w-5 h-5 ml-2" />
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+
+                  {/* Final trust signals */}
+                  <div className="flex flex-wrap justify-center items-center gap-6 text-sm text-background/50">
+                    <span className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4" />
+                      Free forever
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4" />
+                      No credit card
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4" />
+                      Set up in 2 minutes
+                    </span>
+                  </div>
+                </motion.div>
+              </div>
+            </div>
+          </section>
+        </main>
+
+        <Footer />
+      </div>
     </div>
   );
 }

@@ -9,6 +9,8 @@ import {
   getRedisConfig,
   getDefaultJobOptions,
   getDefaultWorkerOptions,
+  getQueueEventsOptions,
+  shouldDisableQueueEvents,
   isWebPushConfigured 
 } from '@carecircle/config';
 import { createLogger } from '@carecircle/logger';
@@ -121,4 +123,9 @@ export const config = {
 // BULLMQ OPTIONS EXPORTS
 // ============================================================================
 
-export { getDefaultJobOptions, getDefaultWorkerOptions };
+export { 
+  getDefaultJobOptions, 
+  getDefaultWorkerOptions,
+  getQueueEventsOptions,
+  shouldDisableQueueEvents,
+};

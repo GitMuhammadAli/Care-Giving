@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, ElementType } from 'react';
+import { LucideIcon } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { format, formatDistanceToNow } from 'date-fns';
 import { 
@@ -45,14 +46,14 @@ interface ActivityFeedResponse {
   familyId: string;
 }
 
-const categoryIcons: Record<string, React.ElementType> = {
+const categoryIcons: Record<string, LucideIcon> = {
   timeline: FileText,
   medication: Pill,
   appointment: Calendar,
   emergency: AlertTriangle,
 };
 
-const typeIcons: Record<string, React.ElementType> = {
+const typeIcons: Record<string, LucideIcon> = {
   VITALS: Thermometer,
   SYMPTOM: Heart,
   MOOD: Heart,
@@ -224,7 +225,7 @@ function ActivityItem({
   compact: boolean;
   isLast: boolean;
 }) {
-  const Icon = typeIcons[activity.type] || categoryIcons[activity.category] || Activity;
+  const IconComponent: LucideIcon = typeIcons[activity.type] || categoryIcons[activity.category] || Activity;
   const timeAgo = formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true });
   const fullTime = format(new Date(activity.timestamp), 'MMM d, yyyy h:mm a');
 
@@ -245,7 +246,7 @@ function ActivityItem({
         'h-10 w-10 rounded-full flex items-center justify-center shrink-0 border',
         categoryColors[activity.category] || 'bg-gray-50 text-gray-600'
       )}>
-        <Icon className="h-5 w-5" />
+        <IconComponent className="h-5 w-5" />
       </div>
 
       {/* Content */}

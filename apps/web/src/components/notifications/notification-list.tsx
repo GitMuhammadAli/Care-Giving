@@ -15,6 +15,7 @@ import {
   Clock,
   FileText,
   Activity,
+  LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Notification, NotificationType } from '@/lib/api/notifications';
@@ -27,7 +28,7 @@ interface NotificationListProps {
   emptyMessage?: string;
 }
 
-const notificationIcons: Record<NotificationType, React.ElementType> = {
+const notificationIcons: Record<NotificationType, LucideIcon> = {
   MEDICATION_REMINDER: Pill,
   MEDICATION_MISSED: Pill,
   APPOINTMENT_REMINDER: Calendar,
@@ -99,7 +100,7 @@ export function NotificationList({
   return (
     <div className={cn('divide-y divide-border', className)}>
       {notifications.map((notification) => {
-        const Icon = notificationIcons[notification.type] || Info;
+        const Icon: LucideIcon = notificationIcons[notification.type] || Info;
         const colorClass = notificationColors[notification.type] || 'bg-gray-100 text-gray-600';
 
         return (
