@@ -1,0 +1,625 @@
+/* CareCircle Chat - Sage Theme
+   ============================================
+   Force sage theme with high specificity to
+   override Stream Chat defaults
+   ============================================ */
+
+/* ============================================
+   ROOT CONTAINER
+   ============================================ */
+.str-chat,
+.str-chat.str-chat__theme-light {
+  --str-chat__font-family: var(--font-sans), system-ui, sans-serif;
+  --str-chat__primary-color: hsl(92 14% 32%) !important;
+  --str-chat__active-primary-color: hsl(92 14% 32%) !important;
+  --str-chat__primary-surface-color: hsl(92 14% 32%) !important;
+  --str-chat__primary-surface-color-low-emphasis: hsl(92 15% 94%) !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  background: hsl(var(--background)) !important;
+  font-family: var(--font-sans);
+}
+
+.str-chat__container,
+.str-chat__main-panel,
+.str-chat-channel,
+.str-chat__channel {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0;
+}
+
+.str-chat__main-panel {
+  flex: 1 1 0%;
+  min-height: 0;
+}
+
+.str-chat__main-panel-inner,
+.str-chat-channel .str-chat__container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* ============================================
+   HEADER
+   ============================================ */
+.str-chat__header-livestream,
+.str-chat .str-chat__header-livestream {
+  padding: 16px !important;
+  background: hsl(var(--card)) !important;
+  border-bottom: 1px solid hsl(var(--border)) !important;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.str-chat__header-livestream-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.str-chat__header-livestream-left--title {
+  font-weight: 600;
+  font-size: 1.125rem;
+  color: hsl(var(--foreground)) !important;
+}
+
+.str-chat__header-livestream-left--members {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground)) !important;
+  margin-top: 2px;
+}
+
+/* ============================================
+   MESSAGE LIST
+   ============================================ */
+.str-chat__list,
+.str-chat .str-chat__list {
+  flex: 1 1 0%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px !important;
+  background: hsl(var(--background)) !important;
+  min-height: 0;
+}
+
+.str-chat__ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.str-chat__li {
+  margin-bottom: 4px;
+}
+
+.str-chat__li--top,
+.str-chat__li--single {
+  margin-top: 16px;
+}
+
+/* ============================================
+   MESSAGE WRAPPER & ALIGNMENT
+   ============================================ */
+.str-chat__message-simple,
+.str-chat .str-chat__message-simple {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 10px !important;
+  padding: 4px 0 !important;
+}
+
+.str-chat__message-simple-wrapper {
+  display: flex;
+  flex-direction: column;
+  max-width: 75%;
+}
+
+/* Own messages - align right */
+.str-chat__message--me,
+.str-chat .str-chat__message--me {
+  flex-direction: row-reverse !important;
+}
+
+.str-chat__message--me .str-chat__message-simple-wrapper {
+  align-items: flex-end;
+}
+
+/* Other messages - align left */
+.str-chat__message--other .str-chat__message-simple-wrapper {
+  align-items: flex-start;
+}
+
+/* ============================================
+   MESSAGE BUBBLES - FORCE SAGE THEME
+   ============================================ */
+.str-chat__message-bubble,
+.str-chat .str-chat__message-bubble {
+  padding: 12px 16px !important;
+  word-wrap: break-word;
+  position: relative;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+.str-chat__message-text,
+.str-chat .str-chat__message-text {
+  font-size: 0.9375rem !important;
+  line-height: 1.5 !important;
+}
+
+.str-chat__message-text p {
+  margin: 0;
+}
+
+/* === OUTGOING (Self) - DARK SAGE GRADIENT === */
+.str-chat__message--me .str-chat__message-bubble,
+.str-chat .str-chat__message--me .str-chat__message-bubble,
+.str-chat__theme-light .str-chat__message--me .str-chat__message-bubble {
+  background: linear-gradient(135deg, hsl(92 14% 38%), hsl(92 14% 28%)) !important;
+  color: #FFFFFF !important;
+  border-radius: 20px 20px 6px 20px !important;
+  border: none !important;
+}
+
+.str-chat__message--me .str-chat__message-text,
+.str-chat__message--me .str-chat__message-text p,
+.str-chat__message--me .str-chat__message-bubble *,
+.str-chat .str-chat__message--me .str-chat__message-text,
+.str-chat .str-chat__message--me .str-chat__message-text p {
+  color: #FFFFFF !important;
+}
+
+/* === INCOMING (Others) - LIGHT SAGE === */
+.str-chat__message--other .str-chat__message-bubble,
+.str-chat .str-chat__message--other .str-chat__message-bubble,
+.str-chat__theme-light .str-chat__message--other .str-chat__message-bubble {
+  background: hsl(92 15% 94%) !important;
+  color: hsl(0 0% 15%) !important;
+  border-radius: 20px 20px 20px 6px !important;
+  border: 1px solid hsl(92 13% 85%) !important;
+}
+
+.str-chat__message--other .str-chat__message-text,
+.str-chat__message--other .str-chat__message-text p,
+.str-chat .str-chat__message--other .str-chat__message-text,
+.str-chat .str-chat__message--other .str-chat__message-text p {
+  color: hsl(0 0% 15%) !important;
+}
+
+/* ============================================
+   SENDER NAME - With Avatar Inline
+   ============================================ */
+.str-chat__message-simple-name,
+.str-chat .str-chat__message-simple-name {
+  font-size: 0.8rem !important;
+  font-weight: 700 !important;
+  color: hsl(92 14% 32%) !important;
+  margin-bottom: 6px !important;
+  padding-left: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: -0.01em;
+}
+
+/* Hide sender name for own messages */
+.str-chat__message--me .str-chat__message-simple-name {
+  display: none !important;
+}
+
+/* ============================================
+   TIMESTAMP
+   ============================================ */
+.str-chat__message-simple-timestamp,
+.str-chat .str-chat__message-simple-timestamp {
+  font-size: 0.65rem !important;
+  color: hsl(var(--muted-foreground)) !important;
+  margin-top: 4px !important;
+  padding: 0 4px;
+}
+
+.str-chat__message--me .str-chat__message-simple-timestamp {
+  text-align: right;
+}
+
+.str-chat__message--other .str-chat__message-simple-timestamp {
+  text-align: left;
+}
+
+/* ============================================
+   AVATARS - SAGE GRADIENT WITH INITIALS
+   ============================================ */
+.str-chat__avatar,
+.str-chat .str-chat__avatar {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 12px !important;
+  flex-shrink: 0;
+  background: linear-gradient(145deg, hsl(92 14% 45%), hsl(92 14% 32%)) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden;
+  border: 2px solid hsl(92 15% 90%) !important;
+  box-shadow: 0 2px 8px rgba(82, 94, 72, 0.2) !important;
+}
+
+/* Header avatar slightly larger */
+.str-chat__header-livestream .str-chat__avatar {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 14px !important;
+}
+
+.str-chat__avatar-image,
+.str-chat .str-chat__avatar-image {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 10px !important;
+}
+
+/* Avatar Fallback - Bold Initial */
+.str-chat__avatar-fallback,
+.str-chat .str-chat__avatar-fallback,
+.str-chat__avatar--fallback,
+.str-chat .str-chat__avatar--fallback {
+  font-size: 1rem !important;
+  font-weight: 800 !important;
+  color: #FFFFFF !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+/* Variation colors for different users */
+.str-chat__avatar:nth-child(2n),
+.str-chat__li:nth-child(2n) .str-chat__avatar {
+  background: linear-gradient(145deg, hsl(92 12% 50%), hsl(92 12% 38%)) !important;
+}
+
+.str-chat__avatar:nth-child(3n),
+.str-chat__li:nth-child(3n) .str-chat__avatar {
+  background: linear-gradient(145deg, hsl(25 28% 55%), hsl(25 28% 42%)) !important;
+}
+
+.str-chat__avatar:nth-child(5n),
+.str-chat__li:nth-child(5n) .str-chat__avatar {
+  background: linear-gradient(145deg, hsl(208 18% 45%), hsl(208 18% 32%)) !important;
+}
+
+/* Hide avatar for own messages */
+.str-chat__message--me .str-chat__avatar {
+  display: none !important;
+}
+
+/* ============================================
+   INPUT BAR - Fixed at bottom
+   ============================================ */
+.str-chat__message-input,
+.str-chat .str-chat__message-input {
+  padding: 16px !important;
+  background: hsl(var(--card)) !important;
+  border-top: 1px solid hsl(var(--border)) !important;
+  flex-shrink: 0 !important;
+  margin-top: auto;
+}
+
+.str-chat__input-flat,
+.str-chat .str-chat__input-flat {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  background: hsl(var(--background)) !important;
+  border-radius: 24px !important;
+  padding: 10px 18px !important;
+  border: 2px solid hsl(var(--border)) !important;
+  transition: all 0.2s ease !important;
+}
+
+.str-chat__input-flat:focus-within {
+  border-color: hsl(92 14% 32%) !important;
+  box-shadow: 0 0 0 4px hsl(92 14% 32% / 0.12) !important;
+}
+
+.str-chat__input-flat-wrapper {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 8px;
+}
+
+.str-chat__textarea {
+  flex: 1;
+}
+
+.str-chat__textarea textarea,
+.str-chat .str-chat__textarea textarea {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  resize: none !important;
+  font-size: 0.9375rem !important;
+  color: hsl(var(--foreground)) !important;
+  min-height: 24px !important;
+  max-height: 120px !important;
+  line-height: 1.5 !important;
+  padding: 0 !important;
+  width: 100% !important;
+}
+
+.str-chat__textarea textarea::placeholder {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+/* Send Button - Sage */
+.str-chat__send-button,
+.str-chat .str-chat__send-button {
+  background: linear-gradient(135deg, hsl(92 14% 38%), hsl(92 14% 28%)) !important;
+  color: #FFFFFF !important;
+  border: none !important;
+  border-radius: 50% !important;
+  width: 42px !important;
+  height: 42px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(82, 94, 72, 0.3) !important;
+}
+
+.str-chat__send-button:hover {
+  transform: scale(1.08) !important;
+  box-shadow: 0 4px 12px rgba(82, 94, 72, 0.4) !important;
+}
+
+.str-chat__send-button:active {
+  transform: scale(0.95) !important;
+}
+
+.str-chat__send-button:disabled {
+  background: transparent !important;
+  color: hsl(92 14% 32%) !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+  border: 2px solid hsl(92 13% 81%) !important;
+}
+
+.str-chat__send-button svg,
+.str-chat .str-chat__send-button svg {
+  width: 20px !important;
+  height: 20px !important;
+  color: #FFFFFF !important;
+  fill: #FFFFFF !important;
+  stroke: #FFFFFF !important;
+}
+
+.str-chat__send-button svg path,
+.str-chat .str-chat__send-button svg path {
+  fill: #FFFFFF !important;
+  stroke: #FFFFFF !important;
+}
+
+/* Disabled state - sage icon */
+.str-chat__send-button:disabled svg,
+.str-chat .str-chat__send-button:disabled svg {
+  color: hsl(92 14% 32%) !important;
+  fill: hsl(92 14% 32%) !important;
+  stroke: hsl(92 14% 32%) !important;
+}
+
+.str-chat__send-button:disabled svg path,
+.str-chat .str-chat__send-button:disabled svg path {
+  fill: hsl(92 14% 32%) !important;
+  stroke: hsl(92 14% 32%) !important;
+}
+
+/* Attachment & emoji buttons */
+.str-chat__fileupload-wrapper,
+.str-chat__input-flat-emojiselect,
+.str-chat .str-chat__fileupload-wrapper,
+.str-chat .str-chat__input-flat-emojiselect {
+  color: hsl(var(--muted-foreground)) !important;
+  cursor: pointer;
+  padding: 8px !important;
+  border-radius: 50% !important;
+  transition: all 0.2s ease;
+}
+
+.str-chat__fileupload-wrapper:hover,
+.str-chat__input-flat-emojiselect:hover {
+  color: hsl(92 14% 32%) !important;
+  background: hsl(92 14% 32% / 0.1) !important;
+}
+
+/* ============================================
+   DATE SEPARATOR
+   ============================================ */
+.str-chat__date-separator,
+.str-chat .str-chat__date-separator {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 24px 0 !important;
+}
+
+.str-chat__date-separator-date,
+.str-chat .str-chat__date-separator-date {
+  background: hsl(92 15% 92%) !important;
+  color: hsl(92 14% 40%) !important;
+  font-size: 0.7rem !important;
+  padding: 8px 16px !important;
+  border-radius: 20px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+
+.str-chat__date-separator-line {
+  display: none !important;
+}
+
+/* ============================================
+   TYPING INDICATOR
+   ============================================ */
+.str-chat__typing-indicator {
+  padding: 8px 16px;
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  font-style: italic;
+}
+
+/* ============================================
+   REACTIONS
+   ============================================ */
+.str-chat__message-reactions-list {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.str-chat__message-reactions-list-item {
+  background: hsl(var(--muted)) !important;
+  border-radius: 12px !important;
+  padding: 4px 10px !important;
+  font-size: 0.75rem;
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+/* ============================================
+   EMPTY STATE
+   ============================================ */
+.str-chat__empty-channel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 32px;
+  text-align: center;
+  color: hsl(var(--muted-foreground));
+}
+
+/* ============================================
+   LOADING
+   ============================================ */
+.str-chat__loading-indicator {
+  color: hsl(92 14% 32%) !important;
+}
+
+/* ============================================
+   SCROLL TO BOTTOM
+   ============================================ */
+.str-chat__message-notification,
+.str-chat .str-chat__message-notification {
+  background: linear-gradient(135deg, hsl(92 14% 38%), hsl(92 14% 28%)) !important;
+  color: #FFFFFF !important;
+  border-radius: 24px !important;
+  padding: 12px 24px !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 16px rgba(82, 94, 72, 0.35) !important;
+  cursor: pointer;
+}
+
+/* ============================================
+   SCROLLBAR
+   ============================================ */
+.str-chat__list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.str-chat__list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.str-chat__list::-webkit-scrollbar-thumb {
+  background: hsl(92 12% 72%);
+  border-radius: 3px;
+}
+
+.str-chat__list::-webkit-scrollbar-thumb:hover {
+  background: hsl(92 12% 55%);
+}
+
+.str-chat__list {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(92 12% 72%) transparent;
+}
+
+/* ============================================
+   THREAD
+   ============================================ */
+.str-chat__thread {
+  border-left: 1px solid hsl(var(--border)) !important;
+  background: hsl(var(--card)) !important;
+}
+
+.str-chat__thread-header {
+  padding: 16px !important;
+  border-bottom: 1px solid hsl(var(--border)) !important;
+  font-weight: 600;
+}
+
+/* ============================================
+   MOBILE
+   ============================================ */
+@media (max-width: 640px) {
+  .str-chat__message-bubble {
+    max-width: 85% !important;
+  }
+  
+  .str-chat__message-simple-wrapper {
+    max-width: 85% !important;
+  }
+  
+  .str-chat__header-livestream {
+    padding: 12px !important;
+  }
+  
+  .str-chat__message-input {
+    padding: 12px !important;
+  }
+  
+  .str-chat__list {
+    padding: 12px !important;
+  }
+  
+  .str-chat__avatar {
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 10px !important;
+  }
+  
+  .str-chat__send-button {
+    width: 38px !important;
+    height: 38px !important;
+  }
+  
+  .str-chat__avatar-fallback {
+    font-size: 0.9rem !important;
+  }
+}
+
+/* ============================================
+   OVERRIDE ALL STREAM CHAT BLUE COLORS
+   ============================================ */
+.str-chat *[style*="background-color: rgb(0, 95, 255)"],
+.str-chat *[style*="background: rgb(0, 95, 255)"] {
+  background: linear-gradient(135deg, hsl(92 14% 38%), hsl(92 14% 28%)) !important;
+}
+
+/* Force override any remaining blue buttons */
+.str-chat button[style*="background"],
+.str-chat .str-chat__send-button[style] {
+  background: linear-gradient(135deg, hsl(92 14% 38%), hsl(92 14% 28%)) !important;
+}

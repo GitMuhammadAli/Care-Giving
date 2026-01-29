@@ -1,10 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { ChatContainer } from './chat-container';
 import { useFamily } from '@/hooks/use-family';
 import { useFamilyChat } from '@/hooks/use-chat';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { MessageCircle, AlertCircle, Settings, Users, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
@@ -111,7 +109,7 @@ export function FamilyChat({ familyId }: FamilyChatProps) {
   }
 
   return (
-    <div className="h-full">
+    <div className="h-full flex flex-col">
       <ChatContainer
         channelType="messaging"
         channelId={`family-${familyId}`}

@@ -3,13 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import { StreamChat, Channel } from 'stream-chat';
 import { PrismaService } from '../../prisma/prisma.service';
 
-interface StreamUserData {
-  id: string;
-  name: string;
-  image?: string;
-  role?: string;
-}
-
 @Injectable()
 export class ChatService {
   private readonly logger = new Logger(ChatService.name);
@@ -43,25 +36,20 @@ export class ChatService {
   /**
    * Sync/upsert a single user to Stream Chat
    * MUST be called before user can join channels
+   * Note: Don't pass custom roles - Stream Chat only accepts its built-in roles
    */
-  async syncUser(userId: string, name: string, avatarUrl?: string | null, role?: string): Promise<void> {
+  async syncUser(userId: string, name: string, avatarUrl?: string | null): Promise<void> {
     if (!this.streamClient) {
       this.logger.warn('Stream Chat not configured, skipping user sync');
       return;
     }
 
     try {
-      const userData: StreamUserData = {
+      await this.streamClient.upsertUser({
         id: userId,
         name: name,
         image: avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`,
-      };
-
-      if (role) {
-        userData.role = role;
-      }
-
-      await this.streamClient.upsertUser(userData);
+      });
       this.logger.debug(`Synced user ${userId} (${name}) to Stream Chat`);
     } catch (error: any) {
       this.logger.error(`Failed to sync user ${userId} to Stream Chat: ${error.message}`);
@@ -72,8 +60,9 @@ export class ChatService {
   /**
    * Sync multiple users to Stream Chat
    * Efficient batch operation
+   * Note: Don't pass custom roles - Stream Chat only accepts its built-in roles
    */
-  async syncUsers(users: Array<{ id: string; name: string; avatarUrl?: string | null; role?: string }>): Promise<void> {
+  async syncUsers(users: Array<{ id: string; name: string; avatarUrl?: string | null }>): Promise<void> {
     if (!this.streamClient) {
       this.logger.warn('Stream Chat not configured, skipping users sync');
       return;
@@ -86,7 +75,6 @@ export class ChatService {
         id: user.id,
         name: user.name,
         image: user.avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.name)}`,
-        role: user.role,
       }));
 
       await this.streamClient.upsertUsers(streamUsers);
@@ -111,11 +99,12 @@ export class ChatService {
 
     if (members.length === 0) return [];
 
+    // Note: Don't pass app roles (ADMIN/CAREGIVER/VIEWER) to Stream Chat
+    // Stream Chat has its own role system. Our app handles permissions via FamilyMember table.
     const users = members.map(m => ({
       id: m.user.id,
       name: m.user.fullName,
       avatarUrl: m.user.avatarUrl,
-      role: m.role,
     }));
 
     await this.syncUsers(users);

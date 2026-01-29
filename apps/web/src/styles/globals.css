@@ -36,7 +36,7 @@
 
     /* Muted - Light sage backgrounds */
     --muted: 92 15% 96%; /* sage-50 */
-    --muted-foreground: 92 12% 61%; /* sage-400 */
+    --muted-foreground: 92 13% 42%; /* sage-600 - darker for better contrast */
 
     /* Accent - Light sage */
     --accent: 92 15% 96%; /* sage-50 */
@@ -59,7 +59,7 @@
     --terracotta: 25 28% 50%; /* #996B4D - Only for accents */
     --slate: 208 18% 38%; /* #4A5F70 - Only for accents */
     --stone: 92 15% 96%; /* sage-50 */
-    --warm-gray: 92 12% 61%; /* sage-400 - NO BROWN */
+    --warm-gray: 92 13% 42%; /* sage-600 - darker for readability */
 
     /* Semantic caregiving tokens */
     --care-calm: 92 12% 55%; /* sage-light */
@@ -81,7 +81,7 @@
     --border-focus: hsl(92 14% 32%); /* sage-700 */
 
     --text-primary: hsl(0 0% 12%); /* ink - black */
-    --text-secondary: hsl(92 12% 61%); /* sage-400 */
+    --text-secondary: hsl(92 13% 42%); /* sage-600 - darker for readability */
     --text-tertiary: hsl(92 13% 81%); /* sage-200 */
     --text-disabled: hsl(92 13% 81%); /* sage-200 */
     --text-inverse: hsl(40 33% 97%); /* cream */
@@ -96,7 +96,7 @@
 
     /* Legacy color aliases - map old names to new design system */
     --text-text-primary: hsl(0 0% 12%); /* -> ink */
-    --text-text-secondary: hsl(92 12% 61%); /* -> sage-400 */
+    --text-text-secondary: hsl(92 13% 42%); /* -> sage-600 */
     --text-text-tertiary: hsl(92 13% 81%); /* -> sage-200 */
     --bg-bg-muted: hsl(92 15% 96%); /* -> sage-50 */
     --bg-accent-primary: hsl(92 14% 32%); /* -> sage-700 */
@@ -452,6 +452,37 @@
 }
 
 @layer utilities {
+  /* Responsive container - prevents overflow */
+  .responsive-container {
+    @apply w-full max-w-full overflow-x-hidden;
+  }
+
+  /* Full-width on mobile, constrained on desktop */
+  .container-responsive {
+    @apply w-full px-4 sm:px-6 lg:px-8 mx-auto;
+    max-width: min(100%, 1400px);
+  }
+
+  /* No horizontal scroll */
+  .no-scroll-x {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  /* Touch-friendly targets */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Text that doesn't overflow */
+  .text-wrap-safe {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
+  }
+
   /* Hide scrollbar but keep functionality */
   .scrollbar-hide {
     -ms-overflow-style: none;

@@ -43,6 +43,19 @@ export const DatabaseEnvSchema = z.object({
 });
 
 /**
+ * Helper to parse boolean from env (handles "false", "0", "no" as false)
+ */
+const booleanFromEnv = z.preprocess((val) => {
+  if (val === undefined || val === null || val === '') return false;
+  if (typeof val === 'boolean') return val;
+  if (typeof val === 'string') {
+    const lower = val.toLowerCase();
+    return lower !== 'false' && lower !== '0' && lower !== 'no' && lower !== '';
+  }
+  return Boolean(val);
+}, z.boolean());
+
+/**
  * Redis Environment Schema
  */
 export const RedisEnvSchema = z.object({
@@ -50,7 +63,7 @@ export const RedisEnvSchema = z.object({
   REDIS_HOST: z.string().default('localhost'),
   REDIS_PORT: z.coerce.number().default(6379),
   REDIS_PASSWORD: z.string().optional(),
-  REDIS_TLS: z.coerce.boolean().default(false),
+  REDIS_TLS: booleanFromEnv.default(false),
 });
 
 /**

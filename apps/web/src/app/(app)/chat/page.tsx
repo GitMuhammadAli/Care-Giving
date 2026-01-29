@@ -29,7 +29,6 @@ export default function ChatPage() {
     selectedFamilyId, 
     selectedFamily,
     selectedCareRecipient,
-    currentRole,
     isLoading,
     refreshFamilies,
   } = useFamilySpace();
@@ -37,7 +36,6 @@ export default function ChatPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen">
-        {/* Header */}
         <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md px-4 sm:px-6 py-4 border-b border-border">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -61,7 +59,6 @@ export default function ChatPage() {
   if (families.length === 0) {
     return (
       <div className="min-h-screen">
-        {/* Header */}
         <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md px-4 sm:px-6 py-4 border-b border-border">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -96,63 +93,39 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="min-h-screen">
-      {/* Header with Context Selector - same as other pages */}
-      <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md px-4 sm:px-6 py-4 border-b border-border">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* Header with Context Selector */}
+      <header className="flex-shrink-0 bg-background/80 backdrop-blur-md px-4 sm:px-6 py-3 border-b border-border">
+        <div className="flex items-center justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <h1 className="font-serif text-2xl sm:text-3xl text-foreground">Family Chat</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
+            <h1 className="font-semibold text-xl text-foreground">Family Chat</h1>
+            <p className="text-xs text-muted-foreground">
               {selectedFamily
-                ? `Chatting in ${selectedFamily.name}${selectedCareRecipient ? ` • ${selectedCareRecipient.preferredName || selectedCareRecipient.fullName}` : ''}`
-                : 'Connect with your family members in real-time'}
+                ? `${selectedFamily.name}${selectedCareRecipient ? ` • ${selectedCareRecipient.preferredName || selectedCareRecipient.fullName}` : ''}`
+                : 'Connect with your family'}
             </p>
           </div>
           
-          {/* Context Selector - Family Space & Care Recipient */}
           <div className="flex items-center gap-3">
-            <ContextSelector />
+            <ContextSelector compact />
           </div>
         </div>
       </header>
 
-      <div className="px-4 sm:px-6 py-6">
-        <div className="space-y-4">
-          {/* Chat Container */}
-          {selectedFamilyId ? (
-            <div className="h-[calc(100vh-240px)] min-h-[500px]">
-              <Card className="h-full overflow-hidden">
-                <FamilyChat familyId={selectedFamilyId} />
-              </Card>
-            </div>
-          ) : (
-            <Card className="h-[calc(100vh-240px)] flex items-center justify-center">
-              <div className="text-center">
-                <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground">Select a family to start chatting</p>
-              </div>
-            </Card>
-          )}
-
-          {/* Chat Info */}
-          <Card className="p-4">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <MessageCircle className="w-5 h-5 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-foreground mb-1">Real-time Family Communication</h3>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• Share updates instantly with all family members</li>
-                  <li>• Attach photos and documents to messages</li>
-                  <li>• React to messages with emojis</li>
-                  <li>• See when others are typing</li>
-                  <li>• Get notifications for new messages</li>
-                </ul>
-              </div>
+      <div className="flex-1 min-h-0 overflow-hidden p-2 sm:p-4">
+        {/* Chat Container */}
+        {selectedFamilyId ? (
+          <div className="h-full rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+            <FamilyChat familyId={selectedFamilyId} />
+          </div>
+        ) : (
+          <Card className="h-full flex items-center justify-center">
+            <div className="text-center">
+              <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">Select a family to start chatting</p>
             </div>
           </Card>
-        </div>
+        )}
       </div>
     </div>
   );

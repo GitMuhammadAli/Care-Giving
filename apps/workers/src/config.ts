@@ -51,6 +51,13 @@ let _redisConnection: Redis | null = null;
 export function getRedisConnection(): Redis {
   if (!_redisConnection) {
     const redisConfig = getRedisConfig(getConfig());
+    
+    logger.debug({ 
+      host: redisConfig.host, 
+      port: redisConfig.port,
+      hasPassword: !!redisConfig.password,
+      hasTls: !!redisConfig.tls,
+    }, 'Creating Redis connection');
 
     if ('url' in redisConfig && redisConfig.url) {
       // Pass URL as first parameter, options as second
@@ -62,6 +69,10 @@ export function getRedisConnection(): Redis {
 
     _redisConnection.on('connect', () => {
       logger.info('Redis connected');
+    });
+
+    _redisConnection.on('ready', () => {
+      logger.info('Redis ready');
     });
 
     _redisConnection.on('reconnecting', (delay: number) => {

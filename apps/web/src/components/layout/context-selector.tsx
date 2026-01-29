@@ -80,25 +80,25 @@ export function ContextSelector({ compact = false, className }: ContextSelectorP
             setCareRecipientOpen(false);
           }}
           className={cn(
-            'flex items-center gap-2 px-3 py-1.5 rounded-lg border-2 border-border',
+            'flex items-center gap-2 px-3 py-2 rounded-lg border border-border',
             'bg-card hover:bg-accent hover:border-primary/50 transition-colors shadow-sm',
-            'text-sm font-medium',
-            compact ? 'max-w-[120px]' : 'max-w-[180px]'
+            'text-sm font-medium h-9',
+            compact ? 'max-w-[140px]' : 'max-w-[200px]'
           )}
         >
-          <Users className="w-4 h-4 text-muted-foreground shrink-0" />
-          <span className="truncate">
+          <Users className="w-4 h-4 text-primary flex-shrink-0" />
+          <span className="truncate text-foreground">
             {selectedFamily?.name || 'Select Space'}
           </span>
           {currentRole && (
             <span className={cn(
-              'text-[10px] px-1.5 py-0.5 rounded border shrink-0',
+              'text-[10px] px-1.5 py-0.5 rounded border flex-shrink-0 leading-none',
               getRoleBadgeColor(currentRole)
             )}>
               {currentRole}
             </span>
           )}
-          <ChevronDown className="w-3 h-3 shrink-0 text-muted-foreground" />
+          <ChevronDown className="w-3.5 h-3.5 flex-shrink-0 text-muted-foreground" />
         </button>
 
         {familyOpen && (
@@ -148,10 +148,10 @@ export function ContextSelector({ compact = false, className }: ContextSelectorP
               setFamilyOpen(false);
             }}
             className={cn(
-              'flex items-center gap-2 px-3 py-1.5 rounded-lg border-2 border-border',
+              'flex items-center gap-2 px-3 py-2 rounded-lg border border-border',
               'bg-card hover:bg-accent hover:border-primary/50 transition-colors shadow-sm',
-              'text-sm font-medium',
-              compact ? 'max-w-[120px]' : 'max-w-[180px]'
+              'text-sm font-medium h-9',
+              compact ? 'max-w-[140px]' : 'max-w-[200px]'
             )}
           >
             {selectedCareRecipient ? (
@@ -160,20 +160,21 @@ export function ContextSelector({ compact = false, className }: ContextSelectorP
                   name={selectedCareRecipient.preferredName || selectedCareRecipient.fullName}
                   src={selectedCareRecipient.photoUrl}
                   size="sm"
+                  className="flex-shrink-0"
                 />
-                <span className="truncate">
+                <span className="truncate text-foreground">
                   {selectedCareRecipient.preferredName || selectedCareRecipient.fullName?.split(' ')[0]}
                 </span>
               </>
             ) : (
               <>
-                <Heart className="w-4 h-4 text-muted-foreground shrink-0" />
-                <span className="truncate text-muted-foreground">
+                <Heart className="w-4 h-4 text-primary flex-shrink-0" />
+                <span className="truncate text-foreground">
                   {careRecipients.length === 0 ? 'No loved ones' : 'Select loved one'}
                 </span>
               </>
             )}
-            <ChevronDown className="w-3 h-3 shrink-0 text-muted-foreground" />
+            <ChevronDown className="w-3.5 h-3.5 flex-shrink-0 text-muted-foreground" />
           </button>
 
           {careRecipientOpen && careRecipients.length > 0 && (

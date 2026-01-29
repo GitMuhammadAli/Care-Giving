@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { Heart, Home, Users, Plus, Check, ChevronDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useFamilySpace } from '@/contexts/family-space-context';
+import { cn } from '@/lib/utils';
 
 interface FamilySpaceSelectorProps {
   onAddCareRecipient?: () => void;
@@ -33,10 +33,9 @@ export function FamilySpaceSelector({ onAddCareRecipient, className }: FamilySpa
 
   if (isLoading) {
     return (
-      <div className={`flex items-center gap-3 ${className}`}>
-        <div className="h-10 w-32 bg-muted animate-pulse rounded-xl" />
-        <span className="text-muted-foreground text-sm">...</span>
-        <div className="h-8 w-20 bg-muted animate-pulse rounded-full" />
+      <div className={cn('flex items-center gap-3 mb-6', className)}>
+        <div className="h-9 w-32 bg-muted animate-pulse rounded-lg" />
+        <div className="h-8 w-24 bg-muted animate-pulse rounded-full" />
       </div>
     );
   }
@@ -58,21 +57,28 @@ export function FamilySpaceSelector({ onAddCareRecipient, className }: FamilySpa
     }
   };
 
+  const selectedCareRecipient = careRecipients.find(cr => cr.id === selectedCareRecipientId);
+
   return (
-    <div className={`flex flex-wrap items-center gap-3 mb-6 animate-fade ${className}`}>
+    <div className={cn('flex flex-wrap items-center gap-2 sm:gap-3 mb-6', className)}>
       {/* Family Dropdown */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="h-10 px-4 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-accent shadow-sm">
-            <Home className="w-4 h-4 mr-2 text-primary" />
-            <span className="font-medium max-w-[150px] truncate">{selectedFamily?.name || 'Select Family'}</span>
+          <button 
+            type="button"
+            className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-border bg-card hover:bg-accent text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <Home className="w-4 h-4 text-primary shrink-0" />
+            <span className="text-foreground truncate max-w-[120px] sm:max-w-[150px]">
+              {selectedFamily?.name || 'Select Family'}
+            </span>
             {currentRole && (
-              <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded border ${getRoleBadge(currentRole)}`}>
+              <span className={cn('text-[10px] px-1.5 py-0.5 rounded shrink-0', getRoleBadge(currentRole))}>
                 {currentRole}
               </span>
             )}
-            <ChevronDown className="w-4 h-4 ml-2 text-muted-foreground" />
-          </Button>
+            <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+          </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-56 rounded-xl">
           <DropdownMenuLabel className="text-xs text-muted-foreground uppercase tracking-wide">
@@ -85,26 +91,26 @@ export function FamilySpaceSelector({ onAddCareRecipient, className }: FamilySpa
               onClick={() => setSelectedFamily(family.id)}
               className="cursor-pointer rounded-lg"
             >
-              <Home className="w-4 h-4 mr-2 text-muted-foreground" />
+              <Home className="w-4 h-4 mr-2 text-muted-foreground shrink-0" />
               <span className="flex-1 truncate">{family.name}</span>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded ${getRoleBadge(family.role)}`}>
+              <span className={cn('text-[10px] px-1.5 py-0.5 rounded shrink-0', getRoleBadge(family.role))}>
                 {family.role}
               </span>
               {family.id === selectedFamilyId && (
-                <Check className="w-4 h-4 text-primary ml-1" />
+                <Check className="w-4 h-4 text-primary ml-1 shrink-0" />
               )}
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild className="cursor-pointer rounded-lg">
             <Link href="/care-recipients">
-              <Home className="w-4 h-4 mr-2 text-muted-foreground" />
+              <Home className="w-4 h-4 mr-2 text-muted-foreground shrink-0" />
               Manage Spaces
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild className="cursor-pointer rounded-lg">
             <Link href="/family">
-              <Users className="w-4 h-4 mr-2 text-muted-foreground" />
+              <Users className="w-4 h-4 mr-2 text-muted-foreground shrink-0" />
               Manage Members
             </Link>
           </DropdownMenuItem>
@@ -114,31 +120,34 @@ export function FamilySpaceSelector({ onAddCareRecipient, className }: FamilySpa
       {/* Loved Ones Pills */}
       {careRecipients.length > 0 && (
         <>
-          <span className="text-muted-foreground text-sm">|</span>
+          <span className="text-border hidden sm:block">|</span>
           <div className="flex items-center gap-2 flex-wrap">
             {careRecipients.map((cr) => (
               <button
                 key={cr.id}
+                type="button"
                 onClick={() => setSelectedCareRecipient(cr.id)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all border-2 ${
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all',
                   cr.id === selectedCareRecipientId
-                    ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                    : 'bg-muted/30 text-muted-foreground border-border hover:bg-muted hover:text-foreground hover:border-primary/50'
-                }`}
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'bg-muted/50 text-foreground hover:bg-muted'
+                )}
               >
-                <Heart className="w-3.5 h-3.5" />
-                {cr.preferredName || cr.fullName?.split(' ')[0] || 'Unknown'}
+                <Heart className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate max-w-[80px] sm:max-w-[100px]">
+                  {cr.preferredName || cr.fullName?.split(' ')[0] || 'Unknown'}
+                </span>
               </button>
             ))}
             {onAddCareRecipient && (
-              <Button
-                variant="ghost"
-                size="sm"
+              <button
+                type="button"
                 onClick={onAddCareRecipient}
-                className="h-8 px-2 rounded-full text-muted-foreground hover:text-foreground"
+                className="inline-flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               >
                 <Plus className="w-4 h-4" />
-              </Button>
+              </button>
             )}
           </div>
         </>
@@ -146,16 +155,15 @@ export function FamilySpaceSelector({ onAddCareRecipient, className }: FamilySpa
 
       {careRecipients.length === 0 && onAddCareRecipient && (
         <>
-          <span className="text-muted-foreground text-sm">|</span>
-          <Button
-            variant="ghost"
-            size="sm"
+          <span className="text-border hidden sm:block">|</span>
+          <button
+            type="button"
             onClick={onAddCareRecipient}
-            className="h-8 px-3 rounded-full text-primary hover:text-primary hover:bg-primary/10 border-2 border-dashed border-border hover:border-primary/50"
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-sm font-medium text-primary hover:bg-primary/10 border border-dashed border-primary/50 hover:border-primary transition-colors"
           >
-            <Plus className="w-4 h-4 mr-1" />
-            Add Loved One
-          </Button>
+            <Plus className="w-4 h-4 shrink-0" />
+            <span>Add Loved One</span>
+          </button>
         </>
       )}
     </div>
