@@ -84,7 +84,11 @@ async function processMedicationReminder(job: Job<MedicationReminderJob>) {
             include: {
               members: {
                 where: { isActive: true },
-                select: { userId: true, role: true },
+                include: {
+                  user: {
+                    select: { id: true, timezone: true },
+                  },
+                },
               },
             },
           },
@@ -106,8 +110,10 @@ async function processMedicationReminder(job: Job<MedicationReminderJob>) {
   const careRecipient = medication.careRecipient;
   const familyMembers = careRecipient.family.members;
 
-  // Step 3: Format time with timezone
-  const timezone = 'America/New_York'; // TODO: Get from family settings or user preferences
+  // Step 3: Get timezone from first admin member, or fallback to first member, or default
+  const adminMember = familyMembers.find(m => m.role === 'ADMIN');
+  const primaryMember = adminMember || familyMembers[0];
+  const timezone = primaryMember?.user?.timezone || 'America/New_York';
   const formattedTime = formatInTimeZone(
     new Date(scheduledTime),
     timezone,
@@ -138,10 +144,12 @@ async function processMedicationReminder(job: Job<MedicationReminderJob>) {
   const notifications = [];
   
   for (const member of familyMembers) {
+    const userId = member.user.id;
+    
     // Check for existing notification (idempotency)
     const existing = await prisma.notification.findFirst({
       where: {
-        userId: member.userId,
+        userId,
         type: 'MEDICATION_REMINDER',
         data: {
           path: ['idempotencyKey'],
@@ -151,14 +159,14 @@ async function processMedicationReminder(job: Job<MedicationReminderJob>) {
     });
 
     if (existing) {
-      jobLogger.debug({ userId: member.userId, idempotencyKey }, 'Notification already sent');
+      jobLogger.debug({ userId, idempotencyKey }, 'Notification already sent');
       continue;
     }
 
     // Create notification
     const notification = await prisma.notification.create({
       data: {
-        userId: member.userId,
+        userId,
         type: 'MEDICATION_REMINDER',
         title,
         body,
@@ -179,7 +187,7 @@ async function processMedicationReminder(job: Job<MedicationReminderJob>) {
       'send-push',
       {
         type: 'PUSH',
-        userId: member.userId,
+        userId,
         title,
         body,
         data: {
@@ -191,7 +199,7 @@ async function processMedicationReminder(job: Job<MedicationReminderJob>) {
         priority: minutesBefore <= 5 ? 'high' : 'normal',
       },
       {
-        jobId: `push-${idempotencyKey}-${member.userId}`,
+        jobId: `push-${idempotencyKey}-${userId}`,
       }
     );
   }

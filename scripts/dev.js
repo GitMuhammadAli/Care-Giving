@@ -4,14 +4,23 @@
  * CareCircle Development Server
  * 
  * Features:
+ * - Auto-detects environment (local Docker vs cloud services)
  * - Cross-platform signal handling (Windows + Unix)
  * - Proper child process cleanup
  * - Colorized output with service prefixes
  * - Dynamic port reading from config
+ * 
+ * Usage:
+ *   node scripts/dev.js           # Auto-detect env, then start
+ *   node scripts/dev.js --local   # Force local profile
+ *   node scripts/dev.js --cloud   # Force cloud profile
+ *   node scripts/dev.js --skip-env # Skip env detection (use existing .env)
  */
 
-const { spawn } = require('child_process');
+const { spawn, execSync, spawnSync } = require('child_process');
 const path = require('path');
+const net = require('net');
+const fs = require('fs');
 
 // ============================================================================
 // ANSI COLORS
@@ -34,6 +43,12 @@ const colors = {
 
 const c = colors;
 
+// Parse CLI arguments
+const args = process.argv.slice(2);
+const skipEnv = args.includes('--skip-env');
+const forceLocal = args.includes('--local');
+const forceCloud = args.includes('--cloud');
+
 // ============================================================================
 // CONFIGURATION
 // ============================================================================
@@ -53,11 +68,17 @@ const config = {
 // BANNER
 // ============================================================================
 
+let activeProfile = null; // Set by detectAndSwitchEnv
+
 function printBanner() {
+  const profileBadge = activeProfile === 'local' 
+    ? `${c.green}[LOCAL]${c.reset}` 
+    : `${c.magenta}[CLOUD]${c.reset}`;
+  
   console.log('');
   console.log(`${c.cyan}╔══════════════════════════════════════════════════════════════════════╗${c.reset}`);
   console.log(`${c.cyan}║${c.reset}                                                                      ${c.cyan}║${c.reset}`);
-  console.log(`${c.cyan}║${c.reset}   ${c.bright}${c.green}🏡  CareCircle Development Server${c.reset}                                 ${c.cyan}║${c.reset}`);
+  console.log(`${c.cyan}║${c.reset}   ${c.bright}${c.green}🏡  CareCircle Development Server${c.reset}  ${profileBadge}                        ${c.cyan}║${c.reset}`);
   console.log(`${c.cyan}║${c.reset}                                                                      ${c.cyan}║${c.reset}`);
   console.log(`${c.cyan}╠══════════════════════════════════════════════════════════════════════╣${c.reset}`);
   console.log(`${c.cyan}║${c.reset}                                                                      ${c.cyan}║${c.reset}`);
@@ -172,10 +193,157 @@ async function shutdown(signal) {
 }
 
 // ============================================================================
+// ENVIRONMENT AUTO-DETECTION
+// ============================================================================
+
+function testPort(host, port, timeout = 1000) {
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+    let resolved = false;
+
+    const cleanup = () => {
+      if (!resolved) {
+        resolved = true;
+        socket.destroy();
+      }
+    };
+
+    socket.setTimeout(timeout);
+    socket.on('connect', () => { cleanup(); resolve(true); });
+    socket.on('timeout', () => { cleanup(); resolve(false); });
+    socket.on('error', () => { cleanup(); resolve(false); });
+    socket.connect(port, host);
+  });
+}
+
+async function detectAndSwitchEnv() {
+  const rootDir = path.resolve(__dirname, '..');
+  
+  console.log('');
+  console.log(`${c.cyan}╔══════════════════════════════════════════════════════════════════════╗${c.reset}`);
+  console.log(`${c.cyan}║${c.reset}   ${c.bright}🔍 Environment Auto-Detection${c.reset}                                     ${c.cyan}║${c.reset}`);
+  console.log(`${c.cyan}╚══════════════════════════════════════════════════════════════════════╝${c.reset}`);
+  console.log('');
+
+  // Check forced profile
+  if (forceLocal || forceCloud) {
+    const profile = forceLocal ? 'local' : 'cloud';
+    console.log(`${c.magenta}Forced profile: ${profile.toUpperCase()}${c.reset}`);
+    await switchProfile(rootDir, profile);
+    return profile;
+  }
+
+  // Auto-detect by checking Docker services
+  console.log(`${c.dim}Checking local Docker services...${c.reset}`);
+  console.log('');
+
+  const services = [
+    { name: 'PostgreSQL', port: 5432 },
+    { name: 'Redis', port: 6379 },
+    { name: 'RabbitMQ', port: 5672 },
+  ];
+
+  const results = await Promise.all(
+    services.map(async (svc) => {
+      const isUp = await testPort('localhost', svc.port);
+      const status = isUp ? `${c.green}✓` : `${c.red}✗`;
+      console.log(`  ${status} ${svc.name} (localhost:${svc.port})${c.reset}`);
+      return { ...svc, isUp };
+    })
+  );
+
+  console.log('');
+
+  const allUp = results.every((r) => r.isUp);
+  const anyUp = results.some((r) => r.isUp);
+
+  let profile;
+
+  if (allUp) {
+    console.log(`${c.green}✓ All local services running → LOCAL profile${c.reset}`);
+    profile = 'local';
+  } else if (anyUp) {
+    console.log(`${c.yellow}⚠ Some local services missing → CLOUD profile${c.reset}`);
+    console.log(`${c.dim}  Tip: Run 'docker compose up -d' to start all local services${c.reset}`);
+    profile = 'cloud';
+  } else {
+    console.log(`${c.cyan}→ No local services detected → CLOUD profile${c.reset}`);
+    profile = 'cloud';
+  }
+
+  await switchProfile(rootDir, profile);
+  return profile;
+}
+
+async function switchProfile(rootDir, profile) {
+  // Check current profile
+  const envPath = path.join(rootDir, '.env');
+  let currentProfile = null;
+
+  if (fs.existsSync(envPath)) {
+    const content = fs.readFileSync(envPath, 'utf8');
+    if (content.includes('ACTIVE PROFILE: LOCAL')) currentProfile = 'local';
+    else if (content.includes('ACTIVE PROFILE: CLOUD')) currentProfile = 'cloud';
+  }
+
+  if (currentProfile === profile) {
+    console.log(`${c.dim}Profile already set to ${profile.toUpperCase()} ✓${c.reset}`);
+    return;
+  }
+
+  console.log(`${c.yellow}Switching to ${profile.toUpperCase()} profile...${c.reset}`);
+
+  // Merge env files
+  const baseEnv = fs.readFileSync(path.join(rootDir, 'env', 'base.env'), 'utf8');
+  const profileEnv = fs.readFileSync(path.join(rootDir, 'env', `${profile}.env`), 'utf8');
+
+  const header = `# =============================================================================
+# CareCircle - ACTIVE PROFILE: ${profile.toUpperCase()}
+# =============================================================================
+# Generated from: env/base.env + env/${profile}.env
+# Generated at: ${new Date().toISOString()}
+# DO NOT EDIT - Run 'pnpm dev' to auto-detect or 'pnpm env:local/cloud' to switch
+# =============================================================================
+
+`;
+
+  const merged = header + baseEnv + '\n\n' + profileEnv;
+
+  // Write root .env
+  fs.writeFileSync(envPath, merged, 'utf8');
+
+  // Copy to app directories
+  const appDirs = ['apps/api', 'apps/web', 'apps/workers', 'packages/database'];
+  
+  for (const dir of appDirs) {
+    const targetPath = path.join(rootDir, dir, '.env');
+    if (fs.existsSync(path.dirname(targetPath))) {
+      fs.writeFileSync(targetPath, merged, 'utf8');
+    }
+  }
+
+  console.log(`${c.green}✓ ${profile.toUpperCase()} profile activated!${c.reset}`);
+}
+
+// ============================================================================
 // MAIN
 // ============================================================================
 
 async function main() {
+  // Auto-detect environment unless skipped
+  if (!skipEnv) {
+    activeProfile = await detectAndSwitchEnv();
+    console.log('');
+  } else {
+    // Read current profile from .env
+    const envPath = path.join(__dirname, '..', '.env');
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, 'utf8');
+      if (content.includes('ACTIVE PROFILE: LOCAL')) activeProfile = 'local';
+      else if (content.includes('ACTIVE PROFILE: CLOUD')) activeProfile = 'cloud';
+    }
+  }
+
   printBanner();
 
   // Spawn turbo dev

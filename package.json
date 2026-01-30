@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "node scripts/dev.js",
+    "dev:auto": "node scripts/auto-env.js && node scripts/dev.js",
     "dev:all": "turbo dev",
     "dev:web": "pnpm --filter @carecircle/web dev",
     "dev:api": "pnpm --filter @carecircle/api dev",
@@ -17,7 +18,11 @@
     "db:studio": "pnpm --filter @carecircle/database studio",
     "lint": "turbo lint",
     "clean": "turbo clean && rm -rf node_modules",
-    "postinstall": "pnpm --filter @carecircle/database generate"
+    "postinstall": "pnpm --filter @carecircle/database generate",
+    "env:auto": "node scripts/auto-env.js",
+    "env:local": "node scripts/auto-env.js --local",
+    "env:cloud": "node scripts/auto-env.js --cloud",
+    "env:check": "node scripts/auto-env.js --check"
   },
   "devDependencies": {
     "turbo": "^2.0.0",
