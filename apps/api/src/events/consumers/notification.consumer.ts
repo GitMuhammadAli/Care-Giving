@@ -15,6 +15,7 @@ import {
   FamilyDeletedPayload,
 } from '../dto/events.dto';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MailService } from '../../system/module/mail/mail.service';
 
 /**
  * Notification Consumer
@@ -29,7 +30,10 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class NotificationConsumer {
   private readonly logger = new Logger(NotificationConsumer.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mailService: MailService,
+  ) {}
 
   /**
    * Handle push notification requests - creates in-app notification
@@ -106,11 +110,16 @@ export class NotificationConsumer {
     try {
       this.logger.debug(`Processing email notification to: ${event.data.to}`);
 
-      // TODO: Inject and use MailService when available
-      // await this.mailService.sendTemplate(event.data);
+      // Send email using MailService
+      await this.mailService.send({
+        to: event.data.to,
+        subject: event.data.subject,
+        template: event.data.template,
+        context: event.data.context,
+      });
 
       this.logger.log(
-        `Email notification logged: "${event.data.subject}" to ${event.data.to}`,
+        `Email notification sent: "${event.data.subject}" to ${event.data.to}`,
       );
     } catch (error) {
       this.logger.error(`Failed to process email notification: ${error}`);
@@ -148,6 +157,7 @@ export class NotificationConsumer {
         type: string;
         description?: string;
         location?: string;
+        createdByName?: string;
       };
 
       // Create emergency notifications for all family members
@@ -160,6 +170,23 @@ export class NotificationConsumer {
           data: { type: data.type, location: data.location },
         })),
       });
+
+      // Also send emails for emergency alerts (highest priority)
+      const users = await this.prisma.user.findMany({
+        where: { id: { in: data.familyMemberIds } },
+        select: { email: true },
+      });
+
+      const emails = users.map((u) => u.email);
+      if (emails.length > 0) {
+        await this.mailService.sendEmergencyAlert(
+          emails,
+          data.careRecipientName,
+          data.type,
+          data.description || data.type,
+          data.createdByName || 'Family Member',
+        );
+      }
 
       this.logger.log(`Emergency notifications created for ${data.familyMemberIds.length} family members`);
     } catch (error) {

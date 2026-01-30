@@ -83,47 +83,113 @@ For complete backup and disaster recovery procedures, see [BACKUP_PROCEDURES.md]
 See [SETUP.md](./SETUP.md) for complete setup instructions.
 
 ```bash
-# Clone
+# Clone & Install
 git clone <repository-url>
 cd carecircle
-
-# Install
 pnpm install
 
-# Setup environment
-cp env.example .env
-# Edit .env with your config
+# Option A: Local Development (with Docker)
+docker compose up -d      # Start PostgreSQL, Redis, RabbitMQ
+pnpm dev                  # Auto-detects LOCAL → starts all services
 
-# Start services (if using Docker)
-docker-compose up -d
-
-# Run migrations
-cd apps/api && pnpm run migration:run
-
-# Start development
-pnpm dev
+# Option B: Cloud Development (no Docker needed)
+pnpm dev                  # Auto-detects CLOUD → connects to Neon, Upstash, CloudAMQP
 ```
 
+That's it! The dev server **automatically detects** which environment to use based on running services.
 
-# Switch to local profile (generates .env files)
-.\scripts\use-local.ps1
+## Environment Management
 
-# Start Docker services
-docker compose up -d
+CareCircle uses a **profile-based layered configuration** system with auto-detection:
 
-# Start all apps
-pnpm dev:api      # API on :3001
-pnpm dev:web      # Web on :3000
-pnpm dev:workers  # Background workers
+```
+env/
+├── base.env      ← Shared config (app settings, JWT, etc.)
+├── local.env     ← Local Docker services (localhost)
+└── cloud.env     ← Cloud services (Neon, Upstash, CloudAMQP)
+```
+
+### Auto-Detection (Default)
+
+When you run `pnpm dev`, it automatically:
+1. Checks if PostgreSQL, Redis, and RabbitMQ are running locally
+2. Selects **LOCAL** profile if all services are up, otherwise **CLOUD**
+3. Merges `base.env + profile.env` → `.env`
+4. Shows the active profile in the banner: `[LOCAL]` or `[CLOUD]`
+
+```
+╔══════════════════════════════════════════════════════════════════════╗
+║   🔍 Environment Auto-Detection                                     ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+Checking local Docker services...
+
+  ✓ PostgreSQL (localhost:5432)
+  ✓ Redis (localhost:6379)
+  ✓ RabbitMQ (localhost:5672)
+
+✓ All local services running → LOCAL profile
+```
+
+### Manual Control
+
+```bash
+# Force a specific profile
+pnpm dev --local          # Force LOCAL profile
+pnpm dev --cloud          # Force CLOUD profile
+pnpm dev --skip-env       # Skip detection, use existing .env
+
+# Switch profile without starting server
+pnpm env:local            # Switch to LOCAL
+pnpm env:cloud            # Switch to CLOUD
+pnpm env:check            # Check current profile
+pnpm env:auto             # Auto-detect and switch
+
+# PowerShell scripts (legacy)
+.\scripts\use-local.ps1   # Switch to LOCAL
+.\scripts\use-cloud.ps1   # Switch to CLOUD
+```
+
+### When to Use Each Profile
+
+| Profile | Use When | Services |
+|---------|----------|----------|
+| **LOCAL** | Docker running, offline dev, full control | PostgreSQL, Redis, RabbitMQ on localhost |
+| **CLOUD** | No Docker, quick start, team collaboration | Neon DB, Upstash Redis, CloudAMQP |
+
+## Development Commands
+
+```bash
+# Full-stack development
+pnpm dev                  # Auto-detect env + start all services
+
+# Individual services
+pnpm dev:api              # API server only (port 4000)
+pnpm dev:web              # Web app only (port 4173)
+pnpm dev:workers          # Background workers only
+
+# Database
+pnpm db:migrate           # Run migrations (production)
+pnpm db:migrate:dev       # Run migrations (development)
+pnpm db:studio            # Open Prisma Studio
+pnpm db:generate          # Generate Prisma client
+
+# Testing & Quality
+pnpm test                 # Run all tests
+pnpm lint                 # Lint all packages
+pnpm build                # Build all packages
+```
 
 ## Access Points
 
-| Service | URL |
-|---------|-----|
-| Web App | http://localhost:4173 |
-| API Server | http://localhost:4000 |
-| Swagger Docs | http://localhost:4000/api |
-| Mailpit (dev) | http://localhost:8025 |
+| Service | URL | Description |
+|---------|-----|-------------|
+| Web App | http://localhost:4173 | Next.js frontend |
+| API Server | http://localhost:4000/api/v1 | REST API |
+| Swagger Docs | http://localhost:4000/api | Interactive API docs |
+| Workers Health | http://localhost:4001/health | Background job status |
+| RabbitMQ UI | http://localhost:15672 | Message queue (guest/guest) |
+| Mailpit | http://localhost:8025 | Email testing (LOCAL only) |
 
 ## Project Structure
 
