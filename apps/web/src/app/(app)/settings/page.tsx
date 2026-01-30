@@ -26,14 +26,18 @@ import {
   Save,
   X,
   RefreshCw,
+  Globe,
 } from 'lucide-react';
+import { LanguageSelector } from '@/components/settings';
+import { useTranslation } from '@/lib/i18n';
 
 export default function SettingsPage() {
   const { user, logout, updateUser, syncWithServer } = useAuth();
   const pushNotifications = usePushNotifications();
   const { showPermissionPrompt } = useNotifications();
+  const t = useTranslation();
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'security'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'security' | 'language'>('profile');
   const [isEditing, setIsEditing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
@@ -163,16 +167,17 @@ export default function SettingsPage() {
   };
 
   const tabs = [
-    { id: 'profile', label: 'Profile', icon: User },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'security', label: 'Security', icon: Shield },
+    { id: 'profile', label: t.settings.profile, icon: User },
+    { id: 'notifications', label: t.settings.notifications, icon: Bell },
+    { id: 'security', label: t.settings.security, icon: Shield },
+    { id: 'language', label: t.settings.language, icon: Globe },
   ];
 
   return (
     <div className="pb-6">
       <PageHeader 
-        title="Settings" 
-        subtitle="Manage your account preferences"
+        title={t.settings.title} 
+        subtitle={t.settings.subtitle}
         actions={
           <Button
             variant="ghost"
@@ -488,7 +493,7 @@ export default function SettingsPage() {
             </Card>
 
             <Card className="p-6 border-2 border-error/30">
-              <h2 className="text-lg font-semibold text-error mb-2">Danger Zone</h2>
+              <h2 className="text-lg font-semibold text-error mb-2">{t.settings.dangerZone}</h2>
               <p className="text-sm text-text-secondary mb-4">
                 Sign out of your current session
               </p>
@@ -497,8 +502,22 @@ export default function SettingsPage() {
                 onClick={handleLogout}
               >
                 <LogOut className="w-4 h-4 mr-2" />
-                Log Out
+                {t.auth.logout}
               </Button>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* Language Tab */}
+        {activeTab === 'language' && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
+            <Card className="p-6">
+              <h2 className="text-lg font-semibold text-text-primary mb-6">{t.settings.language}</h2>
+              <LanguageSelector />
             </Card>
           </motion.div>
         )}
