@@ -25,13 +25,11 @@ export function AppShell({ children, currentUser }: AppShellProps) {
           'h-[calc(100vh-4rem)]', // Full height minus header (64px)
           'mt-16', // Push below fixed header
           'pb-20 sm:pb-0', // Padding for mobile nav only
-          'overflow-y-auto overflow-x-hidden', // Vertical scroll, no horizontal
+          'overflow-x-hidden', // Only prevent horizontal scroll - pages manage their own vertical scroll
           'w-full max-w-full' // Prevent overflow
         )}
       >
-        <div className="w-full max-w-full">
-          {children}
-        </div>
+        {children}
       </main>
 
       {/* Mobile Bottom Navigation */}
