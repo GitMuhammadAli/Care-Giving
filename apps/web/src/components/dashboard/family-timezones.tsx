@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useMemo, memo } from 'react';
-import { Globe, Clock, Phone, MessageCircle, Video } from 'lucide-react';
+import Link from 'next/link';
+import { Globe, Clock, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { toast } from 'react-hot-toast';
 import { useFamilyMembers } from '@/hooks/use-family';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -114,18 +114,6 @@ export const FamilyTimezones = memo(function FamilyTimezones({ familyId }: Famil
     return () => clearInterval(interval);
   }, [membersDisplay]);
 
-  const handleCall = (member: FamilyMemberDisplay) => {
-    if (member.status === 'sleeping') {
-      toast(`It's ${getTimeOfDay(member.utcOffset)} time for ${member.name}. Consider sending a message instead.`);
-    } else {
-      toast.success(`Calling ${member.name}...`);
-    }
-  };
-
-  const handleMessage = (member: FamilyMemberDisplay) => {
-    toast.success(`Opening chat with ${member.name}...`);
-  };
-
   // Group by timezone
   const groupedByTimezone = membersDisplay.reduce((acc, member) => {
     const key = `${member.timezoneAbbr} (${currentTimes[member.id] || ''})`;
@@ -176,10 +164,12 @@ export const FamilyTimezones = memo(function FamilyTimezones({ familyId }: Famil
           <Globe className="w-5 h-5 text-primary" />
           Family Availability
         </h2>
-        <Button size="sm" variant="ghost" className="text-primary hover:text-primary hover:bg-primary/10">
-          <Video className="w-4 h-4 mr-1" />
-          Group Call
-        </Button>
+        <Link href="/chat">
+          <Button size="sm" variant="ghost" className="text-primary hover:text-primary hover:bg-primary/10">
+            <MessageCircle className="w-4 h-4 mr-1" />
+            Open Chat
+          </Button>
+        </Link>
       </div>
 
       <div className="space-y-5">
@@ -213,24 +203,6 @@ export const FamilyTimezones = memo(function FamilyTimezones({ familyId }: Famil
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-primary"
-                      onClick={() => handleMessage(member)}
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={`h-8 w-8 ${member.status === 'sleeping' ? 'text-muted-foreground/50' : 'text-muted-foreground hover:text-primary'}`}
-                      onClick={() => handleCall(member)}
-                    >
-                      <Phone className="w-4 h-4" />
-                    </Button>
-                  </div>
                 </div>
               ))}
             </div>
@@ -240,7 +212,7 @@ export const FamilyTimezones = memo(function FamilyTimezones({ familyId }: Famil
 
       <div className="mt-4 p-3 bg-primary/5 rounded-lg border border-primary/10">
         <p className="text-xs text-muted-foreground text-center">
-          💡 Best time for a group call: <span className="font-medium text-foreground">3:00 PM PST / 6:00 PM EST</span>
+          💡 View availability to coordinate care schedules across time zones
         </p>
       </div>
     </div>
