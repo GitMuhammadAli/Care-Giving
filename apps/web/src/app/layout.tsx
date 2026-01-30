@@ -5,6 +5,7 @@ import { QueryProvider } from '@/components/providers/query-provider';
 import { ToastProvider } from '@/components/providers/toast-provider';
 import { AuthProvider } from '@/components/providers/auth-provider';
 import { ServiceWorkerProvider } from '@/components/providers/service-worker-provider';
+import { I18nProvider } from '@/lib/i18n';
 import { libreBaskerville, sourceSans3 } from '@/lib/fonts';
 import '@/styles/globals.css';
 
@@ -71,14 +72,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${libreBaskerville.variable} ${sourceSans3.variable} antialiased`}>
       <body className="min-h-screen bg-background text-foreground font-body">
-        <QueryProvider>
-          <AuthProvider>
-            <ServiceWorkerProvider>
-              <ToastProvider />
-              {children}
-            </ServiceWorkerProvider>
-          </AuthProvider>
-        </QueryProvider>
+        <I18nProvider>
+          <QueryProvider>
+            <AuthProvider>
+              <ServiceWorkerProvider>
+                <ToastProvider />
+                {children}
+              </ServiceWorkerProvider>
+            </AuthProvider>
+          </QueryProvider>
+        </I18nProvider>
         <Analytics />
         <SpeedInsights />
       </body>
