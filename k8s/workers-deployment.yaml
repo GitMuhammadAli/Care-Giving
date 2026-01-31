@@ -20,11 +20,17 @@ spec:
       containers:
         - name: workers
           image: ghcr.io/your-org/carecircle/workers:latest
+          ports:
+            - containerPort: 3002
+              name: health
           envFrom:
             - configMapRef:
                 name: carecircle-config
             - secretRef:
                 name: carecircle-secrets
+          env:
+            - name: HEALTH_PORT
+              value: "3002"
           resources:
             requests:
               memory: "256Mi"
@@ -32,6 +38,33 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
+          # Liveness probe - is the worker process alive?
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3002
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          # Readiness probe - is the worker ready to process jobs?
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 3002
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          # Startup probe - give workers time to connect to Redis/DB
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 3002
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 30  # 5s * 30 = 150s max startup time
           securityContext:
             runAsNonRoot: true
             runAsUser: 1001
