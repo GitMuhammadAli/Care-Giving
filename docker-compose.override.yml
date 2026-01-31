@@ -1,0 +1,88 @@
+# =============================================================================
+# CareCircle - Local Development Overrides
+# =============================================================================
+# This file automatically extends docker-compose.yml when running:
+#   docker-compose up
+#
+# Adds development-only services and configurations.
+# DO NOT use in production.
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # PostgreSQL - Development Overrides
+  # ===========================================================================
+  postgres:
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1234
+      POSTGRES_DB: carecircle
+
+  # ===========================================================================
+  # Redis - Development Overrides  
+  # ===========================================================================
+  redis:
+    ports:
+      - "6379:6379"
+
+  # ===========================================================================
+  # RabbitMQ - Development Overrides
+  # ===========================================================================
+  rabbitmq:
+    ports:
+      - "5672:5672"
+      - "15672:15672"  # Management UI
+
+  # ===========================================================================
+  # Mailhog - Email Testing (Development Only)
+  # ===========================================================================
+  # Access UI at http://localhost:8025
+  # SMTP server at localhost:1025
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: carecircle-mailhog
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI
+    logging:
+      driver: "none"  # Reduce log noise
+
+  # ===========================================================================
+  # Adminer - Database GUI (Development Only)
+  # ===========================================================================
+  # Access at http://localhost:8080
+  # Server: postgres, Username: postgres, Password: 1234, Database: carecircle
+  adminer:
+    image: adminer:latest
+    container_name: carecircle-adminer
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DESIGN: nette
+    depends_on:
+      - postgres
+
+  # ===========================================================================
+  # Redis Commander - Redis GUI (Development Only)
+  # ===========================================================================
+  # Access at http://localhost:8081
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: carecircle-redis-commander
+    ports:
+      - "8081:8081"
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    depends_on:
+      - redis
+
+# =============================================================================
+# Development Network
+# =============================================================================
+networks:
+  default:
+    name: carecircle-dev
+

@@ -1,0 +1,187 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [main, develop]
+    types: [opened, synchronize, reopened, edited]
+
+jobs:
+  # ============================================================================
+  # PR TITLE VALIDATION (Conventional Commits)
+  # ============================================================================
+  pr-title:
+    name: PR Title Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR Title
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            chore
+            revert
+          requireScope: false
+          subjectPattern: ^.{1,80}$
+          subjectPatternError: |
+            PR title must be 80 characters or less.
+            Current title: "{subject}"
+
+  # ============================================================================
+  # BRANCH NAMING VALIDATION
+  # ============================================================================
+  branch-name:
+    name: Branch Name Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch name
+        run: |
+          BRANCH_NAME="${{ github.head_ref }}"
+          echo "Branch name: $BRANCH_NAME"
+          
+          # Skip check for dependabot
+          if [[ "$BRANCH_NAME" == dependabot/* ]]; then
+            echo "✅ Dependabot branch - skipping naming check"
+            exit 0
+          fi
+          
+          # Valid patterns: feature/, fix/, hotfix/, bugfix/, chore/, docs/, refactor/, test/
+          VALID_PATTERN="^(feature|fix|hotfix|bugfix|chore|docs|refactor|test|release|ci)/"
+          
+          if [[ ! "$BRANCH_NAME" =~ $VALID_PATTERN ]]; then
+            echo "❌ Invalid branch name: $BRANCH_NAME"
+            echo ""
+            echo "Branch names must follow the pattern:"
+            echo "  - feature/description"
+            echo "  - fix/description"
+            echo "  - hotfix/description"
+            echo "  - bugfix/description"
+            echo "  - chore/description"
+            echo "  - docs/description"
+            echo "  - refactor/description"
+            echo "  - test/description"
+            echo "  - release/version"
+            echo "  - ci/description"
+            exit 1
+          fi
+          
+          echo "✅ Branch name is valid: $BRANCH_NAME"
+
+  # ============================================================================
+  # PR SIZE CHECK
+  # ============================================================================
+  pr-size:
+    name: PR Size Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check PR size
+        run: |
+          # Get changed files statistics
+          ADDITIONS=$(git diff --shortstat origin/${{ github.base_ref }}...HEAD | grep -oP '\d+(?= insertion)' || echo "0")
+          DELETIONS=$(git diff --shortstat origin/${{ github.base_ref }}...HEAD | grep -oP '\d+(?= deletion)' || echo "0")
+          FILES_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | wc -l)
+          
+          TOTAL_CHANGES=$((ADDITIONS + DELETIONS))
+          
+          echo "📊 PR Statistics:"
+          echo "  Files changed: $FILES_CHANGED"
+          echo "  Lines added: $ADDITIONS"
+          echo "  Lines deleted: $DELETIONS"
+          echo "  Total changes: $TOTAL_CHANGES"
+          echo ""
+          
+          # Warning thresholds
+          if [ "$TOTAL_CHANGES" -gt 1000 ]; then
+            echo "⚠️ WARNING: Large PR detected (>1000 lines changed)"
+            echo "Consider breaking this PR into smaller, focused changes."
+          elif [ "$TOTAL_CHANGES" -gt 500 ]; then
+            echo "📝 NOTE: Medium-sized PR (>500 lines changed)"
+            echo "If possible, consider smaller PRs for easier review."
+          else
+            echo "✅ PR size is good (<500 lines)"
+          fi
+          
+          # Don't fail, just inform
+          exit 0
+
+  # ============================================================================
+  # FILE CHECKS
+  # ============================================================================
+  file-checks:
+    name: File Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for sensitive files
+        run: |
+          echo "🔍 Checking for sensitive files..."
+          
+          # Check for .env files (except examples)
+          if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '\.env$|\.env\.[^e]' | grep -v '.env.example'; then
+            echo "❌ ERROR: .env files should not be committed!"
+            exit 1
+          fi
+          
+          # Check for private keys
+          if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '\.pem$|\.key$|id_rsa'; then
+            echo "❌ ERROR: Private key files should not be committed!"
+            exit 1
+          fi
+          
+          echo "✅ No sensitive files detected"
+
+      - name: Check for console.log in production code
+        run: |
+          echo "🔍 Checking for console.log statements..."
+          
+          # Get changed TypeScript/JavaScript files (excluding tests and config)
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '\.(ts|tsx|js|jsx)$' | grep -v '\.test\.' | grep -v '\.spec\.' | grep -v 'jest.config' || true)
+          
+          if [ -n "$CHANGED_FILES" ]; then
+            # Check for console.log (warn but don't fail)
+            if echo "$CHANGED_FILES" | xargs grep -l 'console\.log' 2>/dev/null; then
+              echo "⚠️ WARNING: console.log found in changed files"
+              echo "Consider removing or replacing with proper logging"
+            else
+              echo "✅ No console.log statements found"
+            fi
+          else
+            echo "✅ No source files changed"
+          fi
+
+  # ============================================================================
+  # LOCK FILE CHECK
+  # ============================================================================
+  lockfile:
+    name: Lock File Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check lock file consistency
+        run: |
+          # Check if package.json was modified but lock file wasn't
+          PACKAGE_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -c 'package.json' || echo "0")
+          LOCK_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -c 'pnpm-lock.yaml' || echo "0")
+          
+          if [ "$PACKAGE_CHANGED" -gt 0 ] && [ "$LOCK_CHANGED" -eq 0 ]; then
+            echo "⚠️ WARNING: package.json was modified but pnpm-lock.yaml wasn't updated"
+            echo "Run 'pnpm install' to update the lock file"
+          else
+            echo "✅ Lock file check passed"
+          fi
+

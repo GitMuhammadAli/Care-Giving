@@ -1,0 +1,81 @@
+# =============================================================================
+# CareCircle - CI/CD Testing Configuration
+# =============================================================================
+# Use this for running tests in CI/CD pipelines:
+#   docker-compose -f docker-compose.test.yml up -d
+#   pnpm test
+#   docker-compose -f docker-compose.test.yml down -v
+#
+# Features:
+# - Isolated test network
+# - No persistent volumes (clean slate each run)
+# - Optimized for fast startup
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # PostgreSQL Test Database
+  # ===========================================================================
+  postgres-test:
+    image: postgres:16-alpine
+    container_name: carecircle-postgres-test
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: carecircle_test
+    ports:
+      - "5433:5432"  # Different port to avoid conflicts
+    tmpfs:
+      - /var/lib/postgresql/data  # Use tmpfs for speed
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+    networks:
+      - carecircle-test
+
+  # ===========================================================================
+  # Redis Test Instance
+  # ===========================================================================
+  redis-test:
+    image: redis:7-alpine
+    container_name: carecircle-redis-test
+    ports:
+      - "6380:6379"  # Different port to avoid conflicts
+    command: redis-server --appendonly no --save ""  # No persistence for speed
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+    networks:
+      - carecircle-test
+
+  # ===========================================================================
+  # RabbitMQ Test Instance
+  # ===========================================================================
+  rabbitmq-test:
+    image: rabbitmq:3.12-alpine
+    container_name: carecircle-rabbitmq-test
+    ports:
+      - "5673:5672"  # Different port to avoid conflicts
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+    networks:
+      - carecircle-test
+
+# =============================================================================
+# Test Network (Isolated)
+# =============================================================================
+networks:
+  carecircle-test:
+    name: carecircle-test
+    driver: bridge
+
