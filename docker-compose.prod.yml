@@ -1,8 +1,22 @@
-# Production Docker Compose with Nginx, Load Balancing, and Optimizations
+# =============================================================================
+# CareCircle - Production Docker Compose
+# =============================================================================
+# Use with: docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d
+#
+# Features:
+# - Nginx reverse proxy with HTTP/2
+# - Health checks on all services
+# - Resource limits
+# - Automatic restarts
+# - Logging configuration
+# =============================================================================
+
 version: '3.8'
 
 services:
-  # Nginx Reverse Proxy with HTTP/2
+  # ===========================================================================
+  # NGINX REVERSE PROXY
+  # ===========================================================================
   nginx:
     image: nginx:alpine
     container_name: carecircle-nginx
@@ -16,78 +30,301 @@ services:
       - ./certbot/www:/var/www/certbot:ro
       - nginx-cache:/var/cache/nginx
     depends_on:
-      - api
-      - web
+      api:
+        condition: service_healthy
+      web:
+        condition: service_started
     networks:
       - carecircle-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  # API Backend (can scale horizontally)
+  # ===========================================================================
+  # API BACKEND
+  # ===========================================================================
   api:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-      target: production
+      target: runner
     container_name: carecircle-api
+    env_file:
+      - .env.prod
     environment:
       NODE_ENV: production
+      PORT: 4000
+    expose:
+      - "4000"
     depends_on:
-      - postgres
-      - redis
-      - rabbitmq
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - carecircle-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
 
-  # Web Frontend
+  # ===========================================================================
+  # WEB FRONTEND
+  # ===========================================================================
   web:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
-      target: production
+      target: runner
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
     container_name: carecircle-web
+    env_file:
+      - .env.prod
     environment:
       NODE_ENV: production
+      PORT: 3000
+    expose:
+      - "3000"
     networks:
       - carecircle-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
 
-  # PostgreSQL Database
+  # ===========================================================================
+  # BACKGROUND WORKERS
+  # ===========================================================================
+  workers:
+    build:
+      context: .
+      dockerfile: apps/workers/Dockerfile
+      target: runner
+    container_name: carecircle-workers
+    env_file:
+      - .env.prod
+    environment:
+      NODE_ENV: production
+      HEALTH_PORT: 4001
+    expose:
+      - "4001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - carecircle-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:4001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # ===========================================================================
+  # POSTGRESQL DATABASE
+  # ===========================================================================
   postgres:
     image: postgres:16-alpine
     container_name: carecircle-postgres
+    env_file:
+      - .env.prod
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_DATABASE:-carecircle}
+      PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    expose:
+      - "5432"
     networks:
       - carecircle-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_DATABASE:-carecircle}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
-  # Redis Cache
+  # ===========================================================================
+  # REDIS CACHE
+  # ===========================================================================
   redis:
     image: redis:7-alpine
     container_name: carecircle-redis
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --requirepass ${REDIS_PASSWORD:-}
     volumes:
       - redis-data:/data
+    expose:
+      - "6379"
     networks:
       - carecircle-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 384M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  # RabbitMQ Message Broker
+  # ===========================================================================
+  # RABBITMQ MESSAGE BROKER
+  # ===========================================================================
   rabbitmq:
     image: rabbitmq:3.12-management-alpine
     container_name: carecircle-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${AMQP_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${AMQP_PASSWORD:-guest}
+      RABBITMQ_DEFAULT_VHOST: ${AMQP_VHOST:-/}
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
+    expose:
+      - "5672"
+      - "15672"
     networks:
       - carecircle-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
 
+# =============================================================================
+# NETWORKS
+# =============================================================================
 networks:
   carecircle-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
 
+# =============================================================================
+# VOLUMES
+# =============================================================================
 volumes:
   postgres-data:
+    driver: local
   redis-data:
+    driver: local
   rabbitmq-data:
+    driver: local
   nginx-cache:
+    driver: local
