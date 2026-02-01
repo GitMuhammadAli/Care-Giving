@@ -25,6 +25,7 @@ import { CustomThrottlerGuard } from './system/guard/throttle.guard';
 import { LoggingInterceptor } from './system/interceptor/logging.interceptor';
 import { GlobalExceptionFilter } from './system/filter/http-exception.filter';
 import { ValidationExceptionFilter } from './system/filter/validation-exception.filter';
+import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
 
 // Feature Modules
 import { AuthModule } from './auth/auth.module';
@@ -172,7 +173,7 @@ import { EventsModule } from './events/events.module';
       provide: APP_INTERCEPTOR,
       useClass: LoggingInterceptor,
     },
-    // Global Filters
+    // Global Filters (order matters - most specific first, they run in reverse)
     {
       provide: APP_FILTER,
       useClass: GlobalExceptionFilter,
@@ -180,6 +181,10 @@ import { EventsModule } from './events/events.module';
     {
       provide: APP_FILTER,
       useClass: ValidationExceptionFilter,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: PrismaExceptionFilter,
     },
   ],
 })
