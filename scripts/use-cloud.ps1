@@ -2,7 +2,7 @@
 # Switch to CLOUD profile
 # =============================================================================
 # Merges env/base.env + env/cloud.env -> .env
-# Copies .env to apps/api/.env, apps/workers/.env, packages/database/.env
+# Copies .env to apps/api/.env, apps/web/.env, apps/workers/.env, packages/database/.env
 # Run: .\scripts\use-cloud.ps1
 # =============================================================================
 
@@ -43,7 +43,7 @@ $merged = $header + $baseEnv + "`n`n" + $cloudEnv
 $merged | Out-File -FilePath ".env" -Encoding UTF8 -NoNewline
 
 # Copy .env to app directories (Windows fallback for symlinks)
-$appDirs = @("apps/api", "apps/workers", "packages/database")
+$appDirs = @("apps/api", "apps/web", "apps/workers", "packages/database")
 foreach ($dir in $appDirs) {
     $targetPath = Join-Path (Join-Path $rootDir $dir) ".env"
     Write-Host "Copying .env to $targetPath" -ForegroundColor DarkGray
