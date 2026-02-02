@@ -7,6 +7,7 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import compression from 'compression';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { Request, Response } from 'express';
 
 import { AppModule } from './app.module';
 import { setupSwagger } from './swagger';
@@ -106,7 +107,7 @@ async function bootstrap() {
 
   // Root health check for load balancers (Render, etc.)
   const httpAdapter = app.getHttpAdapter();
-  httpAdapter.get('/health', (req, res) => {
+  httpAdapter.get('/health', (req: Request, res: Response) => {
     res.json({ 
       status: 'ok', 
       timestamp: new Date().toISOString(),
