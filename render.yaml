@@ -18,7 +18,8 @@ services:
     plan: free
     branch: deployment
     rootDir: apps/api
-    buildCommand: npm install && npm run build
+    buildCommand: cd ../.. && pnpm install && pnpm db:generate && cd apps/api && npm run build
+    preDeployCommand: cd ../.. && pnpm db:migrate && pnpm db:seed:admin
     startCommand: npm run start:prod
     healthCheckPath: /health
     autoDeploy: true
@@ -106,6 +107,12 @@ services:
       
       # Monitoring (optional)
       - key: SENTRY_DSN
+        sync: false
+      
+      # Admin Dashboard (optional - for seeding admin users)
+      - key: ADMIN_EMAIL
+        value: superadmin@carecircle.com
+      - key: ADMIN_PASSWORD
         sync: false
 
   # ===========================================================================
