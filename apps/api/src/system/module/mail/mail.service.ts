@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import * as nodemailer from 'nodemailer';
+import { LimitsService, ResourceType, PeriodType } from '../limits';
 
 export interface SendMailOptions {
   to: string | string[];
@@ -16,6 +17,7 @@ export interface SendMailOptions {
     content: Buffer | string;
     contentType?: string;
   }>;
+  skipLimitCheck?: boolean; // For critical system emails
 }
 
 @Injectable()
@@ -26,18 +28,44 @@ export class MailService {
   constructor(
     private configService: ConfigService,
     @InjectQueue('mail') private mailQueue: Queue,
+    private readonly limitsService: LimitsService,
   ) {
     this.provider = this.configService.get('mail.provider') || 'mailtrap';
     this.logger.log(`Mail provider: ${this.provider}`);
   }
 
   async send(options: SendMailOptions): Promise<void> {
+    // Count recipients
+    const recipientCount = Array.isArray(options.to) ? options.to.length : 1;
+
+    // Check email limits (unless explicitly skipped for critical emails)
+    if (!options.skipLimitCheck) {
+      const { allowed, status } = await this.limitsService.checkLimit(
+        ResourceType.EMAILS_SENT,
+        PeriodType.DAILY,
+        recipientCount,
+      );
+
+      if (!allowed) {
+        this.logger.error(
+          `Email limit reached (${status.count}/${status.limit}). Email to ${options.to} blocked.`,
+        );
+        throw new Error('Daily email limit reached. Please try again tomorrow.');
+      }
+
+      if (status.isWarning) {
+        this.logger.warn(
+          `Email usage warning: ${status.count}/${status.limit} (${status.percentUsed}%)`,
+        );
+      }
+    }
+
     try {
       // Check if queue client is ready (connected to Redis)
       const client = this.mailQueue.client;
       if (!client || client.status !== 'ready') {
         this.logger.warn(`Mail queue not ready (Redis disconnected). Sending directly...`);
-        await this.sendDirect(options);
+        await this.sendDirect(options, recipientCount);
         return;
       }
 
@@ -50,6 +78,7 @@ export class MailService {
         this.mailQueue.add('send', {
           ...options,
           provider: this.provider,
+          recipientCount, // Pass for tracking after send
         }, {
           attempts: 3,
           backoff: {
@@ -60,24 +89,39 @@ export class MailService {
         timeoutPromise,
       ]);
 
+      // Track usage after successful queue
+      await this.limitsService.incrementUsage(
+        ResourceType.EMAILS_SENT,
+        PeriodType.DAILY,
+        recipientCount,
+      );
+
       this.logger.log(`Mail queued for ${options.to} via ${this.provider}`);
     } catch (error) {
       // If queue fails (Redis unavailable), try direct send
       this.logger.warn(`Failed to queue mail for ${options.to}: ${error.message}. Trying direct send...`);
-      await this.sendDirect(options);
+      await this.sendDirect(options, recipientCount);
     }
   }
 
   /**
    * Send email directly without using the queue (fallback when Redis is unavailable)
    */
-  private async sendDirect(options: SendMailOptions): Promise<void> {
+  private async sendDirect(options: SendMailOptions, recipientCount: number = 1): Promise<void> {
     try {
       const mailContent = options.template
         ? this.renderTemplate(options.template, options.context || {})
         : { html: options.html || '', text: options.text || '' };
 
       await this.sendViaMailtrap(options.to, options.subject, mailContent);
+
+      // Track usage after successful send
+      await this.limitsService.incrementUsage(
+        ResourceType.EMAILS_SENT,
+        PeriodType.DAILY,
+        recipientCount,
+      );
+
       this.logger.log(`Mail sent directly to ${options.to}`);
     } catch (error) {
       this.logger.error(`Failed to send mail directly to ${options.to}: ${error.message}`);

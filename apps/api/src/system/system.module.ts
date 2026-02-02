@@ -20,6 +20,7 @@ import { IsExistsConstraint } from './validator/is-exists.validator';
 import { StorageModule } from './module/storage/storage.module';
 import { MailModule } from './module/mail/mail.module';
 import { CacheModule } from './module/cache';
+import { LimitsModule } from './module/limits';
 
 @Global()
 @Module({
@@ -33,6 +34,7 @@ import { CacheModule } from './module/cache';
       },
     }),
     CacheModule,
+    LimitsModule,
     StorageModule,
     MailModule,
   ],
@@ -47,6 +49,7 @@ import { CacheModule } from './module/cache';
   exports: [
     PrismaModule,
     CacheModule,
+    LimitsModule,
     OtpHelper,
     LockHelper,
     IsUniqueConstraint,
