@@ -6,6 +6,7 @@ import { ClsService } from 'nestjs-cls';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import compression from 'compression';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 import { AppModule } from './app.module';
 import { setupSwagger } from './swagger';
@@ -14,21 +15,32 @@ import { ContextHelper } from './system/helper/context.helper';
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
-  const app = await NestFactory.create(AppModule, {
-    logger: ['error', 'warn', 'log', 'debug', 'verbose'],
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    // Reduce logging in production for better performance
+    logger: process.env.NODE_ENV === 'production' 
+      ? ['error', 'warn', 'log'] 
+      : ['error', 'warn', 'log', 'debug', 'verbose'],
   });
 
   const configService = app.get(ConfigService);
   const clsService = app.get(ClsService);
   ContextHelper.setClsService(clsService);
 
-  const port = configService.get('app.port') || 4000;
+  const port = configService.get('app.port') || process.env.PORT || 4000;
   const apiPrefix = configService.get('app.apiPrefix') || 'api/v1';
   const frontendUrl = configService.get('app.frontendUrl') || 'http://localhost:4173';
   const isProduction = configService.get('app.nodeEnv') === 'production';
 
-  // Security
-  app.use(helmet());
+  // Trust proxy for Render/Vercel/Cloudflare (required for secure cookies behind reverse proxy)
+  if (isProduction) {
+    app.set('trust proxy', 1);
+  }
+
+  // Security headers with Helmet
+  app.use(helmet({
+    contentSecurityPolicy: isProduction ? undefined : false, // Disable CSP in dev for hot reload
+    crossOriginEmbedderPolicy: false, // Allow embedding for WebSocket connections
+  }));
   app.use(cookieParser());
 
   // Compression (GZIP)
@@ -50,9 +62,13 @@ async function bootstrap() {
     }),
   );
 
-  // CORS
+  // CORS - Allow multiple origins in production if needed
+  const allowedOrigins = isProduction 
+    ? [frontendUrl, process.env.CORS_ORIGIN].filter(Boolean) 
+    : true;
+  
   app.enableCors({
-    origin: isProduction ? [frontendUrl] : true,
+    origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
@@ -60,7 +76,10 @@ async function bootstrap() {
       'Authorization',
       'X-Language',
       'X-Request-Id',
+      'X-Requested-With',
     ],
+    exposedHeaders: ['X-Request-Id'],
+    maxAge: isProduction ? 86400 : 3600, // Cache preflight for 24h in production
   });
 
   // Global prefix
@@ -78,15 +97,24 @@ async function bootstrap() {
     }),
   );
 
-  // Swagger
-  if (!isProduction) {
-    setupSwagger(app);
-  }
+  // Swagger - Available in all environments at /api
+  // In production, consider protecting with authentication if needed
+  setupSwagger(app);
 
   // Enable graceful shutdown
   app.enableShutdownHooks();
 
-  await app.listen(port);
+  // Root health check for load balancers (Render, etc.)
+  const httpAdapter = app.getHttpAdapter();
+  httpAdapter.get('/health', (req, res) => {
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      environment: isProduction ? 'production' : 'development'
+    });
+  });
+
+  await app.listen(port, '0.0.0.0'); // Listen on all interfaces for container deployment
 
   // Handle graceful shutdown on Windows and Unix
   const shutdown = async (signal: string) => {
@@ -106,31 +134,36 @@ async function bootstrap() {
     process.kill(process.pid, 'SIGUSR2');
   });
 
-  // Pretty startup logs
-  console.log('');
-  console.log('╔══════════════════════════════════════════════════════════════╗');
-  console.log('║                                                              ║');
-  console.log('║   🏡  CareCircle API Server                                  ║');
-  console.log('║                                                              ║');
-  console.log('╠══════════════════════════════════════════════════════════════╣');
-  console.log('║                                                              ║');
-  console.log(`║   🚀  API:      http://localhost:${port}/${apiPrefix}`.padEnd(67) + '║');
-  console.log(`║   📚  Swagger:  http://localhost:${port}/api`.padEnd(67) + '║');
-  console.log(`║   🌐  Frontend: ${frontendUrl}`.padEnd(67) + '║');
-  console.log('║                                                              ║');
-  console.log('╠══════════════════════════════════════════════════════════════╣');
-  console.log('║                                                              ║');
-  console.log(`║   📧  Mail:     ${configService.get('mail.provider') || 'mailtrap'}`.padEnd(67) + '║');
-  console.log(`║   📦  Storage:  ${configService.get('storage.provider') || 'cloudinary'}`.padEnd(67) + '║');
-  console.log(`║   🗄️   Database: ${configService.get('database.host') || 'localhost'}:${configService.get('database.port') || 5432}`.padEnd(66) + '║');
-  console.log(`║   ⚡  Redis:    ${configService.get('redis.host') || 'localhost'}:${configService.get('redis.port') || 6379}`.padEnd(67) + '║');
-  console.log('║                                                              ║');
-  console.log('╠══════════════════════════════════════════════════════════════╣');
-  console.log('║                                                              ║');
-  console.log(`║   Mode: ${isProduction ? '🔒 Production' : '🔧 Development'}`.padEnd(67) + '║');
-  console.log('║                                                              ║');
-  console.log('╚══════════════════════════════════════════════════════════════╝');
-  console.log('');
+  // Startup logs - minimal in production
+  if (isProduction) {
+    logger.log(`CareCircle API started on port ${port} [PRODUCTION]`);
+    logger.log(`Frontend: ${frontendUrl}`);
+  } else {
+    console.log('');
+    console.log('╔══════════════════════════════════════════════════════════════╗');
+    console.log('║                                                              ║');
+    console.log('║   🏡  CareCircle API Server                                  ║');
+    console.log('║                                                              ║');
+    console.log('╠══════════════════════════════════════════════════════════════╣');
+    console.log('║                                                              ║');
+    console.log(`║   🚀  API:      http://localhost:${port}/${apiPrefix}`.padEnd(67) + '║');
+    console.log(`║   📚  Swagger:  http://localhost:${port}/api`.padEnd(67) + '║');
+    console.log(`║   🌐  Frontend: ${frontendUrl}`.padEnd(67) + '║');
+    console.log('║                                                              ║');
+    console.log('╠══════════════════════════════════════════════════════════════╣');
+    console.log('║                                                              ║');
+    console.log(`║   📧  Mail:     ${configService.get('mail.provider') || 'mailtrap'}`.padEnd(67) + '║');
+    console.log(`║   📦  Storage:  ${configService.get('storage.provider') || 'cloudinary'}`.padEnd(67) + '║');
+    console.log(`║   🗄️   Database: ${configService.get('database.host') || 'localhost'}:${configService.get('database.port') || 5432}`.padEnd(66) + '║');
+    console.log(`║   ⚡  Redis:    ${configService.get('redis.host') || 'localhost'}:${configService.get('redis.port') || 6379}`.padEnd(67) + '║');
+    console.log('║                                                              ║');
+    console.log('╠══════════════════════════════════════════════════════════════╣');
+    console.log('║                                                              ║');
+    console.log(`║   Mode: 🔧 Development`.padEnd(67) + '║');
+    console.log('║                                                              ║');
+    console.log('╚══════════════════════════════════════════════════════════════╝');
+    console.log('');
+  }
 }
 
 bootstrap();
