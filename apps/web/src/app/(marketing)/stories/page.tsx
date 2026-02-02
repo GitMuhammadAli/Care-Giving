@@ -237,7 +237,7 @@ export default function StoriesPage() {
               Ready to write your own story?
             </h2>
             <p className="text-background/70 text-lg mb-10">
-              Join 50,000+ families who've replaced chaos with calm.
+              Join families nationwide who've replaced chaos with calm.
             </p>
             <Link href="/register">
               <Button size="xl" className="bg-sage text-sage-900 hover:bg-sage/90 font-semibold">

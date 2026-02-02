@@ -1,6 +1,7 @@
 export * from './avatar';
 export * from './badge';
 export * from './button';
+export * from './coming-soon-badge';
 export * from './card';
 export * from './dialog';
 export * from './empty-state';

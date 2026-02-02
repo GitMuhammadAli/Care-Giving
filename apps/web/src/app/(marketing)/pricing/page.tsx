@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
+import { ComingSoonBadge, BetaBadge } from '@/components/ui/coming-soon-badge';
 import {
   Check,
   Heart,
@@ -11,7 +12,8 @@ import {
   Building2,
   ArrowRight,
   HelpCircle,
-  Star,
+  Users,
+  Lock,
 } from 'lucide-react';
 import {
   Accordion,
@@ -19,6 +21,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { toast } from 'react-hot-toast';
 
 const plans = [
   {
@@ -28,6 +31,7 @@ const plans = [
     description: 'Everything families need to coordinate care together.',
     icon: Heart,
     highlighted: true,
+    comingSoon: false,
     features: [
       'Unlimited care circles',
       'Unlimited family members',
@@ -49,6 +53,7 @@ const plans = [
     description: 'For care managers working with multiple families.',
     icon: Building2,
     highlighted: false,
+    comingSoon: true,
     features: [
       'Everything in Family, plus:',
       'Manage 10+ family circles',
@@ -60,8 +65,8 @@ const plans = [
       'Custom branding',
       'HIPAA BAA available',
     ],
-    cta: 'Contact sales',
-    ctaLink: '/contact',
+    cta: 'Join waitlist',
+    ctaLink: '#',
   },
 ];
 
@@ -93,6 +98,13 @@ const faqs = [
 ];
 
 export default function PricingPage() {
+  const handleWaitlistClick = () => {
+    toast.success('Thanks for your interest! We\'ll notify you when the Professional plan launches.', {
+      duration: 4000,
+      icon: '🚀',
+    });
+  };
+
   return (
     <>
       {/* Hero */}
@@ -153,6 +165,11 @@ export default function PricingPage() {
                     Most Popular
                   </div>
                 )}
+                {plan.comingSoon && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                    <ComingSoonBadge size="lg" variant="default" />
+                  </div>
+                )}
 
                 <div className="flex items-center gap-3 mb-6">
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
@@ -180,21 +197,36 @@ export default function PricingPage() {
                       <Check className={`w-5 h-5 shrink-0 mt-0.5 ${
                         plan.highlighted ? 'text-sage' : 'text-terracotta'
                       }`} />
-                      <span className="text-foreground text-sm">{feature}</span>
+                      <span className={`text-sm ${plan.comingSoon ? 'text-muted-foreground' : 'text-foreground'}`}>
+                        {feature}
+                      </span>
                     </li>
                   ))}
                 </ul>
 
-                <Link href={plan.ctaLink}>
+                {plan.comingSoon ? (
                   <Button
-                    variant={plan.highlighted ? 'editorial' : 'editorial-outline'}
+                    variant="editorial-outline"
                     size="lg"
                     fullWidth
+                    onClick={handleWaitlistClick}
+                    className="opacity-90"
                   >
                     {plan.cta}
-                    {plan.highlighted && <ArrowRight className="w-4 h-4 ml-2" />}
+                    <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
-                </Link>
+                ) : (
+                  <Link href={plan.ctaLink}>
+                    <Button
+                      variant={plan.highlighted ? 'editorial' : 'editorial-outline'}
+                      size="lg"
+                      fullWidth
+                    >
+                      {plan.cta}
+                      {plan.highlighted && <ArrowRight className="w-4 h-4 ml-2" />}
+                    </Button>
+                  </Link>
+                )}
               </motion.div>
             ))}
           </div>
@@ -207,8 +239,8 @@ export default function PricingPage() {
           <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16">
             {[
               { icon: Shield, text: 'Bank-level encryption' },
-              { icon: Star, text: '4.9 App Store rating' },
-              { icon: Heart, text: '50,000+ families' },
+              { icon: Lock, text: 'Your data stays private' },
+              { icon: Users, text: 'Trusted by families nationwide' },
             ].map((badge, i) => (
               <div key={i} className="flex items-center gap-3 text-muted-foreground">
                 <badge.icon className="w-5 h-5 text-sage" />
@@ -279,11 +311,14 @@ export default function PricingPage() {
       <section className="py-24 bg-foreground text-background">
         <div className="container mx-auto px-6">
           <div className="max-w-3xl mx-auto text-center">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <BetaBadge size="lg" variant="subtle" className="bg-background/10 text-background border-background/20" />
+            </div>
             <h2 className="font-editorial text-3xl md:text-4xl lg:text-5xl text-background tracking-editorial mb-6">
               Ready to get started?
             </h2>
             <p className="text-background/70 text-lg mb-10">
-              Join 50,000+ families who coordinate care with CareCircle.
+              Join families who coordinate care with CareCircle. Free forever.
             </p>
             <Link href="/register">
               <Button size="xl" className="bg-sage text-sage-900 hover:bg-sage/90 font-semibold">

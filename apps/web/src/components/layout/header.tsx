@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Menu, X, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { BetaBadge } from '@/components/ui/coming-soon-badge';
 import { cn } from '@/lib/utils';
 import { useAuthContext } from '@/components/providers/auth-provider';
 
@@ -26,8 +27,9 @@ export function Header() {
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border/50">
       <div className="container mx-auto">
         <div className="flex items-center justify-between h-16 px-6">
-          <Link href="/" className="font-serif text-xl tracking-tight text-foreground">
+          <Link href="/" className="flex items-center gap-2 font-serif text-xl tracking-tight text-foreground">
             CareCircle
+            <BetaBadge size="sm" showIcon={false} />
           </Link>
 
           <nav className="hidden md:flex items-center gap-8">
