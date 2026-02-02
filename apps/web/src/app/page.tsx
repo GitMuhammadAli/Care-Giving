@@ -61,8 +61,8 @@ const trustBadges = [
 
 // Social proof stats
 const stats = [
-  { value: '50,000+', label: 'Families trusting us' },
-  { value: '4.9', label: 'App Store rating', stars: true },
+  { value: '1000+', label: 'Families nationwide' },
+  { value: 'Free', label: 'Forever, no catch' },
   { value: '2 min', label: 'Average setup time' },
 ];
 
@@ -556,7 +556,7 @@ export default function LandingPage() {
                   </h2>
 
                   <p className="text-background/70 text-lg leading-relaxed mb-10 max-w-xl mx-auto">
-                    Join 50,000+ families who&apos;ve replaced the chaos with calm. 
+                    Join families nationwide who&apos;ve replaced the chaos with calm. 
                     Create your free circle today—no credit card, no catch.
                   </p>
 

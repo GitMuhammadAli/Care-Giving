@@ -53,6 +53,7 @@ import { MedicationTracker } from '@/components/dashboard/medication-tracker';
 import { ContactsDirectory } from '@/components/dashboard/contacts-directory';
 import { DocumentsVault } from '@/components/dashboard/documents-vault';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ComingSoonBadge } from '@/components/ui/coming-soon-badge';
 import { AddCareRecipientModal } from '@/components/modals/add-care-recipient-modal';
 import { EditCareRecipientModal } from '@/components/modals/edit-care-recipient-modal';
 import { FamilySpaceSelector } from '@/components/layout/family-space-selector';
@@ -69,10 +70,10 @@ import { useFamilySpace } from '@/contexts/family-space-context';
 
 // Quick actions with proper theme colors
 const quickActions = [
-  { icon: Pill, label: 'Log Medication', action: 'medication', bgClass: 'bg-primary/15', textClass: 'text-primary' },
-  { icon: Calendar, label: 'Add Appointment', action: 'appointment', bgClass: 'bg-secondary/20', textClass: 'text-secondary-foreground' },
-  { icon: MessageCircle, label: 'Post Update', action: 'update', bgClass: 'bg-muted/20', textClass: 'text-muted-foreground' },
-  { icon: Camera, label: 'Share Photo', action: 'photo', bgClass: 'bg-accent', textClass: 'text-accent-foreground' },
+  { icon: Pill, label: 'Log Medication', action: 'medication', bgClass: 'bg-primary/15', textClass: 'text-primary', comingSoon: false },
+  { icon: Calendar, label: 'Add Appointment', action: 'appointment', bgClass: 'bg-secondary/20', textClass: 'text-secondary-foreground', comingSoon: false },
+  { icon: MessageCircle, label: 'Post Update', action: 'update', bgClass: 'bg-muted/20', textClass: 'text-muted-foreground', comingSoon: false },
+  { icon: Camera, label: 'Share Photo', action: 'photo', bgClass: 'bg-accent', textClass: 'text-accent-foreground', comingSoon: true },
 ];
 
 const Dashboard = () => {
@@ -327,7 +328,7 @@ const Dashboard = () => {
         setPostUpdateOpen(true);
         break;
       case 'photo':
-        toast.success('Photo sharing coming soon!');
+        toast('Photo sharing is coming soon! Stay tuned.', { icon: '📸', duration: 3000 });
         break;
     }
   };
@@ -616,8 +617,13 @@ const Dashboard = () => {
                   <button
                     key={index}
                     onClick={() => handleQuickAction(action.action)}
-                    className="quick-action-btn flex flex-col items-center gap-3 p-5 rounded-2xl bg-background/60 hover:bg-background transition-all duration-200 border border-border/50 hover:border-primary/30 hover:shadow-md group"
+                    className={`quick-action-btn flex flex-col items-center gap-3 p-5 rounded-2xl bg-background/60 hover:bg-background transition-all duration-200 border border-border/50 hover:border-primary/30 hover:shadow-md group relative ${action.comingSoon ? 'opacity-75' : ''}`}
                   >
+                    {action.comingSoon && (
+                      <div className="absolute -top-2 -right-2 z-10">
+                        <ComingSoonBadge size="sm" showIcon={false} />
+                      </div>
+                    )}
                     <div className={`w-12 h-12 rounded-xl ${action.bgClass} flex items-center justify-center transition-transform duration-200 group-hover:scale-110`}>
                       <action.icon className={`w-5 h-5 ${action.textClass}`} />
                     </div>

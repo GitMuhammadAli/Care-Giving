@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { ComingSoonBadge, BetaBadge } from '@/components/ui/coming-soon-badge';
 import {
   Mail,
   MessageSquare,
@@ -16,7 +17,9 @@ import {
   CheckCircle2,
   X,
   ArrowRight,
+  Info,
 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 const contactOptions = [
   {
@@ -25,13 +28,15 @@ const contactOptions = [
     description: 'For general inquiries and support',
     action: 'hello@carecircle.app',
     actionType: 'email',
+    comingSoon: false,
   },
   {
     icon: MessageSquare,
     title: 'Live Chat',
-    description: 'Mon–Fri, 9am–5pm Pacific',
-    action: 'Start a conversation',
+    description: 'Real-time support with our team',
+    action: 'Coming Soon',
     actionType: 'chat',
+    comingSoon: true,
   },
   {
     icon: HelpCircle,
@@ -40,13 +45,13 @@ const contactOptions = [
     action: 'Browse articles',
     actionType: 'link',
     link: '/how-it-works',
+    comingSoon: false,
   },
 ];
 
 const responseTime = [
-  { type: 'Email', time: 'Within 24 hours' },
-  { type: 'Live Chat', time: '< 5 minutes' },
-  { type: 'Urgent', time: 'Priority queue' },
+  { type: 'Email', time: 'Within 24–48 hours' },
+  { type: 'Help Center', time: 'Instant access' },
 ];
 
 export default function ContactPage() {
@@ -63,10 +68,26 @@ export default function ContactPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    
+    // Simulate form submission
     await new Promise((resolve) => setTimeout(resolve, 1000));
+    
     setIsSubmitting(false);
     setFormData({ name: '', email: '', subject: 'General question', message: '' });
     setSubmitted(true);
+    
+    // Show informational toast about beta status
+    toast.success(
+      'Message received! This is a demo - in production, your message would be sent to our team.',
+      { duration: 5000, icon: '📬' }
+    );
+  };
+
+  const handleChatClick = () => {
+    toast('Live chat is coming soon! For now, please use email or our contact form.', {
+      duration: 4000,
+      icon: '💬',
+    });
   };
 
   return (
@@ -83,6 +104,7 @@ export default function ContactPage() {
               >
                 <MessageSquare className="w-5 h-5 text-sage" />
                 <span className="label-caps text-sage-600">Get In Touch</span>
+                <BetaBadge size="sm" className="ml-2" />
               </motion.div>
 
               <motion.h1
@@ -101,8 +123,8 @@ export default function ContactPage() {
                 transition={{ delay: 0.2 }}
                 className="text-xl text-muted-foreground leading-relaxed mb-10"
               >
-                Questions? Feedback? Need assistance? Our team responds to 
-                every message personally—usually within a few hours.
+                Questions? Feedback? Need assistance? We read every message 
+                and respond as quickly as we can.
               </motion.p>
 
               {/* Contact Options */}
@@ -113,13 +135,18 @@ export default function ContactPage() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.3 + index * 0.1 }}
-                    className="flex items-start gap-4 p-4 bg-card border border-border rounded-xl hover:border-sage/50 transition-colors"
+                    className={`flex items-start gap-4 p-4 bg-card border border-border rounded-xl transition-colors ${
+                      option.comingSoon ? 'opacity-75' : 'hover:border-sage/50'
+                    }`}
                   >
                     <div className="w-12 h-12 rounded-xl bg-sage/10 flex items-center justify-center flex-shrink-0">
                       <option.icon className="w-6 h-6 text-sage" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-medium text-foreground mb-1">{option.title}</h3>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-medium text-foreground">{option.title}</h3>
+                        {option.comingSoon && <ComingSoonBadge size="sm" />}
+                      </div>
                       <p className="text-sm text-muted-foreground mb-2">{option.description}</p>
                       {option.actionType === 'email' ? (
                         <a
@@ -130,10 +157,10 @@ export default function ContactPage() {
                         </a>
                       ) : option.actionType === 'chat' ? (
                         <button
-                          onClick={() => setChatOpen(true)}
-                          className="text-sage hover:text-sage/80 text-sm font-medium transition-colors"
+                          onClick={handleChatClick}
+                          className="text-muted-foreground text-sm font-medium cursor-not-allowed"
                         >
-                          {option.action} →
+                          {option.action}
                         </button>
                       ) : (
                         <Link
@@ -156,9 +183,20 @@ export default function ContactPage() {
               transition={{ delay: 0.3 }}
               className="bg-card border border-border rounded-2xl p-8"
             >
-              <div className="flex items-center gap-2 mb-6">
-                <Send className="w-5 h-5 text-terracotta" />
-                <span className="label-caps text-terracotta">Send a Message</span>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                  <Send className="w-5 h-5 text-terracotta" />
+                  <span className="label-caps text-terracotta">Send a Message</span>
+                </div>
+                <BetaBadge size="sm" variant="subtle" />
+              </div>
+
+              {/* Beta Notice */}
+              <div className="flex items-start gap-3 p-3 mb-6 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  This is a demo contact form. In the full release, messages will be sent directly to our support team.
+                </p>
               </div>
 
               {submitted ? (
@@ -166,8 +204,14 @@ export default function ContactPage() {
                   <CheckCircle2 className="w-12 h-12 text-sage mx-auto mb-4" />
                   <h3 className="font-editorial text-2xl text-foreground mb-2">Message sent!</h3>
                   <p className="text-muted-foreground">
-                    We'll get back to you within 24 hours.
+                    Thanks for reaching out. We'll get back to you soon.
                   </p>
+                  <button
+                    onClick={() => setSubmitted(false)}
+                    className="mt-4 text-sage hover:text-sage/80 text-sm font-medium"
+                  >
+                    Send another message
+                  </button>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-5">
@@ -274,7 +318,7 @@ export default function ContactPage() {
         </div>
       </section>
 
-      {/* Chat Widget */}
+      {/* Chat Widget - Disabled/Coming Soon */}
       {chatOpen && (
         <motion.div
           initial={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -288,7 +332,7 @@ export default function ContactPage() {
               </div>
               <div>
                 <p className="font-medium text-foreground text-sm">CareCircle Support</p>
-                <p className="text-xs text-sage">● Online now</p>
+                <ComingSoonBadge size="sm" />
               </div>
             </div>
             <button
@@ -298,26 +342,15 @@ export default function ContactPage() {
               <X className="w-5 h-5" />
             </button>
           </div>
-          <div className="p-4 h-64 flex flex-col items-start gap-3">
-            <div className="bg-sage/10 text-foreground text-sm p-3 rounded-2xl rounded-tl-none max-w-[80%]">
-              👋 Hi there! How can we help you today?
-            </div>
-            <div className="flex-1" />
-            <p className="text-xs text-muted-foreground text-center w-full">
-              A team member will respond shortly
+          <div className="p-4 h-64 flex flex-col items-center justify-center text-center">
+            <MessageSquare className="w-12 h-12 text-muted-foreground mb-4" />
+            <h3 className="font-medium text-foreground mb-2">Live Chat Coming Soon</h3>
+            <p className="text-sm text-muted-foreground">
+              We're working on bringing real-time support. For now, please email us at{' '}
+              <a href="mailto:hello@carecircle.app" className="text-sage hover:underline">
+                hello@carecircle.app
+              </a>
             </p>
-          </div>
-          <div className="p-4 border-t border-border">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Type your message..."
-                className="flex-1 px-4 py-2 border border-border rounded-full bg-background text-foreground text-sm focus:outline-none focus:border-sage"
-              />
-              <button className="w-10 h-10 bg-sage text-sage-900 rounded-full flex items-center justify-center hover:bg-sage/90 transition-colors">
-                <Send className="w-4 h-4" />
-              </button>
-            </div>
           </div>
         </motion.div>
       )}
