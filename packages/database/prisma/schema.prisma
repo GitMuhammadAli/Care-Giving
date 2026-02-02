@@ -643,3 +643,35 @@ model AuditLog {
   @@index([resource, resourceId])
 }
 
+// ============================================
+// RESOURCE USAGE TRACKING (for free-tier limits)
+// ============================================
+
+model UsageTracking {
+  id           String       @id @default(uuid())
+  resource     ResourceType
+  periodType   PeriodType
+  periodStart  DateTime
+  count        Int          @default(0)
+  limit        Int
+  lastUpdated  DateTime     @updatedAt
+  metadata     Json?
+
+  @@unique([resource, periodType, periodStart])
+  @@index([resource, periodStart])
+}
+
+enum ResourceType {
+  EMAILS_SENT
+  FILE_UPLOADS
+  FILE_SIZE_BYTES
+  REDIS_COMMANDS
+  RABBITMQ_MESSAGES
+  API_REQUESTS
+}
+
+enum PeriodType {
+  DAILY
+  MONTHLY
+}
+

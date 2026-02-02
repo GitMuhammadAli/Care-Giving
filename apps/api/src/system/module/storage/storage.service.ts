@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary } from 'cloudinary';
 import { v4 as uuid } from 'uuid';
+import { LimitsService, ResourceType, PeriodType, RESOURCE_LIMITS } from '../limits';
 
 export interface UploadOptions {
   folder?: string;
@@ -9,6 +10,7 @@ export interface UploadOptions {
   filename?: string;
   transformation?: any;
   contentType?: string;
+  skipLimitCheck?: boolean; // For system uploads
 }
 
 export interface StorageProvider {
@@ -27,12 +29,18 @@ export interface UploadResult {
 
 @Injectable()
 export class StorageService {
+  private readonly logger = new Logger(StorageService.name);
   private readonly provider: string;
   private readonly cloudinaryConfigured: boolean;
+  private readonly maxFileSizeBytes: number;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly limitsService: LimitsService,
+  ) {
     const storageConfig = this.configService.get('storage');
     this.provider = storageConfig?.provider || 'cloudinary';
+    this.maxFileSizeBytes = RESOURCE_LIMITS.MAX_FILE_SIZE_BYTES.limit;
 
     // Configure Cloudinary if selected
     if (this.provider === 'cloudinary') {
@@ -78,6 +86,38 @@ export class StorageService {
       resourceType: options.resourceType,
     });
 
+    // Check file size limit
+    if (file.size > this.maxFileSizeBytes) {
+      const maxSizeMB = Math.round(this.maxFileSizeBytes / (1024 * 1024));
+      throw new BadRequestException(
+        `File size (${Math.round(file.size / (1024 * 1024))}MB) exceeds maximum allowed size (${maxSizeMB}MB)`,
+      );
+    }
+
+    // Check upload count limits (unless skipped for system uploads)
+    if (!options.skipLimitCheck) {
+      const { allowed, status } = await this.limitsService.checkLimit(
+        ResourceType.FILE_UPLOADS,
+        PeriodType.MONTHLY,
+        1,
+      );
+
+      if (!allowed) {
+        this.logger.error(
+          `Monthly upload limit reached (${status.count}/${status.limit}). Upload blocked.`,
+        );
+        throw new BadRequestException(
+          'Monthly file upload limit reached. Please contact support or wait until next month.',
+        );
+      }
+
+      if (status.isWarning) {
+        this.logger.warn(
+          `File upload usage warning: ${status.count}/${status.limit} (${status.percentUsed}%)`,
+        );
+      }
+    }
+
     if (!this.cloudinaryConfigured) {
       console.log('[StorageService] Cloudinary not configured, using local fallback');
       return this.uploadLocal(file, options);
@@ -99,11 +139,20 @@ export class StorageService {
           public_id: publicId,
           // Use regular 'upload' type (not 'authenticated' which is restricted)
         },
-        (error, result) => {
+        async (error, result) => {
           if (error) {
             console.error('[StorageService] Cloudinary upload error:', error);
             reject(error);
           } else if (result) {
+            // Track successful upload
+            if (!options.skipLimitCheck) {
+              await this.limitsService.incrementUsage(
+                ResourceType.FILE_UPLOADS,
+                PeriodType.MONTHLY,
+                1,
+              );
+            }
+
             console.log('[StorageService] Cloudinary upload success:', {
               url: result.secure_url,
               publicId: result.public_id,

@@ -33,11 +33,8 @@ export class CacheService implements OnModuleDestroy {
     this.enabled = isRedisReady(this.redis);
 
     if (!this.enabled) {
-      if (this.isProduction) {
-        this.logger.error('Redis is required in production but not available');
-      } else {
-        this.logger.warn('CacheService running in bypass mode (Redis unavailable)');
-      }
+      // Graceful degradation - app can run without Redis (no caching)
+      this.logger.warn('CacheService running in bypass mode (Redis unavailable) - app continues without cache');
     } else {
       this.logger.log('CacheService initialized with Redis');
     }

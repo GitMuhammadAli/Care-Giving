@@ -11,6 +11,9 @@ const logger = new Logger('RedisProvider');
  *
  * This creates a single Redis connection that can be injected
  * into any service that needs it (CacheService, OtpHelper, LockHelper, etc.)
+ * 
+ * FREE-TIER FRIENDLY: App can operate in degraded mode without Redis.
+ * Caching will be disabled but app will still function.
  */
 export const RedisProvider: Provider = {
   provide: REDIS_CLIENT,
@@ -18,11 +21,9 @@ export const RedisProvider: Provider = {
     const redisConfig = configService.get('redis');
     const isProduction = configService.get('app.isProduction', false);
 
-    if (!redisConfig) {
-      if (isProduction) {
-        throw new Error('Redis configuration is required in production');
-      }
-      logger.warn('Redis configuration not found - caching disabled in development');
+    if (!redisConfig || !redisConfig.host) {
+      // Allow app to start without Redis (degraded mode)
+      logger.warn('Redis configuration not found - app running in degraded mode (no caching)');
       return null;
     }
 
@@ -38,23 +39,19 @@ export const RedisProvider: Provider = {
         maxRetriesPerRequest: 2, // Reduced from 3
         connectTimeout: 20000, // 20 second timeout for cloud Redis
         keepAlive: 60000, // Keepalive every 60s (reduced from default)
-        enableOfflineQueue: true, // Queue commands when disconnected
+        enableOfflineQueue: false, // Don't queue - fail fast for degraded mode
         retryStrategy: (times: number) => {
-          if (times > 5) { // Reduced from 10
-            logger.error('Redis max retries exceeded');
-            if (isProduction) {
-              // In production, keep trying but slower
-              return 10000; // 10 seconds between retries
-            }
-            return null; // Stop retrying in dev
+          if (times > 3) {
+            logger.warn(`Redis connection failed after ${times} attempts - running in degraded mode`);
+            return null; // Stop retrying, let app continue without Redis
           }
-          return Math.min(times * 500, 5000); // Slower retry backoff
+          return Math.min(times * 1000, 5000);
         },
         reconnectOnError: (err) => {
           const targetErrors = ['READONLY', 'ECONNRESET', 'ETIMEDOUT'];
           return targetErrors.some((e) => err.message.includes(e));
         },
-        lazyConnect: true, // FREE-TIER: Only connect when needed
+        lazyConnect: true, // Only connect when needed
       });
 
       redis.on('connect', () => {
@@ -66,27 +63,27 @@ export const RedisProvider: Provider = {
       });
 
       redis.on('error', (err) => {
-        if (isProduction) {
-          logger.error(`Redis connection error: ${err.message}`);
-        } else {
-          logger.warn(`Redis connection error (dev mode): ${err.message}`);
-        }
+        // Log but don't crash - graceful degradation
+        logger.warn(`Redis error (app continues in degraded mode): ${err.message}`);
       });
 
       redis.on('close', () => {
-        logger.warn('Redis connection closed');
+        logger.warn('Redis connection closed - app running in degraded mode');
       });
 
       redis.on('reconnecting', () => {
         logger.log('Redis reconnecting...');
       });
 
+      // Try to connect immediately to verify config, but don't block startup
+      redis.connect().catch((err) => {
+        logger.warn(`Redis initial connection failed: ${err.message} - app continues without cache`);
+      });
+
       return redis;
     } catch (error) {
-      if (isProduction) {
-        throw new Error(`Failed to create Redis connection: ${error.message}`);
-      }
-      logger.warn(`Failed to create Redis connection (dev mode): ${error.message}`);
+      // Don't throw - allow app to start in degraded mode
+      logger.warn(`Failed to create Redis connection: ${error.message} - app running without cache`);
       return null;
     }
   },
