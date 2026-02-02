@@ -44,6 +44,7 @@ import { GatewayModule } from './gateway/gateway.module';
 import { HealthModule } from './health/health.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { EventsModule } from './events/events.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -149,6 +150,8 @@ import { EventsModule } from './events/events.module';
     NotificationsModule,
     ChatModule,
     GatewayModule,
+    // Admin Dashboard
+    AdminModule,
   ],
   providers: [
     // Global Guards

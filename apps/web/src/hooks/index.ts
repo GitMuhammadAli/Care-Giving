@@ -8,3 +8,6 @@ export * from './use-websocket';
 export * from './use-push-notifications';
 export * from './use-offline-sync';
 
+// Admin hooks
+export * from './admin';
+

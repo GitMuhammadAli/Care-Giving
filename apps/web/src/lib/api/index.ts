@@ -9,4 +9,5 @@ export * from './emergency';
 export * from './documents';
 export * from './shifts';
 export * from './notifications';
+export * from './admin';
 

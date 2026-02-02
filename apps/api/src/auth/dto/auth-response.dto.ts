@@ -39,6 +39,9 @@ export class AuthUserDto {
   @ApiProperty({ example: 'ACTIVE', enum: ['PENDING', 'ACTIVE', 'SUSPENDED'] })
   status: string;
 
+  @ApiProperty({ example: 'USER', enum: ['USER', 'MODERATOR', 'ADMIN', 'SUPER_ADMIN'] })
+  systemRole: string;
+
   @ApiProperty({ example: true })
   emailVerified: boolean;
 

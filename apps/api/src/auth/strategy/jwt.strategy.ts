@@ -35,6 +35,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         email: true,
         fullName: true,
         status: true,
+        systemRole: true,
         familyMemberships: {
           where: { isActive: true },
           select: {
@@ -53,6 +54,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       id: user.id,
       email: user.email,
       fullName: user.fullName,
+      systemRole: user.systemRole,
       families: user.familyMemberships.map((m) => ({
         familyId: m.familyId,
         role: m.role,
