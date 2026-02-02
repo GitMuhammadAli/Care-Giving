@@ -64,7 +64,7 @@ export function DataTable<T extends Record<string, any>>({
     if (allSelected) {
       onSelectionChange(selectedIds.filter((id) => !allIds.includes(id)));
     } else {
-      onSelectionChange([...new Set([...selectedIds, ...allIds])]);
+      onSelectionChange(Array.from(new Set([...selectedIds, ...allIds])));
     }
   };
 
