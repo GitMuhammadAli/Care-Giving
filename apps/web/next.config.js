@@ -22,15 +22,26 @@ if (fs.existsSync(baseEnvFile)) {
   require('dotenv').config({ path: baseEnvFile });
 }
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Note: 'standalone' output disabled on Windows due to symlink permission issues
-  // Re-enable for Docker/production deployments: output: 'standalone',
+  // Enable standalone output for production deployments (smaller bundle, faster cold starts)
+  output: isProduction ? 'standalone' : undefined,
+  
+  // Production optimizations
+  poweredByHeader: false, // Remove X-Powered-By header for security
+  compress: true, // Enable gzip compression
+  
   experimental: {
     instrumentationHook: true,
   },
+  
   images: {
+    // Optimize images with modern formats
+    formats: ['image/avif', 'image/webp'],
+    // Allow images from these domains
     remotePatterns: [
       {
         protocol: 'https',
@@ -49,23 +60,54 @@ const nextConfig = {
         hostname: 'localhost',
       },
     ],
+    // Reduce image sizes in production
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256],
   },
   async headers() {
+    const securityHeaders = [
+      {
+        key: 'X-Content-Type-Options',
+        value: 'nosniff',
+      },
+      {
+        key: 'X-Frame-Options',
+        value: 'DENY',
+      },
+      {
+        key: 'X-XSS-Protection',
+        value: '1; mode=block',
+      },
+      {
+        key: 'Referrer-Policy',
+        value: 'strict-origin-when-cross-origin',
+      },
+      {
+        key: 'Permissions-Policy',
+        value: 'camera=(), microphone=(), geolocation=()',
+      },
+    ];
+
+    // Add strict CSP in production
+    if (isProduction) {
+      securityHeaders.push({
+        key: 'Strict-Transport-Security',
+        value: 'max-age=31536000; includeSubDomains',
+      });
+    }
+
     return [
       {
         source: '/(.*)',
+        headers: securityHeaders,
+      },
+      // Cache static assets aggressively
+      {
+        source: '/_next/static/(.*)',
         headers: [
           {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
-          },
-          {
-            key: 'X-Frame-Options',
-            value: 'DENY',
-          },
-          {
-            key: 'X-XSS-Protection',
-            value: '1; mode=block',
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
           },
         ],
       },

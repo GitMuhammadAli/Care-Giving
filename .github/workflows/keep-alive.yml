@@ -1,0 +1,53 @@
+# =============================================================================
+# Keep-Alive Workflow
+# =============================================================================
+# Pings the Render API every 14 minutes to prevent free tier sleep
+# Render free tier sleeps after 15 minutes of inactivity
+# =============================================================================
+
+name: Keep Alive
+
+on:
+  schedule:
+    # Run every 14 minutes
+    - cron: '*/14 * * * *'
+  workflow_dispatch:
+    # Allow manual trigger for testing
+
+jobs:
+  keep-alive:
+    name: Ping API
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Ping health endpoint
+        run: |
+          echo "Pinging CareCircle API to keep it awake..."
+          
+          # Replace with your actual Render URL after deployment
+          API_URL="${{ secrets.API_HEALTH_URL }}"
+          
+          if [ -z "$API_URL" ]; then
+            API_URL="https://carecircle-api.onrender.com/health"
+          fi
+          
+          response=$(curl -s -o /dev/null -w "%{http_code}" "$API_URL" || echo "000")
+          
+          if [ "$response" = "200" ]; then
+            echo "✅ API is healthy (HTTP $response)"
+          elif [ "$response" = "000" ]; then
+            echo "⚠️ Could not reach API (no response)"
+            echo "This might be expected if:"
+            echo "  - First deployment hasn't completed yet"
+            echo "  - API_HEALTH_URL secret is not set"
+          else
+            echo "⚠️ API returned HTTP $response"
+          fi
+          
+          echo ""
+          echo "Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
+      - name: Log status
+        run: |
+          echo "Keep-alive ping completed at $(date -u)"
+

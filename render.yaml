@@ -1,0 +1,148 @@
+# =============================================================================
+# Render.com Blueprint - Infrastructure as Code
+# =============================================================================
+# This file defines all services for deployment on Render.com
+# Deploy with: Connect GitHub repo to Render, it will auto-detect this file
+#
+# Documentation: https://render.com/docs/blueprint-spec
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # API Backend Service (NestJS)
+  # ===========================================================================
+  - type: web
+    name: carecircle-api
+    env: node
+    region: oregon
+    plan: free
+    branch: deployment
+    rootDir: apps/api
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /health
+    autoDeploy: true
+    
+    envVars:
+      # Application
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: API_PREFIX
+        value: api/v1
+      
+      # Database - Neon PostgreSQL (set in Render dashboard)
+      - key: DATABASE_URL
+        sync: false
+      
+      # Redis - Upstash (set in Render dashboard)
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        value: 6379
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: REDIS_TLS
+        value: "true"
+      
+      # Upstash REST API
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+      
+      # JWT Secrets (set in Render dashboard)
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 15m
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 7d
+      
+      # Security
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: OTP_EXPIRES_IN
+        value: "300"
+      - key: MAX_LOGIN_ATTEMPTS
+        value: "5"
+      - key: LOCKOUT_DURATION
+        value: "1800"
+      
+      # Cloudinary (set in Render dashboard)
+      - key: STORAGE_PROVIDER
+        value: cloudinary
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CLOUDINARY_FOLDER
+        value: carecircle-prod
+      
+      # Email (set in Render dashboard)
+      - key: MAIL_PROVIDER
+        value: sendgrid
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        value: noreply@carecircle.app
+      - key: MAIL_FROM_NAME
+        value: CareCircle
+      
+      # Frontend URL (update after Vercel deployment)
+      - key: FRONTEND_URL
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      
+      # Stream Chat (optional)
+      - key: STREAM_API_SECRET
+        sync: false
+      
+      # Monitoring (optional)
+      - key: SENTRY_DSN
+        sync: false
+
+  # ===========================================================================
+  # Background Workers Service (Optional - for heavy workloads)
+  # ===========================================================================
+  # Uncomment if you need separate worker processes
+  # - type: worker
+  #   name: carecircle-workers
+  #   env: node
+  #   region: oregon
+  #   plan: free
+  #   branch: deployment
+  #   rootDir: apps/workers
+  #   buildCommand: npm install && npm run build
+  #   startCommand: npm run start:prod
+  #   autoDeploy: true
+  #   envVars:
+  #     - key: NODE_ENV
+  #       value: production
+  #     - key: DATABASE_URL
+  #       sync: false
+  #     - key: REDIS_HOST
+  #       sync: false
+  #     - key: RABBITMQ_URL
+  #       sync: false
+
+# =============================================================================
+# Databases (Not needed - using Neon free tier instead)
+# =============================================================================
+# databases: []
+
+# =============================================================================
+# Environment Groups (for shared secrets)
+# =============================================================================
+# envVarGroups:
+#   - name: carecircle-shared
+#     envVars:
+#       - key: SHARED_SECRET
+#         sync: false
+
