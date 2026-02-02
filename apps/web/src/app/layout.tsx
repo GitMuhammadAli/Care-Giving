@@ -21,8 +21,11 @@ export const metadata: Metadata = {
   authors: [{ name: 'CareCircle' }],
   manifest: '/manifest.json',
   icons: {
-    icon: '/favicon.ico',
-    apple: '/apple-touch-icon.png',
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/icons/icon.svg', type: 'image/svg+xml', sizes: 'any' },
+    ],
+    apple: { url: '/icons/icon.svg', type: 'image/svg+xml' },
   },
   openGraph: {
     type: 'website',
