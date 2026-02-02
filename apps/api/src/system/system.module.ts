@@ -21,6 +21,7 @@ import { StorageModule } from './module/storage/storage.module';
 import { MailModule } from './module/mail/mail.module';
 import { CacheModule } from './module/cache';
 import { LimitsModule } from './module/limits';
+import { LoggingModule } from './module/logging';
 
 @Global()
 @Module({
@@ -35,6 +36,7 @@ import { LimitsModule } from './module/limits';
     }),
     CacheModule,
     LimitsModule,
+    LoggingModule,
     StorageModule,
     MailModule,
   ],
@@ -50,6 +52,7 @@ import { LimitsModule } from './module/limits';
     PrismaModule,
     CacheModule,
     LimitsModule,
+    LoggingModule,
     OtpHelper,
     LockHelper,
     IsUniqueConstraint,

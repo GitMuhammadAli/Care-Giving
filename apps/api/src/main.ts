@@ -12,6 +12,8 @@ import { Request, Response } from 'express';
 import { AppModule } from './app.module';
 import { setupSwagger } from './swagger';
 import { ContextHelper } from './system/helper/context.helper';
+import { LoggingInterceptor } from './system/interceptor';
+import { LoggingService } from './system/module/logging';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -101,6 +103,10 @@ async function bootstrap() {
   // Swagger - Available in all environments at /api
   // In production, consider protecting with authentication if needed
   setupSwagger(app);
+
+  // Global logging interceptor for request/response logging
+  const loggingService = app.get(LoggingService);
+  app.useGlobalInterceptors(new LoggingInterceptor(loggingService));
 
   // Enable graceful shutdown
   app.enableShutdownHooks();

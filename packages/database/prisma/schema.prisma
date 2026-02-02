@@ -644,6 +644,37 @@ model AuditLog {
 }
 
 // ============================================
+// APPLICATION LOGS (for admin monitoring)
+// ============================================
+
+model ApplicationLog {
+  id          String   @id @default(uuid())
+  level       LogLevel
+  message     String
+  service     String   // api, workers, web
+  context     String?  // controller, service name
+  requestId   String?
+  userId      String?
+  errorStack  String?  @db.Text
+  metadata    Json?
+  timestamp   DateTime @default(now())
+
+  @@index([level])
+  @@index([service])
+  @@index([timestamp])
+  @@index([userId])
+  @@index([requestId])
+}
+
+enum LogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+  FATAL
+}
+
+// ============================================
 // RESOURCE USAGE TRACKING (for free-tier limits)
 // ============================================
 
