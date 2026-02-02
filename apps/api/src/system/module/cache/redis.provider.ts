@@ -34,23 +34,27 @@ export const RedisProvider: Provider = {
         port: port || 6379,
         password: password || undefined,
         tls: tls ? {} : undefined,
-        maxRetriesPerRequest: 3,
+        // FREE-TIER OPTIMIZATION: Reduce Redis commands to stay within Upstash 10K/day limit
+        maxRetriesPerRequest: 2, // Reduced from 3
+        connectTimeout: 20000, // 20 second timeout for cloud Redis
+        keepAlive: 60000, // Keepalive every 60s (reduced from default)
+        enableOfflineQueue: true, // Queue commands when disconnected
         retryStrategy: (times: number) => {
-          if (times > 10) {
+          if (times > 5) { // Reduced from 10
             logger.error('Redis max retries exceeded');
             if (isProduction) {
-              // In production, keep trying
-              return 5000;
+              // In production, keep trying but slower
+              return 10000; // 10 seconds between retries
             }
             return null; // Stop retrying in dev
           }
-          return Math.min(times * 200, 2000);
+          return Math.min(times * 500, 5000); // Slower retry backoff
         },
         reconnectOnError: (err) => {
           const targetErrors = ['READONLY', 'ECONNRESET', 'ETIMEDOUT'];
           return targetErrors.some((e) => err.message.includes(e));
         },
-        lazyConnect: false, // Connect immediately
+        lazyConnect: true, // FREE-TIER: Only connect when needed
       });
 
       redis.on('connect', () => {
