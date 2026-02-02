@@ -20,6 +20,7 @@ model User {
   timezone               String       @default("America/New_York")
   avatarUrl              String?
   status                 String       @default("PENDING")
+  systemRole             SystemRole   @default(USER)
   emailVerified          Boolean      @default(false)
   emailVerifiedAt        DateTime?
   phoneVerified          Boolean      @default(false)
@@ -46,6 +47,8 @@ model User {
   notifications       Notification[]
   emergencyAlerts     EmergencyAlert[]
   pushTokens          PushToken[]
+
+  @@index([systemRole])
 }
 
 model Session {
@@ -88,6 +91,14 @@ enum Platform {
   WEB
   IOS
   ANDROID
+}
+
+// System-wide admin roles (separate from family roles)
+enum SystemRole {
+  USER          // Regular user (default)
+  MODERATOR     // Can view/moderate content
+  ADMIN         // Full admin access
+  SUPER_ADMIN   // System configuration access
 }
 
 // ============================================

@@ -18,6 +18,7 @@ export interface User {
   timezone?: string;
   createdAt: string;
   avatarUrl?: string;
+  systemRole?: 'USER' | 'MODERATOR' | 'ADMIN' | 'SUPER_ADMIN';
   families?: UserFamily[];
   onboardingCompleted?: boolean;
   onboardingCompletedAt?: string;
