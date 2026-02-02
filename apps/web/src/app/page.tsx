@@ -392,9 +392,6 @@ export default function LandingPage() {
                   >
                     <div className="flex items-center justify-center gap-1 mb-1">
                       <p className="font-editorial text-3xl md:text-4xl text-foreground">{stat.value}</p>
-                      {stat.stars && (
-                        <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
-                      )}
                     </div>
                     <p className="text-sm text-muted-foreground">{stat.label}</p>
                   </motion.div>
