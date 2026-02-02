@@ -19,6 +19,7 @@ import {
   AdminAnalyticsController,
   AdminAuditController,
   AdminSystemController,
+  AdminLogsController,
 } from './controllers';
 
 @Module({
@@ -29,6 +30,7 @@ import {
     AdminAnalyticsController,
     AdminAuditController,
     AdminSystemController,
+    AdminLogsController,
   ],
   providers: [
     // Guards
