@@ -27,8 +27,8 @@ const isProduction = process.env.NODE_ENV === 'production';
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Enable standalone output for production deployments (smaller bundle, faster cold starts)
-  output: isProduction ? 'standalone' : undefined,
+  // NOTE: Standalone output is disabled - Vercel handles bundling automatically
+  // Enable only for Docker deployments: output: 'standalone',
   
   // Production optimizations
   poweredByHeader: false, // Remove X-Powered-By header for security

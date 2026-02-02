@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useAdminFamily, useFamilyMembers, useRemoveFamilyMember, useTransferOwnership } from '@/hooks/admin';
+import { useAdminFamily, useAdminFamilyMembers, useRemoveFamilyMember, useTransferOwnership } from '@/hooks/admin';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -124,7 +124,9 @@ export default function AdminFamilyDetailPage() {
                       {member.user?.fullName}
                     </Link>
                     {member.role === 'ADMIN' && (
-                      <Crown className="w-4 h-4 text-amber-400" title="Family Admin" />
+                      <span title="Family Admin">
+                        <Crown className="w-4 h-4 text-amber-400" />
+                      </span>
                     )}
                   </div>
                   <p className="text-sm text-slate-400">{member.user?.email}</p>

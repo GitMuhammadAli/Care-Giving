@@ -52,7 +52,7 @@ export function useDeleteAdminFamily() {
   });
 }
 
-export function useFamilyMembers(familyId: string) {
+export function useAdminFamilyMembers(familyId: string) {
   return useQuery({
     queryKey: ['admin', 'families', familyId, 'members'],
     queryFn: () => adminApi.getFamilyMembers(familyId),

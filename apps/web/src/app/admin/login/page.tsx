@@ -36,7 +36,7 @@ export default function AdminLoginPage() {
     setIsLoading(true);
 
     try {
-      await login(email, password);
+      await login({ email, password });
       // The useEffect above will handle the redirect
     } catch (err: any) {
       setError(err.message || 'Invalid email or password');
