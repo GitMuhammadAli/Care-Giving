@@ -114,4 +114,41 @@ const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
 
 Avatar.displayName = 'Avatar';
 
-export { Avatar };
+// Additional components for Radix UI compatibility
+const AvatarImage = React.forwardRef<
+  HTMLImageElement,
+  React.ImgHTMLAttributes<HTMLImageElement> & { src?: string | null }
+>(({ className, src, alt, ...props }, ref) => {
+  if (!src) return null;
+  return (
+    <Image
+      ref={ref as React.Ref<HTMLImageElement>}
+      src={src}
+      alt={alt || ''}
+      width={40}
+      height={40}
+      className={cn('aspect-square h-full w-full rounded-full object-cover', className)}
+      {...(props as any)}
+    />
+  );
+});
+AvatarImage.displayName = 'AvatarImage';
+
+const AvatarFallback = React.forwardRef<
+  HTMLSpanElement,
+  React.HTMLAttributes<HTMLSpanElement>
+>(({ className, children, ...props }, ref) => (
+  <span
+    ref={ref}
+    className={cn(
+      'flex h-full w-full items-center justify-center rounded-full bg-muted text-muted-foreground font-medium',
+      className
+    )}
+    {...props}
+  >
+    {children}
+  </span>
+));
+AvatarFallback.displayName = 'AvatarFallback';
+
+export { Avatar, AvatarImage, AvatarFallback };
