@@ -78,26 +78,26 @@ import { AdminModule } from './admin/admin.module';
       ],
     }),
 
-    // Throttler (Rate Limiting)
+    // Throttler (Rate Limiting) - Optimized to reduce backend load on free-tier
     ThrottlerModule.forRoot([
       {
         name: 'short',
         ttl: 1000,
-        limit: 3,
+        limit: 5, // Increased from 3 (less restrictive)
       },
       {
         name: 'medium',
         ttl: 10000,
-        limit: 20,
+        limit: 30, // Increased from 20
       },
       {
         name: 'long',
         ttl: 60000,
-        limit: 100,
+        limit: 150, // Increased from 100
       },
     ]),
 
-    // Bull (Queues) - Uses centralized Redis config with cloud-friendly settings
+    // Bull (Queues) - Optimized for free-tier Redis (Upstash: 10K commands/day)
     BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
@@ -111,10 +111,11 @@ import { AdminModule } from './admin/admin.module';
           host,
           port,
           maxRetriesPerRequest: null, // Required for BullMQ
-          enableReadyCheck: false, // Faster startup
+          enableReadyCheck: false, // Faster startup, saves Redis commands
           connectTimeout: 20000, // 20 second connect timeout for cloud
-          keepAlive: 30000, // Send keepalive every 30 seconds
-          retryStrategy: (times: number) => Math.min(times * 1000, 30000),
+          keepAlive: 60000, // Reduced: keepalive every 60 seconds (saves commands)
+          lazyConnect: true, // Only connect when needed (saves connections)
+          retryStrategy: (times: number) => Math.min(times * 2000, 60000), // Slower retries
         };
 
         // Only add password if set
@@ -127,7 +128,23 @@ import { AdminModule } from './admin/admin.module';
           redis.tls = {};
         }
 
-        return { redis };
+        return {
+          redis,
+          // Free-tier optimization: reduce polling frequency
+          defaultJobOptions: {
+            attempts: 2, // Reduced from default 3
+            backoff: {
+              type: 'exponential',
+              delay: 5000, // 5 seconds between retries
+            },
+            removeOnComplete: 100, // Keep only last 100 completed jobs
+            removeOnFail: 50, // Keep only last 50 failed jobs
+          },
+          settings: {
+            stalledInterval: 60000, // Check for stalled jobs every 60s (default: 30s)
+            maxStalledCount: 2, // Reduced retries for stalled jobs
+          },
+        };
       },
       inject: [ConfigService],
     }),

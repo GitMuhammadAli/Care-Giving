@@ -13,6 +13,11 @@ import { REDIS_CLIENT, isRedisReady } from './redis.provider';
  * - Pattern-based cache invalidation
  * - Graceful degradation in development (no Redis = no cache)
  * - Strict mode in production (Redis required)
+ *
+ * FREE-TIER OPTIMIZATION (Upstash: 10K commands/day):
+ * - Default TTL increased to 15 minutes (was 5 minutes)
+ * - Longer TTLs reduce cache misses and Redis commands
+ * - Cache invalidation on data changes ensures freshness
  */
 @Injectable()
 export class CacheService implements OnModuleDestroy {
@@ -77,9 +82,9 @@ export class CacheService implements OnModuleDestroy {
    * Set a cached value with TTL
    * @param key Cache key
    * @param value Value to cache (will be JSON stringified)
-   * @param ttlSeconds TTL in seconds (default: 300 = 5 minutes)
+   * @param ttlSeconds TTL in seconds (default: 900 = 15 minutes for free-tier optimization)
    */
-  async set(key: string, value: unknown, ttlSeconds: number = 300): Promise<void> {
+  async set(key: string, value: unknown, ttlSeconds: number = 900): Promise<void> {
     if (!this.isEnabled()) {
       return;
     }
@@ -161,13 +166,13 @@ export class CacheService implements OnModuleDestroy {
    *
    * @param key Cache key
    * @param factory Function to call on cache miss
-   * @param ttlSeconds TTL in seconds
+   * @param ttlSeconds TTL in seconds (default: 900 = 15 minutes for free-tier optimization)
    * @returns Cached or freshly fetched value
    */
   async getOrSet<T>(
     key: string,
     factory: () => Promise<T>,
-    ttlSeconds: number = 300,
+    ttlSeconds: number = 900,
   ): Promise<T> {
     // Try to get from cache
     const cached = await this.get<T>(key);

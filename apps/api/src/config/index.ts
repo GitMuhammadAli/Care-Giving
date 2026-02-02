@@ -100,6 +100,7 @@ export const redisConfig = registerAs("redis", () => {
 // =============================================================================
 // AMQP/RABBITMQ CONFIG
 // Supports: AMQP_URL (preferred) or individual AMQP_* variables
+// FREE-TIER OPTIMIZATION (CloudAMQP Little Lemur: 1M messages/month, 20 connections)
 // =============================================================================
 export const rabbitmqConfig = registerAs("rabbitmq", () => {
   const amqpUrl = optionalString("AMQP_URL");
@@ -108,9 +109,10 @@ export const rabbitmqConfig = registerAs("rabbitmq", () => {
   if (amqpUrl) {
     return {
       url: amqpUrl,
-      prefetchCount: int("RABBITMQ_PREFETCH", 10),
-      reconnectTimeInSeconds: int("RABBITMQ_RECONNECT_TIME", 5),
-      heartbeatIntervalInSeconds: int("RABBITMQ_HEARTBEAT", 30),
+      // FREE-TIER: Reduced prefetch to minimize connection usage
+      prefetchCount: int("RABBITMQ_PREFETCH", 5), // Reduced from 10
+      reconnectTimeInSeconds: int("RABBITMQ_RECONNECT_TIME", 10), // Slower reconnect
+      heartbeatIntervalInSeconds: int("RABBITMQ_HEARTBEAT", 60), // Increased from 30
     };
   }
 
@@ -129,9 +131,9 @@ export const rabbitmqConfig = registerAs("rabbitmq", () => {
 
   return {
     url,
-    prefetchCount: int("RABBITMQ_PREFETCH", 10),
-    reconnectTimeInSeconds: int("RABBITMQ_RECONNECT_TIME", 5),
-    heartbeatIntervalInSeconds: int("RABBITMQ_HEARTBEAT", 30),
+    prefetchCount: int("RABBITMQ_PREFETCH", 5),
+    reconnectTimeInSeconds: int("RABBITMQ_RECONNECT_TIME", 10),
+    heartbeatIntervalInSeconds: int("RABBITMQ_HEARTBEAT", 60),
   };
 });
 

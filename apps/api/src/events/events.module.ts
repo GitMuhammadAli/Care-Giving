@@ -47,6 +47,7 @@ import { AuditConsumer } from './consumers/audit.consumer';
             options: { durable: true },
           },
         ],
+        // FREE-TIER OPTIMIZATION (CloudAMQP): Use lazy queues to reduce memory usage
         queues: [
           // WebSocket updates queue
           {
@@ -56,6 +57,8 @@ import { AuditConsumer } from './consumers/audit.consumer';
               arguments: {
                 'x-dead-letter-exchange': EXCHANGES.DEAD_LETTER,
                 'x-dead-letter-routing-key': QUEUES.DLQ_PROCESSING,
+                'x-queue-mode': 'lazy', // FREE-TIER: Store messages on disk
+                'x-message-ttl': 86400000, // 24 hour TTL for unprocessed messages
               },
             },
           },
@@ -67,6 +70,8 @@ import { AuditConsumer } from './consumers/audit.consumer';
               arguments: {
                 'x-dead-letter-exchange': EXCHANGES.DEAD_LETTER,
                 'x-dead-letter-routing-key': QUEUES.DLQ_NOTIFICATIONS,
+                'x-queue-mode': 'lazy',
+                'x-message-ttl': 86400000,
               },
             },
           },
@@ -77,22 +82,42 @@ import { AuditConsumer } from './consumers/audit.consumer';
               arguments: {
                 'x-dead-letter-exchange': EXCHANGES.DEAD_LETTER,
                 'x-dead-letter-routing-key': QUEUES.DLQ_NOTIFICATIONS,
+                'x-queue-mode': 'lazy',
+                'x-message-ttl': 86400000,
               },
             },
           },
           // Audit queue
           {
             name: QUEUES.AUDIT_LOG,
-            options: { durable: true },
+            options: {
+              durable: true,
+              arguments: {
+                'x-queue-mode': 'lazy',
+                'x-message-ttl': 604800000, // 7 day TTL for audit logs
+              },
+            },
           },
           // Dead letter queues
           {
             name: QUEUES.DLQ_NOTIFICATIONS,
-            options: { durable: true },
+            options: {
+              durable: true,
+              arguments: {
+                'x-queue-mode': 'lazy',
+                'x-message-ttl': 604800000, // Keep failed messages for 7 days
+              },
+            },
           },
           {
             name: QUEUES.DLQ_PROCESSING,
-            options: { durable: true },
+            options: {
+              durable: true,
+              arguments: {
+                'x-queue-mode': 'lazy',
+                'x-message-ttl': 604800000,
+              },
+            },
           },
         ],
         connectionManagerOptions: {
