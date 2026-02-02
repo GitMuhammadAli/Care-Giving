@@ -15,7 +15,10 @@ const API_URL = process.env.API_URL || 'http://localhost:4000';
 const API_PREFIX = '/api/v1';
 const NUM_USERS = parseInt(process.env.NUM_USERS || '100');
 const TEST_DURATION_MS = parseInt(process.env.TEST_DURATION || '60000');
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_jADo5Phu6Vlb@ep-nameless-band-ahtrx88n-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require';
+const DATABASE_URL = process.env.DATABASE_URL;
+if (!DATABASE_URL) {
+  throw new Error('DATABASE_URL environment variable is required');
+}
 
 // Database pool for OTP verification
 const pool = new Pool({
