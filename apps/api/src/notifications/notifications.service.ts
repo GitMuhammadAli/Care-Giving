@@ -326,6 +326,48 @@ export class NotificationsService {
     }
   }
 
+  /**
+   * Create a notification (used by scheduler and other services)
+   */
+  async create(data: {
+    userId: string;
+    title: string;
+    body: string;
+    type: string;
+    priority?: string;
+    data?: Record<string, any>;
+  }) {
+    const notification = await this.prisma.notification.create({
+      data: {
+        userId: data.userId,
+        type: data.type,
+        title: data.title,
+        body: data.body,
+        priority: data.priority || 'NORMAL',
+        data: data.data || {},
+      },
+    });
+
+    // Emit real-time notification
+    this.gateway.emitToUser(data.userId, 'notification', notification);
+
+    // Try to send push notification
+    try {
+      await this.webPushService.sendGenericNotification(
+        [data.userId],
+        data.title,
+        data.body,
+        '/',
+        data.data || {},
+      );
+    } catch (error) {
+      // Push notification failure shouldn't fail the whole operation
+      this.logger.debug(`Push notification failed for user ${data.userId}: ${error.message}`);
+    }
+
+    return notification;
+  }
+
   async getNotifications(userId: string, unreadOnly: boolean = false, limit: number = 50) {
     return this.prisma.notification.findMany({
       where: {
