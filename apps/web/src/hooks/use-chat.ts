@@ -11,10 +11,12 @@ interface UseChatOptions {
 }
 
 interface ChatTokenResponse {
-  token: string;
+  token: string | null;
   userId: string;
   userName?: string;
   userImage?: string;
+  configured: boolean;
+  message?: string;
 }
 
 interface ChatInitResponse {
@@ -57,6 +59,13 @@ export function useChat(options: UseChatOptions = {}) {
 
         // Get user token from backend (also syncs user to Stream Chat)
         const tokenResponse = await api.get<ChatTokenResponse>('/chat/token');
+
+        // Check if Stream Chat is configured on the backend
+        if (!tokenResponse.configured || !tokenResponse.token) {
+          setIsConfigured(false);
+          console.warn('[Chat] Stream Chat is not configured on the server');
+          return;
+        }
 
         // Create and connect client
         const chatClient = StreamChat.getInstance(apiKey);

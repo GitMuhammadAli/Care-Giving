@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards, ForbiddenException, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ChatService } from '../service/chat.service';
 import { CurrentUser } from '../../system/decorator/current-user.decorator';
@@ -19,16 +19,14 @@ export class ChatController {
   @Get('token')
   @ApiOperation({ summary: 'Get Stream Chat user token and sync user' })
   async getUserToken(@CurrentUser('id') userId: string) {
-    // Check if Stream Chat is configured first
+    // Check if Stream Chat is configured first - return graceful response instead of error
     if (!this.chatService.isConfigured()) {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.SERVICE_UNAVAILABLE,
-          message: 'Stream Chat not configured',
-          configured: false,
-        },
-        HttpStatus.SERVICE_UNAVAILABLE,
-      );
+      return {
+        token: null,
+        userId,
+        configured: false,
+        message: 'Stream Chat not configured',
+      };
     }
 
     // Get user info and sync to Stream Chat
