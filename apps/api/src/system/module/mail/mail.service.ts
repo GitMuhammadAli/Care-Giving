@@ -1,8 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectQueue } from '@nestjs/bull';
-import { Queue } from 'bull';
 import * as nodemailer from 'nodemailer';
+import { Transporter } from 'nodemailer';
 import { LimitsService, ResourceType, PeriodType } from '../limits';
 
 export interface SendMailOptions {
@@ -20,165 +19,195 @@ export interface SendMailOptions {
   skipLimitCheck?: boolean; // For critical system emails
 }
 
+interface SmtpConfig {
+  host: string;
+  port: number;
+  user: string;
+  pass: string;
+  secure: boolean;
+  from: string;
+  fromName: string;
+}
+
 @Injectable()
-export class MailService {
+export class MailService implements OnModuleInit {
   private readonly logger = new Logger(MailService.name);
   private readonly provider: string;
+  private transporter: Transporter | null = null;
+  private smtpConfig: SmtpConfig | null = null;
 
   constructor(
     private configService: ConfigService,
-    @InjectQueue('mail') private mailQueue: Queue,
     private readonly limitsService: LimitsService,
   ) {
-    this.provider = this.configService.get('mail.provider') || 'mailtrap';
-    this.logger.log(`Mail provider: ${this.provider}`);
+    this.provider = this.configService.get('mail.provider') || 'smtp';
   }
 
-  async send(options: SendMailOptions): Promise<void> {
-    // Count recipients
-    const recipientCount = Array.isArray(options.to) ? options.to.length : 1;
-
-    // Check email limits (unless explicitly skipped for critical emails)
-    if (!options.skipLimitCheck) {
-      const { allowed, status } = await this.limitsService.checkLimit(
-        ResourceType.EMAILS_SENT,
-        PeriodType.DAILY,
-        recipientCount,
-      );
-
-      if (!allowed) {
-        this.logger.error(
-          `Email limit reached (${status.count}/${status.limit}). Email to ${options.to} blocked.`,
-        );
-        throw new Error('Daily email limit reached. Please try again tomorrow.');
+  async onModuleInit(): Promise<void> {
+    // Load and validate SMTP config on startup
+    this.smtpConfig = this.loadSmtpConfig();
+    
+    if (this.smtpConfig) {
+      this.logger.log(`✅ Mail configured: ${this.provider} via ${this.smtpConfig.host}:${this.smtpConfig.port}`);
+      this.logger.log(`   From: "${this.smtpConfig.fromName}" <${this.smtpConfig.from}>`);
+      
+      // Create reusable transporter
+      this.transporter = nodemailer.createTransport({
+        host: this.smtpConfig.host,
+        port: this.smtpConfig.port,
+        secure: this.smtpConfig.secure,
+        auth: {
+          user: this.smtpConfig.user,
+          pass: this.smtpConfig.pass,
+        },
+      });
+      
+      // Verify connection
+      try {
+        await this.transporter.verify();
+        this.logger.log(`✅ SMTP connection verified successfully`);
+      } catch (error) {
+        this.logger.error(`❌ SMTP connection verification failed: ${error.message}`);
+        this.logger.warn(`   Emails will be logged instead of sent`);
+        this.transporter = null;
       }
-
-      if (status.isWarning) {
-        this.logger.warn(
-          `Email usage warning: ${status.count}/${status.limit} (${status.percentUsed}%)`,
-        );
-      }
-    }
-
-    // Send directly - more reliable than queueing (queue processor issues in production)
-    // This ensures emails are sent immediately without depending on Bull workers
-    await this.sendDirect(options, recipientCount);
-  }
-
-  /**
-   * Send email directly without using the queue (fallback when Redis is unavailable)
-   */
-  private async sendDirect(options: SendMailOptions, recipientCount: number = 1): Promise<void> {
-    try {
-      const mailContent = options.template
-        ? this.renderTemplate(options.template, options.context || {})
-        : { html: options.html || '', text: options.text || '' };
-
-      await this.sendViaSMTP(options.to, options.subject, mailContent);
-
-      // Track usage after successful send
-      await this.limitsService.incrementUsage(
-        ResourceType.EMAILS_SENT,
-        PeriodType.DAILY,
-        recipientCount,
-      );
-
-      this.logger.log(`Mail sent directly to ${options.to} via ${this.provider}`);
-    } catch (error) {
-      this.logger.error(`Failed to send mail directly to ${options.to}: ${error.message}`);
+    } else {
+      this.logger.warn(`⚠️ Mail not configured - emails will be logged only`);
     }
   }
 
   /**
-   * Send via SMTP (supports multiple providers: smtp, mailtrap, brevo, etc.)
-   * Routes to the correct config based on MAIL_PROVIDER environment variable
+   * Load SMTP configuration from environment
+   * Supports both MAIL_* and SMTP_* naming conventions
    */
-  private async sendViaSMTP(
-    to: string | string[],
-    subject: string,
-    content: { html: string; text: string },
-  ): Promise<void> {
+  private loadSmtpConfig(): SmtpConfig | null {
     const mailConfig = this.configService.get('mail');
     
-    // Get SMTP credentials based on provider
     let host: string | undefined;
-    let port: number | undefined;
+    let port: number;
     let user: string | undefined;
     let pass: string | undefined;
-    let secure: boolean = false;
+    let secure = false;
 
     if (this.provider === 'smtp') {
-      // Generic SMTP provider (Brevo, SendGrid, etc.)
       const smtpConfig = mailConfig?.smtp;
       host = smtpConfig?.host;
       port = smtpConfig?.port || 587;
       user = smtpConfig?.user;
       pass = smtpConfig?.password;
       secure = smtpConfig?.secure || false;
-      
-      this.logger.debug(`Using SMTP config: host=${host}, port=${port}, user=${user ? '***' : 'not set'}`);
     } else if (this.provider === 'mailtrap') {
-      // Mailtrap (for testing)
       const mailtrapConfig = mailConfig?.mailtrap;
       host = mailtrapConfig?.host;
       port = mailtrapConfig?.port || 2525;
       user = mailtrapConfig?.user;
       pass = mailtrapConfig?.pass;
-      
-      this.logger.debug(`Using Mailtrap config: host=${host}, port=${port}`);
-    } else {
-      this.logger.warn(`Unknown mail provider: ${this.provider}, falling back to SMTP config`);
-      // Fallback to smtp config for unknown providers
-      const smtpConfig = mailConfig?.smtp;
-      host = smtpConfig?.host;
-      port = smtpConfig?.port || 587;
-      user = smtpConfig?.user;
-      pass = smtpConfig?.password;
     }
 
-    // Validate required credentials
+    // Validate required fields
     if (!host || !user || !pass) {
-      this.logger.warn(`Mail provider "${this.provider}" not configured properly. Missing: ${!host ? 'host' : ''} ${!user ? 'user' : ''} ${!pass ? 'password' : ''}`);
-      this.logger.warn('Logging email instead of sending:');
-      this.logEmail(to, subject, content);
+      this.logger.warn(`Mail config missing: host=${host ? '✓' : '✗'}, user=${user ? '✓' : '✗'}, pass=${pass ? '✓' : '✗'}`);
+      return null;
+    }
+
+    return {
+      host,
+      port,
+      user,
+      pass,
+      secure,
+      from: mailConfig?.from || 'noreply@carecircle.com',
+      fromName: mailConfig?.fromName || 'CareCircle',
+    };
+  }
+
+  async send(options: SendMailOptions): Promise<void> {
+    const recipientCount = Array.isArray(options.to) ? options.to.length : 1;
+    const recipients = Array.isArray(options.to) ? options.to.join(', ') : options.to;
+
+    // Check email limits (unless explicitly skipped for critical emails)
+    if (!options.skipLimitCheck) {
+      try {
+        const { allowed, status } = await this.limitsService.checkLimit(
+          ResourceType.EMAILS_SENT,
+          PeriodType.DAILY,
+          recipientCount,
+        );
+
+        if (!allowed) {
+          this.logger.error(`Email limit reached (${status.count}/${status.limit}). Email to ${recipients} blocked.`);
+          throw new Error('Daily email limit reached. Please try again tomorrow.');
+        }
+
+        if (status.isWarning) {
+          this.logger.warn(`Email usage warning: ${status.count}/${status.limit} (${status.percentUsed}%)`);
+        }
+      } catch (error) {
+        // If limit check fails, log but continue (don't block emails due to limit service issues)
+        if (error.message !== 'Daily email limit reached. Please try again tomorrow.') {
+          this.logger.warn(`Limit check failed: ${error.message}, proceeding with email`);
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    // Render template if provided
+    const mailContent = options.template
+      ? this.renderTemplate(options.template, options.context || {})
+      : { html: options.html || '', text: options.text || '' };
+
+    // Check if we have a working transporter
+    if (!this.transporter || !this.smtpConfig) {
+      this.logger.warn(`No SMTP configured, logging email instead`);
+      this.logEmail(recipients, options.subject, mailContent);
       return;
     }
 
-    this.logger.log(`Sending email via ${this.provider} (${host}:${port}) to ${Array.isArray(to) ? to.join(', ') : to}`);
-
-    const transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure, // true for 465, false for other ports
-      auth: { user, pass },
-    });
-
+    // Send the email
     try {
-      const result = await transporter.sendMail({
-        from: `"${mailConfig.fromName}" <${mailConfig.from}>`,
-        to: Array.isArray(to) ? to.join(', ') : to,
-        subject,
-        text: content.text,
-        html: content.html,
-      });
+      this.logger.log(`Sending email to ${recipients} via ${this.smtpConfig.host}...`);
       
-      this.logger.log(`Email sent successfully via ${this.provider}. MessageId: ${result.messageId}`);
+      const result = await this.transporter.sendMail({
+        from: `"${this.smtpConfig.fromName}" <${this.smtpConfig.from}>`,
+        to: recipients,
+        subject: options.subject,
+        text: mailContent.text,
+        html: mailContent.html,
+        attachments: options.attachments,
+      });
+
+      this.logger.log(`✅ Email sent successfully! MessageId: ${result.messageId}`);
+
+      // Track usage after successful send
+      try {
+        await this.limitsService.incrementUsage(
+          ResourceType.EMAILS_SENT,
+          PeriodType.DAILY,
+          recipientCount,
+        );
+      } catch (error) {
+        this.logger.warn(`Failed to track email usage: ${error.message}`);
+      }
     } catch (error) {
-      this.logger.error(`Failed to send email via ${this.provider}: ${error.message}`);
+      this.logger.error(`❌ Failed to send email to ${recipients}: ${error.message}`);
+      this.logger.error(`   Stack: ${error.stack}`);
+      // Re-throw so callers know the email failed
       throw error;
     }
   }
 
   private logEmail(
-    to: string | string[],
+    to: string,
     subject: string,
     content: { html: string; text: string },
   ): void {
-    this.logger.log('='.repeat(50));
-    this.logger.log(`TO: ${Array.isArray(to) ? to.join(', ') : to}`);
-    this.logger.log(`SUBJECT: ${subject}`);
-    this.logger.log(`CONTENT: ${content.text.substring(0, 200)}...`);
-    this.logger.log('='.repeat(50));
+    this.logger.log('╔════════════════════════════════════════════════════════╗');
+    this.logger.log('║  📧 EMAIL (not sent - no SMTP configured)              ║');
+    this.logger.log('╠════════════════════════════════════════════════════════╣');
+    this.logger.log(`║  TO: ${to.substring(0, 46).padEnd(46)}║`);
+    this.logger.log(`║  SUBJECT: ${subject.substring(0, 42).padEnd(42)}║`);
+    this.logger.log('╚════════════════════════════════════════════════════════╝');
   }
 
   /**
@@ -188,7 +217,7 @@ export class MailService {
     templateName: string,
     context: Record<string, any>,
   ): { html: string; text: string } {
-    const frontendUrl = this.configService.get('app.frontendUrl');
+    const frontendUrl = this.configService.get('app.frontendUrl') || 'https://carecircle.app';
 
     const templates: Record<string, (ctx: any) => { html: string; text: string }> = {
       welcome: (ctx) => ({
@@ -198,7 +227,7 @@ export class MailService {
           <head><meta charset="utf-8"></head>
           <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #2D5A4A 0%, #3D8B6E 100%); padding: 30px; border-radius: 12px 12px 0 0;">
-              <h1 style="color: white; margin: 0;">Welcome to CareCircle!</h1>
+              <h1 style="color: white; margin: 0;">Welcome to CareCircle! 🏡</h1>
             </div>
             <div style="background: #fff; padding: 30px; border: 1px solid #E8E7E3; border-top: none; border-radius: 0 0 12px 12px;">
               <p style="font-size: 16px; color: #1A1A18;">Hi ${ctx.name},</p>
@@ -237,7 +266,7 @@ export class MailService {
           <head><meta charset="utf-8"></head>
           <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #2D5A4A 0%, #3D8B6E 100%); padding: 30px; border-radius: 12px 12px 0 0;">
-              <h1 style="color: white; margin: 0;">Verify Your Email</h1>
+              <h1 style="color: white; margin: 0;">Verify Your Email ✉️</h1>
             </div>
             <div style="background: #fff; padding: 30px; border: 1px solid #E8E7E3; border-top: none; border-radius: 0 0 12px 12px;">
               <p style="font-size: 16px; color: #1A1A18;">Hi ${ctx.name},</p>
@@ -260,15 +289,11 @@ export class MailService {
           <head><meta charset="utf-8"></head>
           <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #C4725C 0%, #A85E4A 100%); padding: 30px; border-radius: 12px 12px 0 0;">
-              <h1 style="color: white; margin: 0;">You're Invited!</h1>
+              <h1 style="color: white; margin: 0;">You're Invited! 💌</h1>
             </div>
             <div style="background: #fff; padding: 30px; border: 1px solid #E8E7E3; border-top: none; border-radius: 0 0 12px 12px;">
               <p style="font-size: 16px; color: #5C5C58;"><strong>${ctx.inviterName}</strong> has invited you to join <strong>${ctx.familyName}</strong> on CareCircle.</p>
               <a href="${ctx.inviteUrl}" style="display: inline-block; background: #2D5A4A; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px;">Accept Invitation</a>
-              <div style="margin-top: 25px; padding: 15px; background: #F5F5F4; border-radius: 8px;">
-                <p style="color: #5C5C58; font-size: 13px; margin: 0 0 8px 0;">Or copy and paste this link:</p>
-                <p style="color: #2D5A4A; font-size: 12px; word-break: break-all; margin: 0; font-family: monospace; background: #E8F5EF; padding: 10px; border-radius: 4px;">${ctx.inviteUrl}</p>
-              </div>
               <p style="color: #8A8A86; font-size: 14px; margin-top: 20px;">This invitation expires in 7 days.</p>
             </div>
           </body>
@@ -299,9 +324,6 @@ export class MailService {
                 </p>
               </div>
               <a href="${frontendUrl}/emergency" style="display: inline-block; background: #DC2626; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; margin-top: 20px; font-weight: bold;">View Emergency Details</a>
-              <p style="color: #6B7280; font-size: 12px; margin-top: 25px; padding-top: 15px; border-top: 1px solid #E5E7EB;">
-                This is an automated emergency notification from CareCircle. Please respond immediately if action is required.
-              </p>
             </div>
           </body>
           </html>
@@ -326,14 +348,11 @@ export class MailService {
                 <p style="font-size: 14px; color: #6B7280; margin: 10px 0 0 0;">⏰ Scheduled for: <strong>${ctx.time}</strong></p>
               </div>
               <a href="${frontendUrl}/medications" style="display: inline-block; background: #7C3AED; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px;">Mark as Taken</a>
-              <p style="color: #8A8A86; font-size: 12px; margin-top: 25px;">
-                💡 Tip: Keep a consistent medication schedule for better health outcomes.
-              </p>
             </div>
           </body>
           </html>
         `,
-        text: `💊 Medication Reminder for ${ctx.careRecipientName}\n\nMedication: ${ctx.medicationName}\nDosage: ${ctx.dosage}\nTime: ${ctx.time}\n\nPlease ensure this medication is administered on time.`,
+        text: `💊 Medication Reminder for ${ctx.careRecipientName}\n\nMedication: ${ctx.medicationName}\nDosage: ${ctx.dosage}\nTime: ${ctx.time}`,
       }),
 
       'password-reset-by-admin': (ctx) => ({
@@ -354,9 +373,6 @@ export class MailService {
               </div>
               <p style="color: #DC2626; font-size: 14px; font-weight: bold;">⚠️ Please change this password immediately after logging in.</p>
               <a href="${ctx.loginUrl}" style="display: inline-block; background: #2D5A4A; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 15px;">Login Now</a>
-              <p style="color: #8A8A86; font-size: 12px; margin-top: 25px; padding-top: 15px; border-top: 1px solid #E5E7EB;">
-                If you didn't expect this reset, please contact your family administrator immediately.
-              </p>
             </div>
           </body>
           </html>
@@ -382,14 +398,11 @@ export class MailService {
                 ${ctx.doctorName ? `<p style="font-size: 14px; color: #374151; margin: 5px 0;">👨‍⚕️ Dr. ${ctx.doctorName}</p>` : ''}
               </div>
               <a href="${frontendUrl}/calendar" style="display: inline-block; background: #0EA5E9; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px;">View Calendar</a>
-              <p style="color: #8A8A86; font-size: 12px; margin-top: 25px;">
-                💡 Remember to bring any relevant medical records or medications list.
-              </p>
             </div>
           </body>
           </html>
         `,
-        text: `📅 Appointment Reminder for ${ctx.careRecipientName}\n\n${ctx.title}\nDate: ${ctx.date} at ${ctx.time}\n${ctx.location ? `Location: ${ctx.location}\n` : ''}${ctx.doctorName ? `Doctor: Dr. ${ctx.doctorName}\n` : ''}\nRemember to bring any relevant medical records.`,
+        text: `📅 Appointment Reminder for ${ctx.careRecipientName}\n\n${ctx.title}\nDate: ${ctx.date} at ${ctx.time}\n${ctx.location ? `Location: ${ctx.location}\n` : ''}${ctx.doctorName ? `Doctor: Dr. ${ctx.doctorName}\n` : ''}`,
       }),
 
       'refill-alert': (ctx) => ({
@@ -405,12 +418,8 @@ export class MailService {
               <p style="font-size: 16px; color: #1A1A18;">Medication running low for <strong>${ctx.careRecipientName}</strong>:</p>
               <div style="background: #FFF7ED; border-left: 4px solid #F97316; padding: 20px; margin: 20px 0;">
                 <p style="font-size: 20px; color: #EA580C; margin: 0 0 10px 0; font-weight: bold;">${ctx.medicationName}</p>
-                <p style="font-size: 16px; color: #9A3412; margin: 0;">
-                  Current supply: <strong>${ctx.currentSupply} doses</strong>
-                </p>
-                <p style="font-size: 14px; color: #C2410C; margin: 10px 0 0 0;">
-                  ⚠️ Refill recommended when below ${ctx.refillAt} doses
-                </p>
+                <p style="font-size: 16px; color: #9A3412; margin: 0;">Current supply: <strong>${ctx.currentSupply} doses</strong></p>
+                <p style="font-size: 14px; color: #C2410C; margin: 10px 0 0 0;">⚠️ Refill recommended when below ${ctx.refillAt} doses</p>
               </div>
               ${ctx.pharmacy ? `<p style="font-size: 14px; color: #6B7280;">Pharmacy: <strong>${ctx.pharmacy}</strong>${ctx.pharmacyPhone ? ` • ${ctx.pharmacyPhone}` : ''}</p>` : ''}
               <a href="${frontendUrl}/medications" style="display: inline-block; background: #F97316; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 15px;">View Medications</a>
@@ -438,14 +447,11 @@ export class MailService {
                 <p style="font-size: 14px; color: #374151; margin: 5px 0;">⏰ <strong>${ctx.startTime}</strong> - <strong>${ctx.endTime}</strong></p>
               </div>
               <a href="${frontendUrl}/caregivers" style="display: inline-block; background: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px;">View Shift Details</a>
-              <p style="color: #8A8A86; font-size: 12px; margin-top: 25px;">
-                💡 Check the care notes and medication schedule before your shift.
-              </p>
             </div>
           </body>
           </html>
         `,
-        text: `👨‍⚕️ Shift Reminder\n\nYour caregiving shift for ${ctx.careRecipientName} starts soon.\n\nDate: ${ctx.date}\nTime: ${ctx.startTime} - ${ctx.endTime}\n\nPlease check care notes and medication schedule before your shift.`,
+        text: `👨‍⚕️ Shift Reminder\n\nYour caregiving shift for ${ctx.careRecipientName} starts soon.\n\nDate: ${ctx.date}\nTime: ${ctx.startTime} - ${ctx.endTime}`,
       }),
 
       'data-export': (ctx) => ({
@@ -460,27 +466,13 @@ export class MailService {
             <div style="background: #fff; padding: 30px; border: 1px solid #E8E7E3; border-top: none; border-radius: 0 0 12px 12px;">
               <p style="font-size: 16px; color: #1A1A18;">Hi ${ctx.userName},</p>
               <p style="font-size: 16px; color: #5C5C58;">Your data export has been completed and is ready for download.</p>
-              <div style="background: #F0FDF4; border-radius: 8px; padding: 20px; margin: 20px 0;">
-                <p style="font-size: 14px; color: #166534; margin: 0 0 10px 0;"><strong>Export includes:</strong></p>
-                <ul style="color: #166534; font-size: 14px; margin: 0; padding-left: 20px;">
-                  <li>Profile information</li>
-                  <li>Family memberships</li>
-                  <li>Care recipients data</li>
-                  <li>Medications & logs</li>
-                  <li>Appointments</li>
-                  <li>Timeline entries</li>
-                </ul>
-              </div>
               <a href="${ctx.downloadUrl}" style="display: inline-block; background: #2D5A4A; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px;">Download Export</a>
               <p style="color: #DC2626; font-size: 13px; margin-top: 20px;">⚠️ This download link expires in 24 hours.</p>
-              <p style="color: #8A8A86; font-size: 12px; margin-top: 15px; padding-top: 15px; border-top: 1px solid #E5E7EB;">
-                This export was requested as part of GDPR data portability rights.
-              </p>
             </div>
           </body>
           </html>
         `,
-        text: `Hi ${ctx.userName},\n\nYour data export is ready for download.\n\nDownload: ${ctx.downloadUrl}\n\n⚠️ This link expires in 24 hours.\n\nExport includes: Profile, Family memberships, Care recipients, Medications, Appointments, Timeline entries.`,
+        text: `Hi ${ctx.userName},\n\nYour data export is ready for download.\n\nDownload: ${ctx.downloadUrl}\n\n⚠️ This link expires in 24 hours.`,
       }),
     };
 
@@ -493,21 +485,11 @@ export class MailService {
     return templateFn(context);
   }
 
-  // Helper to check dev mode
-  private get isDev(): boolean {
-    return this.configService.get('NODE_ENV') === 'development';
-  }
+  // ============================================================================
+  // CONVENIENCE METHODS
+  // ============================================================================
 
-  // Template-based emails
   async sendWelcome(email: string, name: string): Promise<void> {
-    if (this.isDev) {
-      console.log('\n╔════════════════════════════════════════════════════════╗');
-      console.log('║  📧 DEV MODE - Welcome Email                            ║');
-      console.log('╠════════════════════════════════════════════════════════╣');
-      console.log(`║  To:   ${email.padEnd(44)}║`);
-      console.log(`║  Name: ${name.padEnd(44)}║`);
-      console.log('╚════════════════════════════════════════════════════════╝\n');
-    }
     await this.send({
       to: email,
       subject: 'Welcome to CareCircle',
@@ -518,18 +500,6 @@ export class MailService {
 
   async sendPasswordReset(email: string, token: string, name: string): Promise<void> {
     const resetUrl = `${this.configService.get('app.frontendUrl')}/reset-password?token=${token}`;
-
-    if (this.isDev) {
-      console.log('\n╔════════════════════════════════════════════════════════╗');
-      console.log('║  🔑 DEV MODE - Password Reset                           ║');
-      console.log('╠════════════════════════════════════════════════════════╣');
-      console.log(`║  Email: ${email.padEnd(43)}║`);
-      console.log(`║  Name:  ${name.padEnd(43)}║`);
-      console.log(`║  Token: ${token.substring(0, 40).padEnd(43)}║`);
-      console.log(`║  URL:   ${resetUrl.substring(0, 43).padEnd(43)}║`);
-      console.log('╚════════════════════════════════════════════════════════╝\n');
-    }
-
     await this.send({
       to: email,
       subject: 'Reset Your Password - CareCircle',
@@ -539,17 +509,7 @@ export class MailService {
   }
 
   async sendEmailVerification(email: string, otp: string, name: string): Promise<void> {
-    if (this.isDev) {
-      console.log('\n╔════════════════════════════════════════════════════════╗');
-      console.log('║  🔐 DEV MODE - Email Verification OTP                   ║');
-      console.log('╠════════════════════════════════════════════════════════╣');
-      console.log(`║  Email: ${email.padEnd(43)}║`);
-      console.log(`║  OTP:   ${otp.padEnd(43)}║`);
-      console.log('╚════════════════════════════════════════════════════════╝\n');
-    }
-
     const verificationUrl = `${this.configService.get('app.frontendUrl')}/verify-email?email=${encodeURIComponent(email)}`;
-
     await this.send({
       to: email,
       subject: 'Verify Your Email - CareCircle',
@@ -565,20 +525,6 @@ export class MailService {
     inviteToken: string,
   ): Promise<void> {
     const inviteUrl = `${this.configService.get('app.frontendUrl')}/accept-invite/${inviteToken}`;
-
-    if (this.isDev) {
-      console.log('\n╔════════════════════════════════════════════════════════╗');
-      console.log('║  👨‍👩‍👧 DEV MODE - Family Invitation                        ║');
-      console.log('╠════════════════════════════════════════════════════════╣');
-      console.log(`║  To:      ${email.padEnd(41)}║`);
-      console.log(`║  From:    ${inviterName.padEnd(41)}║`);
-      console.log(`║  Family:  ${familyName.padEnd(41)}║`);
-      console.log(`║  Token:   ${inviteToken.padEnd(41)}║`);
-      console.log('╠════════════════════════════════════════════════════════╣');
-      console.log(`║  URL: ${inviteUrl.padEnd(45)}║`);
-      console.log('╚════════════════════════════════════════════════════════╝\n');
-    }
-
     await this.send({
       to: email,
       subject: `${inviterName} invited you to join ${familyName} on CareCircle`,
@@ -594,18 +540,6 @@ export class MailService {
     message: string,
     alertedByName: string,
   ): Promise<void> {
-    if (this.isDev) {
-      console.log('\n╔════════════════════════════════════════════════════════╗');
-      console.log('║  🚨 DEV MODE - Emergency Alert                          ║');
-      console.log('╠════════════════════════════════════════════════════════╣');
-      console.log(`║  To:        ${emails.join(', ').substring(0, 39).padEnd(39)}║`);
-      console.log(`║  Patient:   ${careRecipientName.padEnd(39)}║`);
-      console.log(`║  Type:      ${alertType.padEnd(39)}║`);
-      console.log(`║  By:        ${alertedByName.padEnd(39)}║`);
-      console.log(`║  Message:   ${message.substring(0, 39).padEnd(39)}║`);
-      console.log('╚════════════════════════════════════════════════════════╝\n');
-    }
-
     await this.send({
       to: emails,
       subject: `🚨 EMERGENCY ALERT - ${careRecipientName}`,
@@ -627,28 +561,11 @@ export class MailService {
     dosage: string,
     time: string,
   ): Promise<void> {
-    if (this.isDev) {
-      console.log('\n╔════════════════════════════════════════════════════════╗');
-      console.log('║  💊 DEV MODE - Medication Reminder                      ║');
-      console.log('╠════════════════════════════════════════════════════════╣');
-      console.log(`║  To:         ${email.padEnd(38)}║`);
-      console.log(`║  Patient:    ${careRecipientName.padEnd(38)}║`);
-      console.log(`║  Medication: ${medicationName.padEnd(38)}║`);
-      console.log(`║  Dosage:     ${dosage.padEnd(38)}║`);
-      console.log(`║  Time:       ${time.padEnd(38)}║`);
-      console.log('╚════════════════════════════════════════════════════════╝\n');
-    }
-
     await this.send({
       to: email,
       subject: `Medication Reminder - ${medicationName} for ${careRecipientName}`,
       template: 'medication-reminder',
-      context: {
-        careRecipientName,
-        medicationName,
-        dosage,
-        time,
-      },
+      context: { careRecipientName, medicationName, dosage, time },
     });
   }
 
@@ -659,29 +576,11 @@ export class MailService {
     adminName: string,
   ): Promise<void> {
     const loginUrl = `${this.configService.get('app.frontendUrl')}/login`;
-
-    if (this.isDev) {
-      console.log('\n╔════════════════════════════════════════════════════════╗');
-      console.log('║  🔐 DEV MODE - Admin Password Reset                     ║');
-      console.log('╠════════════════════════════════════════════════════════╣');
-      console.log(`║  Email:        ${email.padEnd(36)}║`);
-      console.log(`║  User:         ${userName.padEnd(36)}║`);
-      console.log(`║  Reset By:     ${adminName.padEnd(36)}║`);
-      console.log(`║  Temp Password: ${tempPassword.padEnd(35)}║`);
-      console.log(`║  Login URL:    ${loginUrl.substring(0, 36).padEnd(36)}║`);
-      console.log('╚════════════════════════════════════════════════════════╝\n');
-    }
-
     await this.send({
       to: email,
       subject: 'Your Password Was Reset - CareCircle',
       template: 'password-reset-by-admin',
-      context: {
-        userName,
-        adminName,
-        tempPassword,
-        loginUrl,
-      },
+      context: { userName, adminName, tempPassword, loginUrl },
     });
   }
 
@@ -694,30 +593,11 @@ export class MailService {
     location?: string,
     doctorName?: string,
   ): Promise<void> {
-    if (this.isDev) {
-      console.log('\n╔════════════════════════════════════════════════════════╗');
-      console.log('║  📅 DEV MODE - Appointment Reminder                     ║');
-      console.log('╠════════════════════════════════════════════════════════╣');
-      console.log(`║  To:       ${email.padEnd(40)}║`);
-      console.log(`║  Patient:  ${careRecipientName.padEnd(40)}║`);
-      console.log(`║  Title:    ${title.padEnd(40)}║`);
-      console.log(`║  Date:     ${date.padEnd(40)}║`);
-      console.log(`║  Time:     ${time.padEnd(40)}║`);
-      console.log('╚════════════════════════════════════════════════════════╝\n');
-    }
-
     await this.send({
       to: email,
       subject: `Appointment Reminder - ${title} for ${careRecipientName}`,
       template: 'appointment-reminder',
-      context: {
-        careRecipientName,
-        title,
-        date,
-        time,
-        location,
-        doctorName,
-      },
+      context: { careRecipientName, title, date, time, location, doctorName },
     });
   }
 
@@ -730,29 +610,11 @@ export class MailService {
     pharmacy?: string,
     pharmacyPhone?: string,
   ): Promise<void> {
-    if (this.isDev) {
-      console.log('\n╔════════════════════════════════════════════════════════╗');
-      console.log('║  💊 DEV MODE - Refill Alert                             ║');
-      console.log('╠════════════════════════════════════════════════════════╣');
-      console.log(`║  To:           ${emails.join(', ').substring(0, 35).padEnd(35)}║`);
-      console.log(`║  Patient:      ${careRecipientName.padEnd(35)}║`);
-      console.log(`║  Medication:   ${medicationName.padEnd(35)}║`);
-      console.log(`║  Supply:       ${String(currentSupply).padEnd(35)}║`);
-      console.log('╚════════════════════════════════════════════════════════╝\n');
-    }
-
     await this.send({
       to: emails,
       subject: `⚠️ Refill Needed - ${medicationName} for ${careRecipientName}`,
       template: 'refill-alert',
-      context: {
-        careRecipientName,
-        medicationName,
-        currentSupply,
-        refillAt,
-        pharmacy,
-        pharmacyPhone,
-      },
+      context: { careRecipientName, medicationName, currentSupply, refillAt, pharmacy, pharmacyPhone },
     });
   }
 
@@ -763,27 +625,11 @@ export class MailService {
     startTime: string,
     endTime: string,
   ): Promise<void> {
-    if (this.isDev) {
-      console.log('\n╔════════════════════════════════════════════════════════╗');
-      console.log('║  👨‍⚕️ DEV MODE - Shift Reminder                          ║');
-      console.log('╠════════════════════════════════════════════════════════╣');
-      console.log(`║  To:       ${email.padEnd(40)}║`);
-      console.log(`║  Patient:  ${careRecipientName.padEnd(40)}║`);
-      console.log(`║  Date:     ${date.padEnd(40)}║`);
-      console.log(`║  Time:     ${(startTime + ' - ' + endTime).padEnd(40)}║`);
-      console.log('╚════════════════════════════════════════════════════════╝\n');
-    }
-
     await this.send({
       to: email,
       subject: `Shift Reminder - ${careRecipientName}`,
       template: 'shift-reminder',
-      context: {
-        careRecipientName,
-        date,
-        startTime,
-        endTime,
-      },
+      context: { careRecipientName, date, startTime, endTime },
     });
   }
 
@@ -792,24 +638,11 @@ export class MailService {
     userName: string,
     downloadUrl: string,
   ): Promise<void> {
-    if (this.isDev) {
-      console.log('\n╔════════════════════════════════════════════════════════╗');
-      console.log('║  📦 DEV MODE - Data Export Ready                        ║');
-      console.log('╠════════════════════════════════════════════════════════╣');
-      console.log(`║  Email:   ${email.padEnd(41)}║`);
-      console.log(`║  User:    ${userName.padEnd(41)}║`);
-      console.log(`║  URL:     ${downloadUrl.substring(0, 41).padEnd(41)}║`);
-      console.log('╚════════════════════════════════════════════════════════╝\n');
-    }
-
     await this.send({
       to: email,
       subject: 'Your CareCircle Data Export is Ready',
       template: 'data-export',
-      context: {
-        userName,
-        downloadUrl,
-      },
+      context: { userName, downloadUrl },
     });
   }
 }
