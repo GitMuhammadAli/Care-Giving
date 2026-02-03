@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useAdminFamilies, useDeleteAdminFamily } from '@/hooks/admin';
 import { DataTable } from '@/components/admin';
-import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Eye, Trash2, Users, Heart, FileText } from 'lucide-react';
 import Link from 'next/link';
@@ -29,14 +28,14 @@ export default function AdminFamiliesPage() {
       header: 'Family',
       render: (family: AdminFamily) => (
         <div className="flex items-center gap-3">
-          <Avatar className="h-10 w-10">
-            <AvatarFallback className="bg-teal-600 text-white">
+          <Avatar className="h-10 w-10 border border-sage-200">
+            <AvatarFallback className="bg-sage text-white font-medium">
               {family.name.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-medium text-white">{family.name}</p>
-            <p className="text-sm text-slate-400">
+            <p className="font-medium text-foreground">{family.name}</p>
+            <p className="text-sm text-muted-foreground">
               Created {new Date(family.createdAt).toLocaleDateString()}
             </p>
           </div>
@@ -50,11 +49,11 @@ export default function AdminFamiliesPage() {
         <div>
           {family.admin ? (
             <>
-              <p className="text-white">{family.admin.fullName}</p>
-              <p className="text-sm text-slate-400">{family.admin.email}</p>
+              <p className="text-foreground">{family.admin.fullName}</p>
+              <p className="text-sm text-muted-foreground">{family.admin.email}</p>
             </>
           ) : (
-            <span className="text-slate-500">No admin</span>
+            <span className="text-muted-foreground">No admin</span>
           )}
         </div>
       ),
@@ -64,8 +63,8 @@ export default function AdminFamiliesPage() {
       header: 'Members',
       render: (family: AdminFamily) => (
         <div className="flex items-center gap-2">
-          <Users className="w-4 h-4 text-slate-400" />
-          <span className="text-slate-300">{family.memberCount}</span>
+          <Users className="w-4 h-4 text-muted-foreground" />
+          <span className="text-foreground">{family.memberCount}</span>
         </div>
       ),
     },
@@ -74,8 +73,8 @@ export default function AdminFamiliesPage() {
       header: 'Care Recipients',
       render: (family: AdminFamily) => (
         <div className="flex items-center gap-2">
-          <Heart className="w-4 h-4 text-slate-400" />
-          <span className="text-slate-300">{family.careRecipientCount}</span>
+          <Heart className="w-4 h-4 text-terracotta" />
+          <span className="text-foreground">{family.careRecipientCount}</span>
         </div>
       ),
     },
@@ -84,8 +83,8 @@ export default function AdminFamiliesPage() {
       header: 'Documents',
       render: (family: AdminFamily) => (
         <div className="flex items-center gap-2">
-          <FileText className="w-4 h-4 text-slate-400" />
-          <span className="text-slate-300">{family.documentCount}</span>
+          <FileText className="w-4 h-4 text-muted-foreground" />
+          <span className="text-foreground">{family.documentCount}</span>
         </div>
       ),
     },
@@ -96,7 +95,7 @@ export default function AdminFamiliesPage() {
         <div className="flex items-center justify-end gap-1">
           <Link
             href={`/admin/families/${family.id}`}
-            className="p-2 rounded-md text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-sage-100 transition-colors"
             title="View Details"
           >
             <Eye className="w-4 h-4" />
@@ -107,7 +106,7 @@ export default function AdminFamiliesPage() {
                 deleteFamily.mutate({ id: family.id });
               }
             }}
-            className="p-2 rounded-md text-slate-400 hover:text-red-400 hover:bg-slate-700 transition-colors"
+            className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
             title="Delete Family"
           >
             <Trash2 className="w-4 h-4" />
@@ -122,8 +121,8 @@ export default function AdminFamiliesPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Family Management</h1>
-        <p className="text-slate-400 mt-1">
+        <h1 className="font-editorial text-3xl text-foreground">Family Management</h1>
+        <p className="text-muted-foreground mt-1">
           Manage all family spaces across the platform
         </p>
       </div>
@@ -143,4 +142,3 @@ export default function AdminFamiliesPage() {
     </div>
   );
 }
-

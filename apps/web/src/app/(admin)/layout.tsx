@@ -13,7 +13,7 @@ export default function AdminLayout({
 
   return (
     <AdminProtectedRoute>
-      <div className="min-h-screen bg-slate-900">
+      <div className="min-h-screen bg-background texture-paper">
         {/* Desktop Sidebar */}
         <div className="hidden lg:block">
           <AdminSidebar
@@ -25,7 +25,7 @@ export default function AdminLayout({
         {/* Mobile Sidebar Overlay */}
         {mobileMenuOpen && (
           <div
-            className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+            className="fixed inset-0 z-40 bg-ink/30 backdrop-blur-sm lg:hidden"
             onClick={() => setMobileMenuOpen(false)}
           />
         )}

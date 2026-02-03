@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
@@ -72,7 +72,8 @@ const heartbeatVariants = {
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
-  const { login } = useAuth();
+  const router = useRouter();
+  const { login, user } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -91,6 +92,24 @@ export default function LoginPage() {
     try {
       await login(formData);
       toast.success('Welcome back! Redirecting...');
+      
+      // Get the updated user state after login
+      const authState = useAuth.getState();
+      const loggedInUser = authState.user;
+      
+      // Check for return URL first
+      const returnUrl = searchParams.get('returnUrl');
+      if (returnUrl) {
+        router.push(returnUrl);
+        return;
+      }
+      
+      // Redirect based on systemRole
+      if (loggedInUser?.systemRole === 'ADMIN' || loggedInUser?.systemRole === 'SUPER_ADMIN') {
+        router.push('/admin/overview');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err) {
       if (err instanceof ApiError) {
         const errorMsg = err.message || 'Invalid email or password';
