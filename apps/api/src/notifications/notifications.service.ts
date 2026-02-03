@@ -2,6 +2,7 @@ import { Injectable, Inject, forwardRef, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../gateway/events.gateway';
 import { WebPushService } from './web-push.service';
+import { NotificationType } from '@prisma/client';
 
 @Injectable()
 export class NotificationsService {
@@ -333,18 +334,17 @@ export class NotificationsService {
     userId: string;
     title: string;
     body: string;
-    type: string;
-    priority?: string;
+    type: NotificationType | string;
+    priority?: string; // Priority stored in data.priority if needed
     data?: Record<string, any>;
   }) {
     const notification = await this.prisma.notification.create({
       data: {
         userId: data.userId,
-        type: data.type,
+        type: data.type as NotificationType,
         title: data.title,
         body: data.body,
-        priority: data.priority || 'NORMAL',
-        data: data.data || {},
+        data: { ...data.data, priority: data.priority || 'NORMAL' },
       },
     });
 

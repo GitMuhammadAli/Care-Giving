@@ -55,7 +55,7 @@ export class ReminderSchedulerService implements OnModuleInit {
               family: {
                 include: {
                   members: {
-                    where: { status: 'ACTIVE' },
+                    where: { isActive: true },
                     include: { user: true },
                   },
                 },
@@ -139,7 +139,7 @@ export class ReminderSchedulerService implements OnModuleInit {
                 family: {
                   include: {
                     members: {
-                      where: { status: 'ACTIVE' },
+                      where: { isActive: true },
                       include: { user: true },
                     },
                   },
@@ -193,80 +193,14 @@ export class ReminderSchedulerService implements OnModuleInit {
     }
   }
 
-  /**
-   * Check for shift reminders every 5 minutes
-   * Sends reminders at: 1 hour and 15 minutes before shift starts
-   */
-  @Cron(CronExpression.EVERY_5_MINUTES)
-  async checkShiftReminders() {
-    try {
-      const now = new Date();
-      const reminderWindows = [
-        { minutes: 15, label: '15 minutes' },
-        { minutes: 60, label: '1 hour' },
-      ];
-
-      for (const window of reminderWindows) {
-        const targetTime = new Date(now.getTime() + window.minutes * 60 * 1000);
-        const windowStart = new Date(targetTime.getTime() - 2.5 * 60 * 1000);
-        const windowEnd = new Date(targetTime.getTime() + 2.5 * 60 * 1000);
-
-        const shifts = await this.prisma.shift.findMany({
-          where: {
-            startTime: {
-              gte: windowStart,
-              lte: windowEnd,
-            },
-            status: 'SCHEDULED',
-          },
-          include: {
-            assignedTo: true,
-            careRecipient: true,
-          },
-        });
-
-        for (const shift of shifts) {
-          if (!shift.assignedTo) continue;
-
-          const reminderKey = `shift_${shift.id}_${window.minutes}`;
-          const existingNotification = await this.prisma.notification.findFirst({
-            where: {
-              userId: shift.assignedTo.id,
-              data: {
-                path: ['reminderKey'],
-                equals: reminderKey,
-              },
-              createdAt: {
-                gte: new Date(now.getTime() - 60 * 60 * 1000),
-              },
-            },
-          });
-
-          if (existingNotification) continue;
-
-          try {
-            await this.notificationsService.create({
-              userId: shift.assignedTo.id,
-              title: '👤 Shift Reminder',
-              body: `Your shift caring for ${shift.careRecipient.fullName} starts in ${window.label}`,
-              type: 'SHIFT_REMINDER',
-              data: {
-                shiftId: shift.id,
-                careRecipientId: shift.careRecipient.id,
-                reminderKey,
-              },
-            });
-
-            this.logger.debug(`Sent shift reminder for ${shift.assignedTo.fullName} (${window.label} before)`);
-          } catch (err) {
-            this.logger.warn(`Failed to send shift notification: ${err.message}`);
-          }
-        }
-      }
-    } catch (error) {
-      this.logger.error(`Shift reminder check failed: ${error.message}`);
-    }
-  }
+  // NOTE: Shift reminders disabled - Shift model not yet implemented
+  // TODO: Enable when Shift model is added to schema
+  // /**
+  //  * Check for shift reminders every 5 minutes
+  //  * Sends reminders at: 1 hour and 15 minutes before shift starts
+  //  */
+  // @Cron(CronExpression.EVERY_5_MINUTES)
+  // async checkShiftReminders() { ... }
 
   /**
    * Check for medication refills daily at 9 AM
@@ -285,8 +219,8 @@ export class ReminderSchedulerService implements OnModuleInit {
               family: {
                 include: {
                   members: {
-                    where: { 
-                      status: 'ACTIVE',
+                    where: {
+                      isActive: true,
                       role: { in: ['ADMIN', 'CAREGIVER'] },
                     },
                     include: { user: true },
