@@ -60,48 +60,9 @@ export class MailService {
       }
     }
 
-    try {
-      // Check if queue client is ready (connected to Redis)
-      const client = this.mailQueue.client;
-      if (!client || client.status !== 'ready') {
-        this.logger.warn(`Mail queue not ready (Redis disconnected). Sending directly...`);
-        await this.sendDirect(options, recipientCount);
-        return;
-      }
-
-      // Add with a short timeout to avoid hanging
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Queue add timeout')), 3000)
-      );
-
-      await Promise.race([
-        this.mailQueue.add('send', {
-          ...options,
-          provider: this.provider,
-          recipientCount, // Pass for tracking after send
-        }, {
-          attempts: 3,
-          backoff: {
-            type: 'exponential',
-            delay: 1000,
-          },
-        }),
-        timeoutPromise,
-      ]);
-
-      // Track usage after successful queue
-      await this.limitsService.incrementUsage(
-        ResourceType.EMAILS_SENT,
-        PeriodType.DAILY,
-        recipientCount,
-      );
-
-      this.logger.log(`Mail queued for ${options.to} via ${this.provider}`);
-    } catch (error) {
-      // If queue fails (Redis unavailable), try direct send
-      this.logger.warn(`Failed to queue mail for ${options.to}: ${error.message}. Trying direct send...`);
-      await this.sendDirect(options, recipientCount);
-    }
+    // Send directly - more reliable than queueing (queue processor issues in production)
+    // This ensures emails are sent immediately without depending on Bull workers
+    await this.sendDirect(options, recipientCount);
   }
 
   /**
