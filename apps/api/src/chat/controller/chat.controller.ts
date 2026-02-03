@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, ForbiddenException, HttpException, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ChatService } from '../service/chat.service';
 import { CurrentUser } from '../../system/decorator/current-user.decorator';
@@ -19,6 +19,18 @@ export class ChatController {
   @Get('token')
   @ApiOperation({ summary: 'Get Stream Chat user token and sync user' })
   async getUserToken(@CurrentUser('id') userId: string) {
+    // Check if Stream Chat is configured first
+    if (!this.chatService.isConfigured()) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.SERVICE_UNAVAILABLE,
+          message: 'Stream Chat not configured',
+          configured: false,
+        },
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+
     // Get user info and sync to Stream Chat
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -36,6 +48,7 @@ export class ChatController {
       userId,
       userName: user?.fullName,
       userImage: user?.avatarUrl,
+      configured: true,
     };
   }
 

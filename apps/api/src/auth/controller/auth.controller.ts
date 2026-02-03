@@ -422,23 +422,35 @@ Now all protected endpoints will use this token automatically.
     tokens: { accessToken: string; refreshToken: string },
     rememberMe = false
   ): void {
+    // For cross-origin deployments (e.g., Vercel frontend + Render backend),
+    // we need sameSite: "none" with secure: true to allow cookies across domains.
+    // In development (same origin), we use "lax" for better security.
+    const sameSite = this.isProduction ? "none" : "lax";
+    
     res.cookie("access_token", tokens.accessToken, {
       httpOnly: true,
-      secure: this.isProduction,
-      sameSite: "strict",
+      secure: this.isProduction, // Required when sameSite is "none"
+      sameSite,
       maxAge: 15 * 60 * 1000, // 15 minutes
     });
 
     res.cookie("refresh_token", tokens.refreshToken, {
       httpOnly: true,
       secure: this.isProduction,
-      sameSite: "strict",
+      sameSite,
       maxAge: rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000,
     });
   }
 
   private clearTokenCookies(res: Response): void {
-    res.clearCookie("access_token");
-    res.clearCookie("refresh_token");
+    // Must use same options as when setting for proper clearing
+    const sameSite = this.isProduction ? "none" : "lax";
+    const cookieOptions = {
+      httpOnly: true,
+      secure: this.isProduction,
+      sameSite: sameSite as "none" | "lax",
+    };
+    res.clearCookie("access_token", cookieOptions);
+    res.clearCookie("refresh_token", cookieOptions);
   }
 }
