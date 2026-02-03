@@ -29,12 +29,19 @@ interface SmtpConfig {
   fromName: string;
 }
 
+interface BrevoConfig {
+  apiKey: string;
+  from: string;
+  fromName: string;
+}
+
 @Injectable()
 export class MailService implements OnModuleInit {
   private readonly logger = new Logger(MailService.name);
   private readonly provider: string;
   private transporter: Transporter | null = null;
   private smtpConfig: SmtpConfig | null = null;
+  private brevoConfig: BrevoConfig | null = null;
 
   constructor(
     private configService: ConfigService,
@@ -44,13 +51,23 @@ export class MailService implements OnModuleInit {
   }
 
   async onModuleInit(): Promise<void> {
-    // Load and validate SMTP config on startup
+    // Check for Brevo HTTP API first (bypasses SMTP port restrictions)
+    if (this.provider === 'brevo') {
+      this.brevoConfig = this.loadBrevoConfig();
+      if (this.brevoConfig) {
+        this.logger.log(`✅ Mail configured: Brevo HTTP API`);
+        this.logger.log(`   From: "${this.brevoConfig.fromName}" <${this.brevoConfig.from}>`);
+        return;
+      }
+    }
+
+    // Fall back to SMTP/Mailtrap
     this.smtpConfig = this.loadSmtpConfig();
-    
+
     if (this.smtpConfig) {
       this.logger.log(`✅ Mail configured: ${this.provider} via ${this.smtpConfig.host}:${this.smtpConfig.port}`);
       this.logger.log(`   From: "${this.smtpConfig.fromName}" <${this.smtpConfig.from}>`);
-      
+
       // Create reusable transporter
       this.transporter = nodemailer.createTransport({
         host: this.smtpConfig.host,
@@ -61,7 +78,7 @@ export class MailService implements OnModuleInit {
           pass: this.smtpConfig.pass,
         },
       });
-      
+
       // Verify connection
       try {
         await this.transporter.verify();
@@ -121,6 +138,80 @@ export class MailService implements OnModuleInit {
     };
   }
 
+  /**
+   * Load Brevo HTTP API configuration from environment
+   */
+  private loadBrevoConfig(): BrevoConfig | null {
+    const mailConfig = this.configService.get('mail');
+    const apiKey = mailConfig?.brevo?.apiKey;
+
+    if (!apiKey) {
+      this.logger.warn(`Brevo API key not configured (BREVO_API_KEY)`);
+      return null;
+    }
+
+    return {
+      apiKey,
+      from: mailConfig?.from || 'noreply@carecircle.com',
+      fromName: mailConfig?.fromName || 'CareCircle',
+    };
+  }
+
+  /**
+   * Send email via Brevo HTTP API (bypasses SMTP port restrictions)
+   */
+  private async sendViaBrevo(
+    recipients: string,
+    subject: string,
+    content: { html: string; text: string },
+    attachments?: SendMailOptions['attachments'],
+  ): Promise<void> {
+    if (!this.brevoConfig) {
+      throw new Error('Brevo not configured');
+    }
+
+    const toArray = recipients.split(',').map(email => ({ email: email.trim() }));
+
+    const payload: Record<string, any> = {
+      sender: {
+        name: this.brevoConfig.fromName,
+        email: this.brevoConfig.from,
+      },
+      to: toArray,
+      subject,
+      htmlContent: content.html || undefined,
+      textContent: content.text || undefined,
+    };
+
+    // Add attachments if present
+    if (attachments && attachments.length > 0) {
+      payload.attachment = attachments.map(att => ({
+        name: att.filename,
+        content: Buffer.isBuffer(att.content)
+          ? att.content.toString('base64')
+          : Buffer.from(att.content).toString('base64'),
+      }));
+    }
+
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': this.brevoConfig.apiKey,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new Error(`Brevo API error (${response.status}): ${errorBody}`);
+    }
+
+    const result = await response.json();
+    this.logger.log(`✅ Email sent via Brevo! MessageId: ${result.messageId}`);
+  }
+
   async send(options: SendMailOptions): Promise<void> {
     const recipientCount = Array.isArray(options.to) ? options.to.length : 1;
     const recipients = Array.isArray(options.to) ? options.to.join(', ') : options.to;
@@ -157,17 +248,40 @@ export class MailService implements OnModuleInit {
       ? this.renderTemplate(options.template, options.context || {})
       : { html: options.html || '', text: options.text || '' };
 
-    // Check if we have a working transporter
+    // Try Brevo HTTP API first (bypasses SMTP port restrictions on platforms like Render)
+    if (this.brevoConfig) {
+      try {
+        this.logger.log(`Sending email to ${recipients} via Brevo HTTP API...`);
+        await this.sendViaBrevo(recipients, options.subject, mailContent, options.attachments);
+
+        // Track usage after successful send
+        try {
+          await this.limitsService.incrementUsage(
+            ResourceType.EMAILS_SENT,
+            PeriodType.DAILY,
+            recipientCount,
+          );
+        } catch (error) {
+          this.logger.warn(`Failed to track email usage: ${error.message}`);
+        }
+        return;
+      } catch (error) {
+        this.logger.error(`❌ Failed to send email via Brevo: ${error.message}`);
+        throw error;
+      }
+    }
+
+    // Fall back to SMTP transporter
     if (!this.transporter || !this.smtpConfig) {
-      this.logger.warn(`No SMTP configured, logging email instead`);
+      this.logger.warn(`No mail provider configured, logging email instead`);
       this.logEmail(recipients, options.subject, mailContent);
       return;
     }
 
-    // Send the email
+    // Send via SMTP
     try {
       this.logger.log(`Sending email to ${recipients} via ${this.smtpConfig.host}...`);
-      
+
       const result = await this.transporter.sendMail({
         from: `"${this.smtpConfig.fromName}" <${this.smtpConfig.from}>`,
         to: recipients,
