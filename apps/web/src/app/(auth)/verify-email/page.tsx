@@ -30,6 +30,37 @@ export default function VerifyEmailPage() {
   const [resendCooldown, setResendCooldown] = useState(0);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const hasSentInitialCode = useRef(false);
+
+  // Auto-send verification code when page loads with email parameter
+  useEffect(() => {
+    if (emailParam && !hasSentInitialCode.current) {
+      hasSentInitialCode.current = true;
+      // Small delay to ensure component is mounted
+      const timer = setTimeout(async () => {
+        setIsResending(true);
+        try {
+          await resendVerification({ email: emailParam });
+          toast.success('Verification code sent! Check your email.');
+          setResendCooldown(60);
+          setTimeout(() => inputRefs.current[0]?.focus(), 100);
+        } catch (err) {
+          if (err instanceof ApiError) {
+            const errorMsg = err.message || 'Failed to send code. Please try again.';
+            setError(errorMsg);
+            toast.error(errorMsg);
+          } else {
+            const errorMsg = 'Failed to send code. Please try again.';
+            setError(errorMsg);
+            toast.error(errorMsg);
+          }
+        } finally {
+          setIsResending(false);
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [emailParam, resendVerification]);
 
   // Countdown for resend cooldown
   useEffect(() => {
@@ -189,7 +220,7 @@ export default function VerifyEmailPage() {
               {showOtpInput && email ? (
                 <>
                   <p className="text-muted-foreground">
-                    Verifying
+                    {isResending ? 'Sending code to' : 'Enter the code sent to'}
                   </p>
                   <p className="text-foreground font-medium mt-1">{email}</p>
                   <button
