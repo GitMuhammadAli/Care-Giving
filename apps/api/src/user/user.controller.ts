@@ -39,15 +39,17 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'Preferences retrieved successfully' })
   async getNotificationPreferences(@GetUser() user: CurrentUser) {
     const prefs = await this.userService.getNotificationPreferences(user.id);
+    // Cast to proper type since Prisma returns JsonValue
+    const notifications = (prefs as { notifications?: Record<string, boolean> })?.notifications;
     return {
       emergencyAlerts: true, // Always enabled
-      medicationReminders: prefs?.notifications?.medicationReminders ?? true,
-      appointmentReminders: prefs?.notifications?.appointmentReminders ?? true,
-      shiftReminders: prefs?.notifications?.shiftReminders ?? true,
-      familyActivity: prefs?.notifications?.familyActivity ?? false,
-      email: prefs?.notifications?.email ?? true,
-      push: prefs?.notifications?.push ?? true,
-      sms: prefs?.notifications?.sms ?? false,
+      medicationReminders: notifications?.medicationReminders ?? true,
+      appointmentReminders: notifications?.appointmentReminders ?? true,
+      shiftReminders: notifications?.shiftReminders ?? true,
+      familyActivity: notifications?.familyActivity ?? false,
+      email: notifications?.email ?? true,
+      push: notifications?.push ?? true,
+      sms: notifications?.sms ?? false,
     };
   }
 
