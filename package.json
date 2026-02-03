@@ -9,6 +9,7 @@
     "dev:api": "pnpm --filter @carecircle/api dev",
     "dev:workers": "pnpm --filter @carecircle/workers dev",
     "build": "turbo build",
+    "build:render": "pnpm db:generate && pnpm db:push && turbo build --filter=@carecircle/api",
     "test": "turbo test",
     "test:workers": "pnpm --filter @carecircle/workers test",
     "db:migrate": "pnpm --filter @carecircle/database migrate:deploy",
