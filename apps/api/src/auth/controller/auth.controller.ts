@@ -58,7 +58,13 @@ export class AuthController {
     private readonly configService: ConfigService
   ) {
     const appConfig = this.configService.get("app");
-    this.isProduction = appConfig?.isProduction ?? false;
+    const frontendUrl: string = appConfig?.frontendUrl || '';
+    
+    // More robust production detection:
+    // 1. Check NODE_ENV via config
+    // 2. Check if frontend URL is non-localhost (cross-origin deployment)
+    this.isProduction = appConfig?.isProduction || 
+      (frontendUrl !== '' && !frontendUrl.includes('localhost'));
   }
 
   @Post("register")
