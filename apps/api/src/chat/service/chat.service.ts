@@ -12,12 +12,14 @@ export class ChatService {
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService
   ) {
-    const apiKey = this.configService.get<string>('NEXT_PUBLIC_STREAM_API_KEY');
+    // Try STREAM_API_KEY first (backend), fall back to NEXT_PUBLIC_STREAM_API_KEY (for compatibility)
+    const apiKey = this.configService.get<string>('STREAM_API_KEY')
+      || this.configService.get<string>('NEXT_PUBLIC_STREAM_API_KEY');
     const apiSecret = this.configService.get<string>('STREAM_API_SECRET');
 
     if (!apiKey || !apiSecret) {
       this.logger.warn(
-        'Stream Chat not configured. Set NEXT_PUBLIC_STREAM_API_KEY and STREAM_API_SECRET'
+        'Stream Chat not configured. Set STREAM_API_KEY and STREAM_API_SECRET'
       );
       return;
     }
