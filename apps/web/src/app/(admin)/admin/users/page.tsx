@@ -3,33 +3,31 @@
 import { useState } from 'react';
 import { useAdminUsers, useSuspendUser, useActivateUser, useDeleteAdminUser } from '@/hooks/admin';
 import { DataTable } from '@/components/admin';
-import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
-  MoreHorizontal, 
   UserPlus, 
   Eye, 
   Ban, 
   CheckCircle, 
-  Key, 
   Trash2,
   Filter
 } from 'lucide-react';
 import Link from 'next/link';
 import { AdminUser, UserFilter } from '@/lib/api/admin';
+import { cn } from '@/lib/utils';
 
 const statusColors: Record<string, string> = {
-  ACTIVE: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-  PENDING: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-  SUSPENDED: 'bg-red-500/20 text-red-400 border-red-500/30',
-  DELETED: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
+  ACTIVE: 'bg-sage/10 text-sage border-sage/20',
+  PENDING: 'bg-warning/10 text-warning border-warning/20',
+  SUSPENDED: 'bg-destructive/10 text-destructive border-destructive/20',
+  DELETED: 'bg-muted text-muted-foreground border-muted',
 };
 
 const roleColors: Record<string, string> = {
-  SUPER_ADMIN: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-  ADMIN: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  MODERATOR: 'bg-teal-500/20 text-teal-400 border-teal-500/30',
-  USER: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
+  SUPER_ADMIN: 'bg-terracotta/10 text-terracotta border-terracotta/20',
+  ADMIN: 'bg-sage/10 text-sage border-sage/20',
+  MODERATOR: 'bg-slate/10 text-slate border-slate/20',
+  USER: 'bg-muted text-muted-foreground border-muted',
 };
 
 export default function AdminUsersPage() {
@@ -64,15 +62,15 @@ export default function AdminUsersPage() {
       header: 'User',
       render: (user: AdminUser) => (
         <div className="flex items-center gap-3">
-          <Avatar className="h-9 w-9">
+          <Avatar className="h-9 w-9 border border-sage-200">
             <AvatarImage src={user.avatarUrl} />
-            <AvatarFallback className="bg-slate-700 text-white text-xs">
+            <AvatarFallback className="bg-sage-100 text-sage-700 text-xs font-medium">
               {user.fullName?.split(' ').map((n) => n[0]).join('').toUpperCase() || 'U'}
             </AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-medium text-white">{user.fullName}</p>
-            <p className="text-sm text-slate-400">{user.email}</p>
+            <p className="font-medium text-foreground">{user.fullName}</p>
+            <p className="text-sm text-muted-foreground">{user.email}</p>
           </div>
         </div>
       ),
@@ -81,25 +79,25 @@ export default function AdminUsersPage() {
       key: 'systemRole',
       header: 'Role',
       render: (user: AdminUser) => (
-        <Badge className={roleColors[user.systemRole] || roleColors.USER}>
+        <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border', roleColors[user.systemRole] || roleColors.USER)}>
           {user.systemRole.replace('_', ' ')}
-        </Badge>
+        </span>
       ),
     },
     {
       key: 'status',
       header: 'Status',
       render: (user: AdminUser) => (
-        <Badge className={statusColors[user.status] || statusColors.PENDING}>
+        <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border', statusColors[user.status] || statusColors.PENDING)}>
           {user.status}
-        </Badge>
+        </span>
       ),
     },
     {
       key: 'emailVerified',
       header: 'Verified',
       render: (user: AdminUser) => (
-        <span className={user.emailVerified ? 'text-emerald-400' : 'text-slate-500'}>
+        <span className={user.emailVerified ? 'text-sage' : 'text-muted-foreground'}>
           {user.emailVerified ? 'Yes' : 'No'}
         </span>
       ),
@@ -108,14 +106,14 @@ export default function AdminUsersPage() {
       key: 'familyCount',
       header: 'Families',
       render: (user: AdminUser) => (
-        <span className="text-slate-300">{user.familyCount || 0}</span>
+        <span className="text-foreground">{user.familyCount || 0}</span>
       ),
     },
     {
       key: 'lastLoginAt',
       header: 'Last Login',
       render: (user: AdminUser) => (
-        <span className="text-slate-400 text-sm">
+        <span className="text-muted-foreground text-sm">
           {user.lastLoginAt
             ? new Date(user.lastLoginAt).toLocaleDateString()
             : 'Never'}
@@ -129,7 +127,7 @@ export default function AdminUsersPage() {
         <div className="flex items-center justify-end gap-1">
           <Link
             href={`/admin/users/${user.id}`}
-            className="p-2 rounded-md text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-sage-100 transition-colors"
             title="View Details"
           >
             <Eye className="w-4 h-4" />
@@ -137,7 +135,7 @@ export default function AdminUsersPage() {
           {user.status === 'ACTIVE' && user.systemRole !== 'SUPER_ADMIN' && (
             <button
               onClick={() => suspendUser.mutate({ id: user.id })}
-              className="p-2 rounded-md text-slate-400 hover:text-amber-400 hover:bg-slate-700 transition-colors"
+              className="p-2 rounded-lg text-muted-foreground hover:text-warning hover:bg-warning/10 transition-colors"
               title="Suspend User"
             >
               <Ban className="w-4 h-4" />
@@ -146,7 +144,7 @@ export default function AdminUsersPage() {
           {user.status === 'SUSPENDED' && (
             <button
               onClick={() => activateUser.mutate(user.id)}
-              className="p-2 rounded-md text-slate-400 hover:text-emerald-400 hover:bg-slate-700 transition-colors"
+              className="p-2 rounded-lg text-muted-foreground hover:text-sage hover:bg-sage/10 transition-colors"
               title="Activate User"
             >
               <CheckCircle className="w-4 h-4" />
@@ -159,7 +157,7 @@ export default function AdminUsersPage() {
                   deleteUser.mutate({ id: user.id });
                 }
               }}
-              className="p-2 rounded-md text-slate-400 hover:text-red-400 hover:bg-slate-700 transition-colors"
+              className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
               title="Delete User"
             >
               <Trash2 className="w-4 h-4" />
@@ -176,26 +174,27 @@ export default function AdminUsersPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">User Management</h1>
-          <p className="text-slate-400 mt-1">
+          <h1 className="font-editorial text-3xl text-foreground">User Management</h1>
+          <p className="text-muted-foreground mt-1">
             Manage all users across the platform
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 rounded-xl border transition-colors',
               showFilters
-                ? 'bg-emerald-600 border-emerald-600 text-white'
-                : 'border-slate-700 text-slate-300 hover:bg-slate-800'
-            }`}
+                ? 'bg-sage border-sage text-white'
+                : 'border-sage-200 text-foreground hover:bg-sage-100'
+            )}
           >
             <Filter className="w-4 h-4" />
             Filters
           </button>
           <Link
             href="/admin/users/new"
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-sage text-white rounded-xl hover:bg-sage/90 transition-colors"
           >
             <UserPlus className="w-4 h-4" />
             Add User
@@ -205,16 +204,16 @@ export default function AdminUsersPage() {
 
       {/* Filters */}
       {showFilters && (
-        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+        <div className="dashboard-card">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Status
               </label>
               <select
                 value={filter.status || ''}
                 onChange={(e) => handleStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full px-3 py-2 bg-sage-50 border border-sage-200 rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-sage"
               >
                 <option value="">All Statuses</option>
                 <option value="ACTIVE">Active</option>
@@ -223,13 +222,13 @@ export default function AdminUsersPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Role
               </label>
               <select
                 value={filter.systemRole || ''}
                 onChange={(e) => handleRoleFilter(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full px-3 py-2 bg-sage-50 border border-sage-200 rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-sage"
               >
                 <option value="">All Roles</option>
                 <option value="SUPER_ADMIN">Super Admin</option>
@@ -239,7 +238,7 @@ export default function AdminUsersPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Email Verified
               </label>
               <select
@@ -251,7 +250,7 @@ export default function AdminUsersPage() {
                     page: 1,
                   }))
                 }
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full px-3 py-2 bg-sage-50 border border-sage-200 rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-sage"
               >
                 <option value="">All</option>
                 <option value="true">Verified</option>
@@ -261,7 +260,7 @@ export default function AdminUsersPage() {
             <div className="flex items-end">
               <button
                 onClick={() => setFilter({ page: 1, limit: 20 })}
-                className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+                className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
               >
                 Clear Filters
               </button>
@@ -288,8 +287,8 @@ export default function AdminUsersPage() {
 
       {/* Bulk Actions */}
       {selectedIds.length > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 border border-slate-700 rounded-xl px-6 py-3 shadow-xl flex items-center gap-4">
-          <span className="text-sm text-slate-300">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-card border border-sage-200 rounded-2xl px-6 py-3 shadow-warm-glow flex items-center gap-4">
+          <span className="text-sm text-foreground">
             {selectedIds.length} user{selectedIds.length > 1 ? 's' : ''} selected
           </span>
           <div className="flex items-center gap-2">
@@ -297,7 +296,7 @@ export default function AdminUsersPage() {
               onClick={() => {
                 // Bulk suspend
               }}
-              className="px-3 py-1.5 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
+              className="px-3 py-1.5 text-sm bg-warning text-white rounded-xl hover:bg-warning/90 transition-colors"
             >
               Suspend
             </button>
@@ -305,13 +304,13 @@ export default function AdminUsersPage() {
               onClick={() => {
                 // Bulk activate
               }}
-              className="px-3 py-1.5 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+              className="px-3 py-1.5 text-sm bg-sage text-white rounded-xl hover:bg-sage/90 transition-colors"
             >
               Activate
             </button>
             <button
               onClick={() => setSelectedIds([])}
-              className="px-3 py-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+              className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               Cancel
             </button>
@@ -321,4 +320,3 @@ export default function AdminUsersPage() {
     </div>
   );
 }
-

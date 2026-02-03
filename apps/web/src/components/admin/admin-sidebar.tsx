@@ -12,6 +12,7 @@ import {
   Settings,
   LogOut,
   ChevronLeft,
+  Heart,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -35,35 +36,38 @@ export function AdminSidebar({ collapsed = false, onCollapse }: AdminSidebarProp
 
   const handleLogout = async () => {
     await logout();
-    window.location.href = '/admin/login';
+    window.location.href = '/login';
   };
 
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-40 h-screen bg-slate-900 border-r border-slate-800 transition-all duration-300',
+        'fixed left-0 top-0 z-40 h-screen bg-card border-r border-sage-200 transition-all duration-300',
         collapsed ? 'w-16' : 'w-64'
       )}
     >
       {/* Logo */}
-      <div className="flex h-16 items-center justify-between px-4 border-b border-slate-800">
+      <div className="flex h-16 items-center justify-between px-4 border-b border-sage-200">
         {!collapsed && (
-          <Link href="/admin/overview" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center">
-              <Shield className="w-5 h-5 text-white" />
+          <Link href="/admin/overview" className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-sage flex items-center justify-center shadow-sm">
+              <Heart className="w-5 h-5 text-white" />
             </div>
-            <span className="font-semibold text-white">Admin</span>
+            <div className="flex flex-col">
+              <span className="font-editorial text-lg text-foreground leading-tight">CareCircle</span>
+              <span className="text-xs text-muted-foreground font-medium tracking-wide uppercase">Admin</span>
+            </div>
           </Link>
         )}
         {collapsed && (
-          <div className="w-8 h-8 mx-auto rounded-lg bg-emerald-600 flex items-center justify-center">
-            <Shield className="w-5 h-5 text-white" />
+          <div className="w-9 h-9 mx-auto rounded-xl bg-sage flex items-center justify-center shadow-sm">
+            <Heart className="w-5 h-5 text-white" />
           </div>
         )}
         {onCollapse && !collapsed && (
           <button
             onClick={() => onCollapse(true)}
-            className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-sage-100 transition-colors"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
@@ -71,7 +75,7 @@ export function AdminSidebar({ collapsed = false, onCollapse }: AdminSidebarProp
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-2 py-4 space-y-1">
+      <nav className="flex-1 px-3 py-4 space-y-1">
         {navigation.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
           return (
@@ -79,15 +83,15 @@ export function AdminSidebar({ collapsed = false, onCollapse }: AdminSidebarProp
               key={item.name}
               href={item.href}
               className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
                 isActive
-                  ? 'bg-emerald-600/20 text-emerald-400'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800',
+                  ? 'bg-sage text-white shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-sage-100',
                 collapsed && 'justify-center px-2'
               )}
               title={collapsed ? item.name : undefined}
             >
-              <item.icon className="w-5 h-5 flex-shrink-0" />
+              <item.icon className={cn('w-5 h-5 flex-shrink-0', isActive && 'text-white')} />
               {!collapsed && <span>{item.name}</span>}
             </Link>
           );
@@ -95,11 +99,11 @@ export function AdminSidebar({ collapsed = false, onCollapse }: AdminSidebarProp
       </nav>
 
       {/* Footer */}
-      <div className="absolute bottom-0 left-0 right-0 p-2 border-t border-slate-800">
+      <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-sage-200 bg-sage-50/50">
         <Link
           href="/dashboard"
           className={cn(
-            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors mb-1',
+            'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-sage-100 transition-colors mb-1',
             collapsed && 'justify-center px-2'
           )}
           title={collapsed ? 'Back to App' : undefined}
@@ -110,7 +114,7 @@ export function AdminSidebar({ collapsed = false, onCollapse }: AdminSidebarProp
         <button
           onClick={handleLogout}
           className={cn(
-            'flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-colors',
+            'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors',
             collapsed && 'justify-center px-2'
           )}
           title={collapsed ? 'Logout' : undefined}
@@ -124,4 +128,3 @@ export function AdminSidebar({ collapsed = false, onCollapse }: AdminSidebarProp
 }
 
 export default AdminSidebar;
-

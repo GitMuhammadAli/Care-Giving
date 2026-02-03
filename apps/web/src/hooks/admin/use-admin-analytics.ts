@@ -47,3 +47,19 @@ export function useSystemStats() {
   });
 }
 
+export function useResourceUsage() {
+  return useQuery({
+    queryKey: ['admin', 'system', 'resource-usage'],
+    queryFn: () => adminApi.getResourceUsage(),
+    refetchInterval: 60000, // Refresh every minute
+  });
+}
+
+export function useUsageSummary() {
+  return useQuery({
+    queryKey: ['admin', 'system', 'usage-summary'],
+    queryFn: () => adminApi.getUsageSummary(),
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+}
+

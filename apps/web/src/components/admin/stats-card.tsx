@@ -19,7 +19,7 @@ export function StatsCard({
   change,
   changeLabel = 'vs last month',
   icon: Icon,
-  iconColor = 'text-emerald-400',
+  iconColor = 'text-sage',
   className,
 }: StatsCardProps) {
   const isPositive = change !== undefined && change >= 0;
@@ -27,17 +27,17 @@ export function StatsCard({
   return (
     <div
       className={cn(
-        'bg-slate-800/50 border border-slate-700 rounded-xl p-6',
+        'dashboard-card',
         className
       )}
     >
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm font-medium text-slate-400">{title}</p>
-          <p className="mt-2 text-3xl font-bold text-white">{value}</p>
+          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          <p className="mt-2 text-3xl font-editorial text-foreground">{value}</p>
         </div>
         {Icon && (
-          <div className={cn('p-3 rounded-lg bg-slate-700/50', iconColor)}>
+          <div className={cn('p-3 rounded-xl bg-sage-100', iconColor)}>
             <Icon className="w-6 h-6" />
           </div>
         )}
@@ -45,20 +45,20 @@ export function StatsCard({
       {change !== undefined && (
         <div className="mt-4 flex items-center gap-2">
           {isPositive ? (
-            <TrendingUp className="w-4 h-4 text-emerald-400" />
+            <TrendingUp className="w-4 h-4 text-sage" />
           ) : (
-            <TrendingDown className="w-4 h-4 text-red-400" />
+            <TrendingDown className="w-4 h-4 text-destructive" />
           )}
           <span
             className={cn(
               'text-sm font-medium',
-              isPositive ? 'text-emerald-400' : 'text-red-400'
+              isPositive ? 'text-sage' : 'text-destructive'
             )}
           >
             {isPositive ? '+' : ''}
             {change.toFixed(1)}%
           </span>
-          <span className="text-sm text-slate-400">{changeLabel}</span>
+          <span className="text-sm text-muted-foreground">{changeLabel}</span>
         </div>
       )}
     </div>
@@ -66,4 +66,3 @@ export function StatsCard({
 }
 
 export default StatsCard;
-

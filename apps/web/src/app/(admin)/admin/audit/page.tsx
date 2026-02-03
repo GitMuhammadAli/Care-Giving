@@ -5,6 +5,7 @@ import { useAuditLogs, useSecurityEvents, useLoginAttempts } from '@/hooks/admin
 import { DataTable } from '@/components/admin';
 import { Shield, AlertTriangle, Lock, Activity } from 'lucide-react';
 import { AuditLog, AuditLogFilter } from '@/lib/api/admin';
+import { cn } from '@/lib/utils';
 
 export default function AdminAuditPage() {
   const [filter, setFilter] = useState<AuditLogFilter>({ page: 1, limit: 50 });
@@ -27,7 +28,7 @@ export default function AdminAuditPage() {
       key: 'timestamp',
       header: 'Time',
       render: (log: AuditLog) => (
-        <span className="text-slate-400 text-sm">
+        <span className="text-muted-foreground text-sm">
           {new Date(log.timestamp).toLocaleString()}
         </span>
       ),
@@ -39,11 +40,11 @@ export default function AdminAuditPage() {
         <div>
           {log.user ? (
             <>
-              <p className="text-white text-sm">{log.user.fullName}</p>
-              <p className="text-slate-400 text-xs">{log.user.email}</p>
+              <p className="text-foreground text-sm">{log.user.fullName}</p>
+              <p className="text-muted-foreground text-xs">{log.user.email}</p>
             </>
           ) : (
-            <span className="text-slate-500 text-sm">System</span>
+            <span className="text-muted-foreground text-sm">System</span>
           )}
         </div>
       ),
@@ -52,7 +53,7 @@ export default function AdminAuditPage() {
       key: 'action',
       header: 'Action',
       render: (log: AuditLog) => (
-        <span className="text-white font-medium">{log.action}</span>
+        <span className="text-foreground font-medium">{log.action}</span>
       ),
     },
     {
@@ -60,9 +61,9 @@ export default function AdminAuditPage() {
       header: 'Resource',
       render: (log: AuditLog) => (
         <div>
-          <span className="text-slate-300 text-sm">{log.resource || '-'}</span>
+          <span className="text-foreground text-sm">{log.resource || '-'}</span>
           {log.resourceId && (
-            <span className="text-slate-500 text-xs ml-1">
+            <span className="text-muted-foreground text-xs ml-1">
               ({log.resourceId.slice(0, 8)}...)
             </span>
           )}
@@ -73,7 +74,7 @@ export default function AdminAuditPage() {
       key: 'ipAddress',
       header: 'IP Address',
       render: (log: AuditLog) => (
-        <span className="text-slate-400 text-sm font-mono">
+        <span className="text-muted-foreground text-sm font-mono">
           {log.ipAddress || '-'}
         </span>
       ),
@@ -84,43 +85,46 @@ export default function AdminAuditPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Audit Logs</h1>
-        <p className="text-slate-400 mt-1">
+        <h1 className="font-editorial text-3xl text-foreground">Audit Logs</h1>
+        <p className="text-muted-foreground mt-1">
           Monitor all system activity and security events
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-700 pb-2">
+      <div className="flex items-center gap-2 border-b border-sage-200 pb-2">
         <button
           onClick={() => setActiveTab('all')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+          className={cn(
+            'flex items-center gap-2 px-4 py-2 rounded-xl transition-colors',
             activeTab === 'all'
-              ? 'bg-emerald-600 text-white'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800'
-          }`}
+              ? 'bg-sage text-white'
+              : 'text-muted-foreground hover:text-foreground hover:bg-sage-100'
+          )}
         >
           <Activity className="w-4 h-4" />
           All Activity
         </button>
         <button
           onClick={() => setActiveTab('security')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+          className={cn(
+            'flex items-center gap-2 px-4 py-2 rounded-xl transition-colors',
             activeTab === 'security'
-              ? 'bg-emerald-600 text-white'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800'
-          }`}
+              ? 'bg-sage text-white'
+              : 'text-muted-foreground hover:text-foreground hover:bg-sage-100'
+          )}
         >
           <Shield className="w-4 h-4" />
           Security Events
         </button>
         <button
           onClick={() => setActiveTab('logins')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+          className={cn(
+            'flex items-center gap-2 px-4 py-2 rounded-xl transition-colors',
             activeTab === 'logins'
-              ? 'bg-emerald-600 text-white'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800'
-          }`}
+              ? 'bg-sage text-white'
+              : 'text-muted-foreground hover:text-foreground hover:bg-sage-100'
+          )}
         >
           <Lock className="w-4 h-4" />
           Login Attempts
@@ -147,42 +151,43 @@ export default function AdminAuditPage() {
         <div className="space-y-4">
           {loadingSecurity ? (
             <div className="flex items-center justify-center h-32">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" />
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sage" />
             </div>
           ) : (
-            <div className="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden">
+            <div className="dashboard-card overflow-hidden !p-0">
               <table className="w-full text-sm">
-                <thead className="bg-slate-800/80">
+                <thead className="bg-sage-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Time</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">User</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Event</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">IP Address</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Time</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">User</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Event</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">IP Address</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-700/50">
+                <tbody className="divide-y divide-sage-100">
                   {securityEvents?.slice(0, 50).map((event: any) => (
-                    <tr key={event.id} className="hover:bg-slate-700/30">
-                      <td className="px-4 py-3 text-slate-400 text-sm">
+                    <tr key={event.id} className="hover:bg-sage-50/50">
+                      <td className="px-4 py-3 text-muted-foreground text-sm">
                         {new Date(event.timestamp).toLocaleString()}
                       </td>
                       <td className="px-4 py-3">
                         {event.user ? (
-                          <span className="text-white text-sm">{event.user.email}</span>
+                          <span className="text-foreground text-sm">{event.user.email}</span>
                         ) : (
-                          <span className="text-slate-500 text-sm">Unknown</span>
+                          <span className="text-muted-foreground text-sm">Unknown</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`font-medium ${
+                        <span className={cn(
+                          'font-medium',
                           event.action.includes('FAIL') || event.action.includes('SUSPEND') || event.action.includes('DELETE')
-                            ? 'text-red-400'
-                            : 'text-emerald-400'
-                        }`}>
+                            ? 'text-destructive'
+                            : 'text-sage'
+                        )}>
                           {event.action}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-slate-400 font-mono text-sm">
+                      <td className="px-4 py-3 text-muted-foreground font-mono text-sm">
                         {event.ipAddress || '-'}
                       </td>
                     </tr>
@@ -199,33 +204,33 @@ export default function AdminAuditPage() {
         <div className="space-y-6">
           {loadingLogins ? (
             <div className="flex items-center justify-center h-32">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" />
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sage" />
             </div>
           ) : (
             <>
               {/* Summary Cards */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
-                  <p className="text-slate-400 text-sm">Total Attempts</p>
-                  <p className="text-2xl font-bold text-white">
+                <div className="dashboard-card">
+                  <p className="text-muted-foreground text-sm">Total Attempts</p>
+                  <p className="text-2xl font-editorial text-foreground">
                     {loginAttempts?.summary?.total || 0}
                   </p>
                 </div>
-                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
-                  <p className="text-slate-400 text-sm">Successful</p>
-                  <p className="text-2xl font-bold text-emerald-400">
+                <div className="dashboard-card">
+                  <p className="text-muted-foreground text-sm">Successful</p>
+                  <p className="text-2xl font-editorial text-sage">
                     {loginAttempts?.summary?.successful || 0}
                   </p>
                 </div>
-                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
-                  <p className="text-slate-400 text-sm">Failed</p>
-                  <p className="text-2xl font-bold text-red-400">
+                <div className="dashboard-card">
+                  <p className="text-muted-foreground text-sm">Failed</p>
+                  <p className="text-2xl font-editorial text-destructive">
                     {loginAttempts?.summary?.failed || 0}
                   </p>
                 </div>
-                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
-                  <p className="text-slate-400 text-sm">Failure Rate</p>
-                  <p className="text-2xl font-bold text-amber-400">
+                <div className="dashboard-card">
+                  <p className="text-muted-foreground text-sm">Failure Rate</p>
+                  <p className="text-2xl font-editorial text-warning">
                     {loginAttempts?.summary?.failureRate?.toFixed(1) || 0}%
                   </p>
                 </div>
@@ -233,19 +238,19 @@ export default function AdminAuditPage() {
 
               {/* Suspicious IPs */}
               {loginAttempts?.suspiciousIps?.length > 0 && (
-                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+                <div className="dashboard-card">
                   <div className="flex items-center gap-2 mb-4">
-                    <AlertTriangle className="w-5 h-5 text-amber-400" />
-                    <h3 className="text-lg font-semibold text-white">Suspicious IP Addresses</h3>
+                    <AlertTriangle className="w-5 h-5 text-warning" />
+                    <h3 className="font-medium text-foreground">Suspicious IP Addresses</h3>
                   </div>
                   <div className="space-y-2">
                     {loginAttempts.suspiciousIps.map((item: any) => (
                       <div
                         key={item.ip}
-                        className="flex items-center justify-between p-3 bg-slate-700/30 rounded-lg"
+                        className="flex items-center justify-between p-3 bg-sage-50 rounded-xl"
                       >
-                        <span className="text-white font-mono">{item.ip}</span>
-                        <span className="text-red-400 font-medium">
+                        <span className="text-foreground font-mono">{item.ip}</span>
+                        <span className="text-destructive font-medium">
                           {item.failedAttempts} failed attempts
                         </span>
                       </div>
@@ -260,4 +265,3 @@ export default function AdminAuditPage() {
     </div>
   );
 }
-

@@ -315,5 +315,13 @@ export const adminApi = {
   getSystemStats: async () => {
     return api.get<any>('/admin/system/stats');
   },
+
+  getResourceUsage: async () => {
+    return api.get<any>('/admin/system/usage');
+  },
+
+  getUsageSummary: async () => {
+    return api.get<any>('/admin/system/usage/summary');
+  },
 };
 

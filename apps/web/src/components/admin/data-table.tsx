@@ -2,7 +2,7 @@
 
 import { useState, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Search, Filter } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Search } from 'lucide-react';
 
 interface Column<T> {
   key: string;
@@ -84,13 +84,13 @@ export function DataTable<T extends Record<string, any>>({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         {onSearch && (
           <form onSubmit={handleSearch} className="relative max-w-sm flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
               placeholder={searchPlaceholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full pl-10 pr-4 py-2 bg-sage-50 border border-sage-200 rounded-xl text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-sage"
             />
           </form>
         )}
@@ -98,9 +98,9 @@ export function DataTable<T extends Record<string, any>>({
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-lg border border-slate-700">
+      <div className="overflow-x-auto rounded-xl border border-sage-200 bg-card">
         <table className="w-full text-sm">
-          <thead className="bg-slate-800/80">
+          <thead className="bg-sage-50">
             <tr>
               {selectable && (
                 <th className="w-12 px-4 py-3">
@@ -108,7 +108,7 @@ export function DataTable<T extends Record<string, any>>({
                     type="checkbox"
                     checked={data.length > 0 && data.every((item) => selectedIds.includes(getRowId(item)))}
                     onChange={handleSelectAll}
-                    className="rounded border-slate-600 bg-slate-700 text-emerald-500 focus:ring-emerald-500"
+                    className="rounded border-sage-300 bg-white text-sage focus:ring-sage"
                   />
                 </th>
               )}
@@ -116,7 +116,7 @@ export function DataTable<T extends Record<string, any>>({
                 <th
                   key={column.key}
                   className={cn(
-                    'px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider',
+                    'px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider',
                     column.className
                   )}
                 >
@@ -125,7 +125,7 @@ export function DataTable<T extends Record<string, any>>({
               ))}
             </tr>
           </thead>
-          <tbody className="bg-slate-800/30 divide-y divide-slate-700/50">
+          <tbody className="divide-y divide-sage-100">
             {loading ? (
               <tr>
                 <td
@@ -133,7 +133,7 @@ export function DataTable<T extends Record<string, any>>({
                   className="px-4 py-12 text-center"
                 >
                   <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-500" />
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-sage" />
                   </div>
                 </td>
               </tr>
@@ -141,7 +141,7 @@ export function DataTable<T extends Record<string, any>>({
               <tr>
                 <td
                   colSpan={columns.length + (selectable ? 1 : 0)}
-                  className="px-4 py-12 text-center text-slate-400"
+                  className="px-4 py-12 text-center text-muted-foreground"
                 >
                   {emptyMessage}
                 </td>
@@ -155,8 +155,8 @@ export function DataTable<T extends Record<string, any>>({
                   <tr
                     key={rowId || index}
                     className={cn(
-                      'hover:bg-slate-700/30 transition-colors',
-                      isSelected && 'bg-emerald-500/10'
+                      'hover:bg-sage-50/50 transition-colors',
+                      isSelected && 'bg-sage/5'
                     )}
                   >
                     {selectable && (
@@ -165,14 +165,14 @@ export function DataTable<T extends Record<string, any>>({
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => handleSelectRow(rowId)}
-                          className="rounded border-slate-600 bg-slate-700 text-emerald-500 focus:ring-emerald-500"
+                          className="rounded border-sage-300 bg-white text-sage focus:ring-sage"
                         />
                       </td>
                     )}
                     {columns.map((column) => (
                       <td
                         key={column.key}
-                        className={cn('px-4 py-3 text-slate-300', column.className)}
+                        className={cn('px-4 py-3 text-foreground', column.className)}
                       >
                         {column.render
                           ? column.render(item)
@@ -190,7 +190,7 @@ export function DataTable<T extends Record<string, any>>({
       {/* Pagination */}
       {pagination && pagination.totalPages > 1 && (
         <div className="flex items-center justify-between px-2">
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-muted-foreground">
             Showing {(pagination.page - 1) * pagination.limit + 1} to{' '}
             {Math.min(pagination.page * pagination.limit, pagination.total)} of{' '}
             {pagination.total} results
@@ -199,31 +199,31 @@ export function DataTable<T extends Record<string, any>>({
             <button
               onClick={() => onPageChange?.(1)}
               disabled={pagination.page === 1}
-              className="p-2 rounded-md text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-sage-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronsLeft className="w-4 h-4" />
             </button>
             <button
               onClick={() => onPageChange?.(pagination.page - 1)}
               disabled={pagination.page === 1}
-              className="p-2 rounded-md text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-sage-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="px-4 py-2 text-sm text-white">
+            <span className="px-4 py-2 text-sm text-foreground font-medium">
               Page {pagination.page} of {pagination.totalPages}
             </span>
             <button
               onClick={() => onPageChange?.(pagination.page + 1)}
               disabled={pagination.page === pagination.totalPages}
-              className="p-2 rounded-md text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-sage-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
             <button
               onClick={() => onPageChange?.(pagination.totalPages)}
               disabled={pagination.page === pagination.totalPages}
-              className="p-2 rounded-md text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-sage-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronsRight className="w-4 h-4" />
             </button>
@@ -235,4 +235,3 @@ export function DataTable<T extends Record<string, any>>({
 }
 
 export default DataTable;
-
