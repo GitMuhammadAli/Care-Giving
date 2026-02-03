@@ -113,13 +113,17 @@
   align-items: flex-start !important;
   gap: 10px !important;
   padding: 4px 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .str-chat__message-simple-wrapper {
   display: flex;
   flex-direction: column;
   max-width: 75%;
-  min-width: 0; /* Allow flex shrinking below content width */
+  min-width: 100px; /* Prevent collapse - minimum readable width */
+  flex: 0 1 auto;
+  box-sizing: border-box;
 }
 
 /* Own messages - align right */
@@ -578,57 +582,186 @@
 }
 
 /* ============================================
-   MOBILE
+   MOBILE - Comprehensive responsive fixes
    ============================================ */
 @media (max-width: 640px) {
+  /* Root container - full height on mobile */
+  .str-chat,
+  .str-chat.str-chat__theme-light {
+    height: 100% !important;
+    max-height: 100% !important;
+  }
+
+  /* Message row - proper flex layout */
+  .str-chat__message-simple,
+  .str-chat .str-chat__message-simple {
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+    width: 100% !important;
+    padding: 4px 0 !important;
+  }
+
+  /* Message wrapper - prevent collapse with min-width floor */
   .str-chat__message-simple-wrapper {
-    max-width: 85% !important;
-    min-width: 0 !important;
+    max-width: 80% !important;
+    min-width: 80px !important; /* Prevents squeeze to near-zero */
+    flex: 0 1 auto !important;
     width: auto !important;
   }
-  
-  .str-chat__message-bubble {
-    max-width: 100% !important;
-    min-width: 0 !important;
+
+  /* Other messages wrapper - ensure proper sizing */
+  .str-chat__message--other .str-chat__message-simple-wrapper {
+    min-width: 80px !important;
+    max-width: 78% !important; /* Account for avatar space */
   }
-  
-  .str-chat__message-text {
+
+  /* Own messages wrapper */
+  .str-chat__message--me .str-chat__message-simple-wrapper {
+    min-width: 60px !important;
+    max-width: 80% !important;
+  }
+
+  /* Message bubble - proper sizing with floor */
+  .str-chat__message-bubble,
+  .str-chat .str-chat__message-bubble {
+    min-width: 60px !important;
+    max-width: 100% !important;
+    padding: 10px 14px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Message text - proper wrapping */
+  .str-chat__message-text,
+  .str-chat .str-chat__message-text {
     min-width: 0 !important;
     max-width: 100% !important;
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important; /* Don't break mid-word unless necessary */
+    font-size: 0.9rem !important;
+    line-height: 1.45 !important;
   }
-  
+
   .str-chat__message-text p {
+    margin: 0 !important;
     min-width: 0 !important;
     max-width: 100% !important;
-    overflow-wrap: anywhere !important;
-    word-break: break-word !important;
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
   }
-  
+
+  /* Avatars - smaller on mobile but still visible */
+  .str-chat__avatar,
+  .str-chat .str-chat__avatar {
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    min-height: 28px !important;
+    border-radius: 8px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .str-chat__avatar-fallback {
+    font-size: 0.75rem !important;
+  }
+
+  /* Header - compact */
   .str-chat__header-livestream {
     padding: 12px !important;
   }
-  
-  .str-chat__message-input {
-    padding: 12px !important;
+
+  .str-chat__header-livestream .str-chat__avatar {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
   }
-  
-  .str-chat__list {
-    padding: 12px !important;
+
+  .str-chat__header-livestream-left--title {
+    font-size: 1rem !important;
   }
-  
-  .str-chat__avatar {
-    width: 34px !important;
-    height: 34px !important;
-    border-radius: 10px !important;
+
+  .str-chat__header-livestream-left--members {
+    font-size: 0.7rem !important;
   }
-  
-  .str-chat__send-button {
-    width: 38px !important;
-    height: 38px !important;
+
+  /* Message list - proper padding */
+  .str-chat__list,
+  .str-chat .str-chat__list {
+    padding: 12px 10px !important;
   }
-  
-  .str-chat__avatar-fallback {
-    font-size: 0.9rem !important;
+
+  /* Input area - touch friendly */
+  .str-chat__message-input,
+  .str-chat .str-chat__message-input {
+    padding: 10px 12px !important;
+    padding-bottom: max(10px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .str-chat__input-flat,
+  .str-chat .str-chat__input-flat {
+    padding: 8px 14px !important;
+    gap: 10px !important;
+  }
+
+  .str-chat__textarea textarea {
+    font-size: 16px !important; /* Prevents iOS zoom on focus */
+    min-height: 22px !important;
+  }
+
+  /* Send button - touch target 44px minimum */
+  .str-chat__send-button,
+  .str-chat .str-chat__send-button {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+
+  .str-chat__send-button svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  /* Attachment & emoji buttons - touch friendly */
+  .str-chat__fileupload-wrapper,
+  .str-chat__input-flat-emojiselect {
+    min-width: 40px !important;
+    min-height: 40px !important;
+    padding: 10px !important;
+  }
+
+  /* Date separator - smaller */
+  .str-chat__date-separator-date {
+    font-size: 0.65rem !important;
+    padding: 6px 12px !important;
+  }
+
+  /* Sender name - compact */
+  .str-chat__message-simple-name {
+    font-size: 0.7rem !important;
+    margin-bottom: 4px !important;
+  }
+
+  /* Timestamp - smaller */
+  .str-chat__message-simple-timestamp {
+    font-size: 0.6rem !important;
+    margin-top: 3px !important;
+  }
+
+  /* Reactions - smaller */
+  .str-chat__message-reactions-list-item {
+    padding: 3px 8px !important;
+    font-size: 0.7rem;
+  }
+
+  /* Scroll notification */
+  .str-chat__message-notification {
+    padding: 10px 18px !important;
+    font-size: 0.8rem !important;
   }
 }
 
@@ -644,4 +777,87 @@
 .str-chat button[style*="background"],
 .str-chat .str-chat__send-button[style] {
   background: linear-gradient(135deg, hsl(92 14% 38%), hsl(92 14% 28%)) !important;
+}
+
+/* ============================================
+   EXTRA SMALL SCREENS (< 380px)
+   ============================================ */
+@media (max-width: 380px) {
+  .str-chat__message-simple-wrapper {
+    max-width: 85% !important;
+    min-width: 70px !important;
+  }
+
+  .str-chat__message--other .str-chat__message-simple-wrapper {
+    max-width: 82% !important;
+  }
+
+  .str-chat__avatar,
+  .str-chat .str-chat__avatar {
+    width: 24px !important;
+    height: 24px !important;
+    min-width: 24px !important;
+    min-height: 24px !important;
+    border-radius: 6px !important;
+  }
+
+  .str-chat__avatar-fallback {
+    font-size: 0.65rem !important;
+  }
+
+  .str-chat__message-bubble {
+    padding: 8px 12px !important;
+    min-width: 50px !important;
+  }
+
+  .str-chat__message-text {
+    font-size: 0.85rem !important;
+  }
+
+  .str-chat__list {
+    padding: 10px 8px !important;
+  }
+
+  .str-chat__send-button {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+  }
+
+  .str-chat__input-flat {
+    padding: 6px 10px !important;
+    gap: 8px !important;
+  }
+
+  .str-chat__header-livestream {
+    padding: 10px !important;
+  }
+
+  .str-chat__header-livestream .str-chat__avatar {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+  }
+}
+
+/* ============================================
+   LANDSCAPE MODE FIXES
+   ============================================ */
+@media (max-height: 500px) and (orientation: landscape) {
+  .str-chat__header-livestream {
+    padding: 8px 12px !important;
+  }
+
+  .str-chat__message-input {
+    padding: 8px 12px !important;
+  }
+
+  .str-chat__list {
+    padding: 8px 12px !important;
+  }
+
+  .str-chat__date-separator {
+    padding: 12px 0 !important;
+  }
 }
