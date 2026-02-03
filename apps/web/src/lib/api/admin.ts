@@ -140,6 +140,54 @@ export interface AuditLog {
   };
 }
 
+// Application Logs
+export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
+
+export interface ApplicationLog {
+  id: string;
+  level: LogLevel;
+  message: string;
+  service?: string;
+  context?: string;
+  requestId?: string;
+  userId?: string;
+  errorStack?: string;
+  metadata?: Record<string, any>;
+  timestamp: string;
+}
+
+export interface LogFilter {
+  level?: LogLevel;
+  service?: string;
+  userId?: string;
+  requestId?: string;
+  search?: string;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface LogStats {
+  total: number;
+  byLevel: Record<LogLevel, number>;
+  byService: Record<string, number>;
+  timeRange: {
+    start: string;
+    end: string;
+  };
+}
+
+export interface LogDashboard {
+  summary: {
+    last24Hours: LogStats;
+    last7Days: LogStats;
+  };
+  recentErrors: ApplicationLog[];
+  levels: LogLevel[];
+  timestamp: string;
+}
+
 // API functions
 export const adminApi = {
   // Users
@@ -322,6 +370,41 @@ export const adminApi = {
 
   getUsageSummary: async () => {
     return api.get<any>('/admin/system/usage/summary');
+  },
+
+  // Logs
+  getLogs: async (filter: LogFilter = {}): Promise<PaginatedResponse<ApplicationLog>> => {
+    const params = new URLSearchParams();
+    Object.entries(filter).forEach(([key, value]) => {
+      if (value !== undefined && value !== '') {
+        params.append(key, String(value));
+      }
+    });
+    return api.get(`/admin/logs?${params.toString()}`);
+  },
+
+  getLogStats: async (hours: number = 24): Promise<LogStats> => {
+    return api.get(`/admin/logs/stats?hours=${hours}`);
+  },
+
+  getRecentErrors: async (limit: number = 10): Promise<ApplicationLog[]> => {
+    return api.get(`/admin/logs/errors?limit=${limit}`);
+  },
+
+  getLogDashboard: async (): Promise<LogDashboard> => {
+    return api.get('/admin/logs/dashboard');
+  },
+
+  getLogServices: async (): Promise<{ services: { name: string; count: number }[] }> => {
+    return api.get('/admin/logs/services');
+  },
+
+  getLogLevels: async (): Promise<{ levels: LogLevel[] }> => {
+    return api.get('/admin/logs/levels');
+  },
+
+  cleanupLogs: async (days: number = 30): Promise<{ message: string; deletedCount: number }> => {
+    return api.delete(`/admin/logs/cleanup?days=${days}`);
   },
 };
 

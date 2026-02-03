@@ -2,7 +2,9 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Delete,
+  Body,
   Res,
   HttpCode,
   HttpStatus,
@@ -25,6 +27,49 @@ import { CurrentUser } from '../system/helper/context.helper';
 @Controller('user')
 export class UserController {
   constructor(private readonly userService: UserService) {}
+
+  /**
+   * Get notification preferences
+   */
+  @Get('preferences/notifications')
+  @ApiOperation({
+    summary: 'Get notification preferences',
+    description: 'Retrieves the current user notification preferences.',
+  })
+  @ApiResponse({ status: 200, description: 'Preferences retrieved successfully' })
+  async getNotificationPreferences(@GetUser() user: CurrentUser) {
+    const prefs = await this.userService.getNotificationPreferences(user.id);
+    return {
+      emergencyAlerts: true, // Always enabled
+      medicationReminders: prefs?.notifications?.medicationReminders ?? true,
+      appointmentReminders: prefs?.notifications?.appointmentReminders ?? true,
+      shiftReminders: prefs?.notifications?.shiftReminders ?? true,
+      familyActivity: prefs?.notifications?.familyActivity ?? false,
+      email: prefs?.notifications?.email ?? true,
+      push: prefs?.notifications?.push ?? true,
+      sms: prefs?.notifications?.sms ?? false,
+    };
+  }
+
+  /**
+   * Update notification preferences
+   */
+  @Patch('preferences/notifications')
+  @ApiOperation({
+    summary: 'Update notification preferences',
+    description: 'Updates the user notification preferences.',
+  })
+  @ApiResponse({ status: 200, description: 'Preferences updated successfully' })
+  async updateNotificationPreferences(
+    @GetUser() user: CurrentUser,
+    @Body() preferences: Record<string, boolean>,
+  ) {
+    await this.userService.updateNotificationPreferences(user.id, preferences);
+    return {
+      success: true,
+      message: 'Notification preferences updated',
+    };
+  }
 
   /**
    * GDPR Data Export - Export all user data
