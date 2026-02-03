@@ -79,11 +79,19 @@ export function useChat(options: UseChatOptions = {}) {
       } catch (err: any) {
         if (!isCancelled) {
           console.error('[Chat] Failed to connect:', err);
-          // Check if it's a configuration error
-          if (err?.message?.includes('not configured') || err?.status === 500) {
+          // Check if it's a configuration error (500 = internal error, 503 = service unavailable)
+          if (
+            err?.message?.includes('not configured') ||
+            err?.status === 500 ||
+            err?.status === 503 ||
+            err?.statusCode === 503
+          ) {
             setIsConfigured(false);
+            // Don't set error for expected "not configured" state
+            console.warn('[Chat] Stream Chat is not configured on the server');
+          } else {
+            setError(err as Error);
           }
-          setError(err as Error);
         }
       } finally {
         if (!isCancelled) {
