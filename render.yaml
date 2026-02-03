@@ -116,28 +116,62 @@ services:
         sync: false
 
   # ===========================================================================
-  # Background Workers Service (Optional - for heavy workloads)
+  # Background Workers Service
   # ===========================================================================
-  # Uncomment if you need separate worker processes
-  # - type: worker
-  #   name: carecircle-workers
-  #   env: node
-  #   region: oregon
-  #   plan: free
-  #   branch: deployment
-  #   rootDir: apps/workers
-  #   buildCommand: npm install && npm run build
-  #   startCommand: npm run start:prod
-  #   autoDeploy: true
-  #   envVars:
-  #     - key: NODE_ENV
-  #       value: production
-  #     - key: DATABASE_URL
-  #       sync: false
-  #     - key: REDIS_HOST
-  #       sync: false
-  #     - key: RABBITMQ_URL
-  #       sync: false
+  # Handles: medication reminders, appointment reminders, shift reminders,
+  # push notifications, email notifications, refill alerts
+  # ===========================================================================
+  - type: worker
+    name: carecircle-workers
+    env: node
+    region: oregon
+    plan: free
+    branch: deployment
+    rootDir: apps/workers
+    buildCommand: cd ../.. && pnpm install && pnpm db:generate && cd apps/workers && npm run build
+    startCommand: npm run start
+    autoDeploy: true
+    
+    envVars:
+      # Application
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: HEALTH_PORT
+        value: "3002"
+      
+      # Database - Neon PostgreSQL (same as API)
+      - key: DATABASE_URL
+        sync: false
+      
+      # Redis - Upstash (required for BullMQ job queues)
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        value: "6379"
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: REDIS_TLS
+        value: "true"
+      
+      # Email - Brevo (for sending notification emails)
+      - key: MAIL_PROVIDER
+        value: brevo
+      - key: BREVO_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: MAIL_FROM_NAME
+        value: CareCircle
+      
+      # Web Push (optional - for browser push notifications)
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false
 
 # =============================================================================
 # Databases (Not needed - using Neon free tier instead)

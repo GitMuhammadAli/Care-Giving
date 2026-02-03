@@ -9,6 +9,7 @@ import {
   Home,
   BarChart3,
   Shield,
+  FileText,
   Settings,
   LogOut,
   ChevronLeft,
@@ -27,6 +28,7 @@ const navigation = [
   { name: 'Families', href: '/admin/families', icon: Home },
   { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
   { name: 'Audit Logs', href: '/admin/audit', icon: Shield },
+  { name: 'System Logs', href: '/admin/logs', icon: FileText },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 

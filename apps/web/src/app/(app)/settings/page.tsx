@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/use-auth';
 import { usePushNotifications } from '@/hooks/use-push-notifications';
+import { useNotificationPreferences } from '@/hooks/use-notification-preferences';
 import { useNotifications } from '@/components/providers/notification-provider';
 import { authApi } from '@/lib/api/auth';
 import toast from 'react-hot-toast';
@@ -27,14 +28,17 @@ import {
   X,
   RefreshCw,
   Globe,
+  Loader2,
 } from 'lucide-react';
 import { LanguageSelector } from '@/components/settings';
 import { useTranslation } from '@/lib/i18n';
+import type { NotificationPreferences } from '@/lib/api/user';
 
 export default function SettingsPage() {
   const { user, logout, updateUser, syncWithServer } = useAuth();
   const pushNotifications = usePushNotifications();
   const { showPermissionPrompt } = useNotifications();
+  const { preferences, isLoading: prefsLoading, togglePreference, isUpdating } = useNotificationPreferences();
   const t = useTranslation();
 
   const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'security' | 'language'>('profile');
@@ -314,13 +318,13 @@ export default function SettingsPage() {
             className="space-y-6"
           >
             <Card className="p-6">
-              <h2 className="text-lg font-semibold text-text-primary mb-6">Push Notifications</h2>
+              <h2 className="text-lg font-semibold text-text-primary mb-6">{t.settings.pushNotifications}</h2>
 
               <div className="space-y-4">
                 {/* Browser Notifications Status */}
                 <div className="flex items-center justify-between p-4 bg-bg-muted rounded-lg">
                   <div>
-                    <p className="font-medium text-text-primary">Browser Notifications</p>
+                    <p className="font-medium text-text-primary">{t.settings.browserNotifications}</p>
                     <p className="text-sm text-text-secondary">
                       {pushNotifications.permission === 'denied' 
                         ? 'Blocked - Enable in browser settings'
@@ -334,7 +338,7 @@ export default function SettingsPage() {
                       <div className="flex items-center gap-2">
                         <Badge variant="success">
                           <Check className="w-3 h-3 mr-1" />
-                          Enabled
+                          {t.settings.enableNotifications}d
                         </Badge>
                         <Button
                           variant="ghost"
@@ -342,7 +346,7 @@ export default function SettingsPage() {
                           onClick={pushNotifications.unsubscribe}
                           isLoading={pushNotifications.isLoading}
                         >
-                          Disable
+                          {t.settings.disableNotifications}
                         </Button>
                       </div>
                     ) : (
@@ -353,7 +357,7 @@ export default function SettingsPage() {
                         isLoading={pushNotifications.isLoading}
                       >
                         <Bell className="w-4 h-4 mr-2" />
-                        Enable
+                        {t.settings.enableNotifications}
                       </Button>
                     )
                   ) : (
@@ -373,38 +377,100 @@ export default function SettingsPage() {
                 )}
 
                 <div className="border-t border-border pt-4">
-                  <h3 className="font-medium text-text-primary mb-4">Notification Types</h3>
-                  {[
-                    { label: 'Emergency Alerts', description: 'Always enabled for safety', enabled: true, locked: true },
-                    { label: 'Medication Reminders', description: 'Get reminded before scheduled doses', enabled: true, locked: false },
-                    { label: 'Appointment Reminders', description: 'Upcoming appointment notifications', enabled: true, locked: false },
-                    { label: 'Shift Reminders', description: 'When your shift is starting', enabled: true, locked: false },
-                    { label: 'Family Activity', description: 'When family members log activities', enabled: false, locked: false },
-                  ].map((item, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between py-3 border-b border-border last:border-0"
-                    >
-                      <div>
-                        <p className="font-medium text-text-primary">{item.label}</p>
-                        <p className="text-sm text-text-secondary">{item.description}</p>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-medium text-text-primary">{t.settings.notificationTypes}</h3>
+                    {isUpdating && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Saving...
                       </div>
-                      <button
-                        className={`w-12 h-6 rounded-full transition-colors ${
-                          item.enabled ? 'bg-sage-700' : 'bg-bg-subtle'
-                        } ${item.locked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:opacity-90'}`}
-                        disabled={item.locked}
-                      >
-                        <div
-                          className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${
-                            item.enabled ? 'translate-x-6' : 'translate-x-0.5'
-                          }`}
-                        />
-                      </button>
+                    )}
+                  </div>
+
+                  {prefsLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-sage-600" />
                     </div>
-                  ))}
+                  ) : (
+                    <>
+                      {/* Emergency Alerts - Always on */}
+                      <NotificationToggle
+                        label={t.settings.emergencyAlerts}
+                        description="Always enabled for safety"
+                        enabled={true}
+                        locked={true}
+                        onToggle={() => {}}
+                      />
+
+                      {/* Medication Reminders */}
+                      <NotificationToggle
+                        label={t.settings.medicationReminders}
+                        description="Get reminded before scheduled doses"
+                        enabled={preferences?.medicationReminders ?? true}
+                        onToggle={() => togglePreference('medicationReminders')}
+                      />
+
+                      {/* Appointment Reminders */}
+                      <NotificationToggle
+                        label={t.settings.appointmentReminders}
+                        description="Upcoming appointment notifications"
+                        enabled={preferences?.appointmentReminders ?? true}
+                        onToggle={() => togglePreference('appointmentReminders')}
+                      />
+
+                      {/* Shift Reminders */}
+                      <NotificationToggle
+                        label={t.settings.shiftReminders}
+                        description="When your shift is starting"
+                        enabled={preferences?.shiftReminders ?? true}
+                        onToggle={() => togglePreference('shiftReminders')}
+                      />
+
+                      {/* Family Activity */}
+                      <NotificationToggle
+                        label={t.settings.familyActivity}
+                        description="When family members log activities"
+                        enabled={preferences?.familyActivity ?? false}
+                        onToggle={() => togglePreference('familyActivity')}
+                        isLast
+                      />
+                    </>
+                  )}
                 </div>
               </div>
+            </Card>
+
+            {/* Notification Channels */}
+            <Card className="p-6">
+              <h2 className="text-lg font-semibold text-text-primary mb-6">Notification Channels</h2>
+              
+              {prefsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-sage-600" />
+                </div>
+              ) : (
+                <div className="space-y-0">
+                  <NotificationToggle
+                    label="Email Notifications"
+                    description="Receive important updates via email"
+                    enabled={preferences?.email ?? true}
+                    onToggle={() => togglePreference('email')}
+                  />
+                  <NotificationToggle
+                    label="Push Notifications"
+                    description="Real-time alerts on your device"
+                    enabled={preferences?.push ?? true}
+                    onToggle={() => togglePreference('push')}
+                  />
+                  <NotificationToggle
+                    label="SMS Notifications"
+                    description="Text messages for urgent alerts (requires phone number)"
+                    enabled={preferences?.sms ?? false}
+                    onToggle={() => togglePreference('sms')}
+                    isLast
+                  />
+                </div>
+              )}
             </Card>
           </motion.div>
         )}
@@ -522,6 +588,52 @@ export default function SettingsPage() {
           </motion.div>
         )}
       </div>
+    </div>
+  );
+}
+
+// Notification Toggle Component
+interface NotificationToggleProps {
+  label: string;
+  description: string;
+  enabled: boolean;
+  locked?: boolean;
+  onToggle: () => void;
+  isLast?: boolean;
+}
+
+function NotificationToggle({
+  label,
+  description,
+  enabled,
+  locked = false,
+  onToggle,
+  isLast = false,
+}: NotificationToggleProps) {
+  return (
+    <div
+      className={`flex items-center justify-between py-3 ${
+        !isLast ? 'border-b border-border' : ''
+      }`}
+    >
+      <div>
+        <p className="font-medium text-text-primary">{label}</p>
+        <p className="text-sm text-text-secondary">{description}</p>
+      </div>
+      <button
+        onClick={onToggle}
+        className={`w-12 h-6 rounded-full transition-colors ${
+          enabled ? 'bg-sage-700' : 'bg-bg-subtle'
+        } ${locked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:opacity-90'}`}
+        disabled={locked}
+        aria-label={`${enabled ? 'Disable' : 'Enable'} ${label}`}
+      >
+        <div
+          className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${
+            enabled ? 'translate-x-6' : 'translate-x-0.5'
+          }`}
+        />
+      </button>
     </div>
   );
 }
