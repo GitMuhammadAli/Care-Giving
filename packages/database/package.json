@@ -6,11 +6,11 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "generate": "prisma generate",
-    "push": "prisma db push",
-    "studio": "prisma studio",
-    "migrate": "prisma migrate dev",
-    "migrate:deploy": "prisma migrate deploy",
+    "generate": "npx prisma generate",
+    "push": "npx prisma db push",
+    "studio": "npx prisma studio",
+    "migrate": "npx prisma migrate dev",
+    "migrate:deploy": "npx prisma migrate deploy",
     "seed": "ts-node prisma/seed.ts",
     "seed:admin": "ts-node prisma/seed-admin.ts"
   },
@@ -18,12 +18,12 @@
     "seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
-    "@prisma/client": "^5.10.0"
+    "@prisma/client": "^5.10.0",
+    "prisma": "^5.10.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
     "bcrypt": "^5.1.1",
-    "prisma": "^5.10.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.0",
     "@types/node": "^20.11.0"
