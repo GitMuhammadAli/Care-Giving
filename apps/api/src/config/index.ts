@@ -262,14 +262,15 @@ export const mailConfig = registerAs("mail", () => {
     };
   }
 
-  // Generic SMTP configuration
+  // Generic SMTP configuration (supports both MAIL_* and SMTP_* naming conventions)
+  // This allows compatibility with Brevo, SendGrid, and other SMTP providers
   if (provider === "smtp") {
     config.smtp = {
-      host: optionalString("MAIL_HOST"),
-      port: int("MAIL_PORT", 587),
-      user: optionalString("MAIL_USER"),
-      password: optionalString("MAIL_PASSWORD"),
-      secure: bool("MAIL_SECURE", false),
+      host: optionalString("MAIL_HOST") || optionalString("SMTP_HOST"),
+      port: int("MAIL_PORT", 0) || int("SMTP_PORT", 587),
+      user: optionalString("MAIL_USER") || optionalString("SMTP_USER"),
+      password: optionalString("MAIL_PASSWORD") || optionalString("SMTP_PASS"),
+      secure: bool("MAIL_SECURE", false) || bool("SMTP_SECURE", false),
     };
   }
 

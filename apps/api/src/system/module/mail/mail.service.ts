@@ -113,7 +113,7 @@ export class MailService {
         ? this.renderTemplate(options.template, options.context || {})
         : { html: options.html || '', text: options.text || '' };
 
-      await this.sendViaMailtrap(options.to, options.subject, mailContent);
+      await this.sendViaSMTP(options.to, options.subject, mailContent);
 
       // Track usage after successful send
       await this.limitsService.incrementUsage(
@@ -122,47 +122,90 @@ export class MailService {
         recipientCount,
       );
 
-      this.logger.log(`Mail sent directly to ${options.to}`);
+      this.logger.log(`Mail sent directly to ${options.to} via ${this.provider}`);
     } catch (error) {
       this.logger.error(`Failed to send mail directly to ${options.to}: ${error.message}`);
     }
   }
 
   /**
-   * Send via Mailtrap SMTP
+   * Send via SMTP (supports multiple providers: smtp, mailtrap, brevo, etc.)
+   * Routes to the correct config based on MAIL_PROVIDER environment variable
    */
-  private async sendViaMailtrap(
+  private async sendViaSMTP(
     to: string | string[],
     subject: string,
     content: { html: string; text: string },
   ): Promise<void> {
     const mailConfig = this.configService.get('mail');
-    const mailtrapConfig = mailConfig?.mailtrap;
+    
+    // Get SMTP credentials based on provider
+    let host: string | undefined;
+    let port: number | undefined;
+    let user: string | undefined;
+    let pass: string | undefined;
+    let secure: boolean = false;
 
-    const host = mailtrapConfig?.host;
-    const port = mailtrapConfig?.port;
-    const user = mailtrapConfig?.user;
-    const pass = mailtrapConfig?.pass;
+    if (this.provider === 'smtp') {
+      // Generic SMTP provider (Brevo, SendGrid, etc.)
+      const smtpConfig = mailConfig?.smtp;
+      host = smtpConfig?.host;
+      port = smtpConfig?.port || 587;
+      user = smtpConfig?.user;
+      pass = smtpConfig?.password;
+      secure = smtpConfig?.secure || false;
+      
+      this.logger.debug(`Using SMTP config: host=${host}, port=${port}, user=${user ? '***' : 'not set'}`);
+    } else if (this.provider === 'mailtrap') {
+      // Mailtrap (for testing)
+      const mailtrapConfig = mailConfig?.mailtrap;
+      host = mailtrapConfig?.host;
+      port = mailtrapConfig?.port || 2525;
+      user = mailtrapConfig?.user;
+      pass = mailtrapConfig?.pass;
+      
+      this.logger.debug(`Using Mailtrap config: host=${host}, port=${port}`);
+    } else {
+      this.logger.warn(`Unknown mail provider: ${this.provider}, falling back to SMTP config`);
+      // Fallback to smtp config for unknown providers
+      const smtpConfig = mailConfig?.smtp;
+      host = smtpConfig?.host;
+      port = smtpConfig?.port || 587;
+      user = smtpConfig?.user;
+      pass = smtpConfig?.password;
+    }
 
+    // Validate required credentials
     if (!host || !user || !pass) {
-      this.logger.warn('Mailtrap not configured, logging email instead');
+      this.logger.warn(`Mail provider "${this.provider}" not configured properly. Missing: ${!host ? 'host' : ''} ${!user ? 'user' : ''} ${!pass ? 'password' : ''}`);
+      this.logger.warn('Logging email instead of sending:');
       this.logEmail(to, subject, content);
       return;
     }
 
+    this.logger.log(`Sending email via ${this.provider} (${host}:${port}) to ${Array.isArray(to) ? to.join(', ') : to}`);
+
     const transporter = nodemailer.createTransport({
       host,
       port,
+      secure, // true for 465, false for other ports
       auth: { user, pass },
     });
 
-    await transporter.sendMail({
-      from: `"${mailConfig.fromName}" <${mailConfig.from}>`,
-      to: Array.isArray(to) ? to.join(', ') : to,
-      subject,
-      text: content.text,
-      html: content.html,
-    });
+    try {
+      const result = await transporter.sendMail({
+        from: `"${mailConfig.fromName}" <${mailConfig.from}>`,
+        to: Array.isArray(to) ? to.join(', ') : to,
+        subject,
+        text: content.text,
+        html: content.html,
+      });
+      
+      this.logger.log(`Email sent successfully via ${this.provider}. MessageId: ${result.messageId}`);
+    } catch (error) {
+      this.logger.error(`Failed to send email via ${this.provider}: ${error.message}`);
+      throw error;
+    }
   }
 
   private logEmail(
