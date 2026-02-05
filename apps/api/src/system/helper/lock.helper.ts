@@ -37,6 +37,42 @@ export class LockHelper {
     await this.redis!.del(lockKey);
   }
 
+  /**
+   * Check if a key exists (for idempotency tracking)
+   */
+  async exists(key: string): Promise<boolean> {
+    if (!this.isRedisAvailable()) {
+      return false;
+    }
+    const result = await this.redis!.exists(`${this.LOCK_PREFIX}${key}`);
+    return result === 1;
+  }
+
+  /**
+   * Set a key with optional TTL (for idempotency markers)
+   */
+  async set(key: string, value: string, ttlSeconds?: number): Promise<void> {
+    if (!this.isRedisAvailable()) {
+      return;
+    }
+    const fullKey = `${this.LOCK_PREFIX}${key}`;
+    if (ttlSeconds) {
+      await this.redis!.set(fullKey, value, 'EX', ttlSeconds);
+    } else {
+      await this.redis!.set(fullKey, value);
+    }
+  }
+
+  /**
+   * Get a value by key
+   */
+  async get(key: string): Promise<string | null> {
+    if (!this.isRedisAvailable()) {
+      return null;
+    }
+    return this.redis!.get(`${this.LOCK_PREFIX}${key}`);
+  }
+
   async withLock<T>(
     key: string,
     fn: () => Promise<T>,
