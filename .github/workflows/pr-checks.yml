@@ -89,10 +89,19 @@ jobs:
 
       - name: Check PR size
         run: |
-          # Get changed files statistics
-          ADDITIONS=$(git diff --shortstat origin/${{ github.base_ref }}...HEAD | grep -oP '\d+(?= insertion)' || echo "0")
-          DELETIONS=$(git diff --shortstat origin/${{ github.base_ref }}...HEAD | grep -oP '\d+(?= deletion)' || echo "0")
-          FILES_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | wc -l)
+          # Fetch base branch to compare
+          git fetch origin ${{ github.base_ref }} --depth=1 || true
+          
+          # Get changed files statistics (using grep -E for portability)
+          STATS=$(git diff --shortstat origin/${{ github.base_ref }}...HEAD 2>/dev/null || echo "0 files changed")
+          ADDITIONS=$(echo "$STATS" | grep -oE '[0-9]+ insertion' | grep -oE '[0-9]+' || echo "0")
+          DELETIONS=$(echo "$STATS" | grep -oE '[0-9]+ deletion' | grep -oE '[0-9]+' || echo "0")
+          FILES_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD 2>/dev/null | wc -l || echo "0")
+          
+          # Default to 0 if empty
+          ADDITIONS=${ADDITIONS:-0}
+          DELETIONS=${DELETIONS:-0}
+          FILES_CHANGED=${FILES_CHANGED:-0}
           
           TOTAL_CHANGES=$((ADDITIONS + DELETIONS))
           
@@ -130,14 +139,25 @@ jobs:
         run: |
           echo "🔍 Checking for sensitive files..."
           
+          # Fetch base branch
+          git fetch origin ${{ github.base_ref }} --depth=1 || true
+          
+          # Get list of changed files
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD 2>/dev/null || echo "")
+          
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "✅ No files changed or unable to compare"
+            exit 0
+          fi
+          
           # Check for .env files (except examples)
-          if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '\.env$|\.env\.[^e]' | grep -v '.env.example'; then
+          if echo "$CHANGED_FILES" | grep -E '\.env$|\.env\.[^e]' | grep -v '.env.example'; then
             echo "❌ ERROR: .env files should not be committed!"
             exit 1
           fi
           
           # Check for private keys
-          if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '\.pem$|\.key$|id_rsa'; then
+          if echo "$CHANGED_FILES" | grep -E '\.pem$|\.key$|id_rsa'; then
             echo "❌ ERROR: Private key files should not be committed!"
             exit 1
           fi
@@ -148,16 +168,27 @@ jobs:
         run: |
           echo "🔍 Checking for console.log statements..."
           
+          # Fetch base branch
+          git fetch origin ${{ github.base_ref }} --depth=1 || true
+          
           # Get changed TypeScript/JavaScript files (excluding tests and config)
-          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '\.(ts|tsx|js|jsx)$' | grep -v '\.test\.' | grep -v '\.spec\.' | grep -v 'jest.config' || true)
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD 2>/dev/null | grep -E '\.(ts|tsx|js|jsx)$' | grep -v '\.test\.' | grep -v '\.spec\.' | grep -v 'jest.config' || true)
           
           if [ -n "$CHANGED_FILES" ]; then
             # Check for console.log (warn but don't fail)
-            if echo "$CHANGED_FILES" | xargs grep -l 'console\.log' 2>/dev/null; then
-              echo "⚠️ WARNING: console.log found in changed files"
+            CONSOLE_LOG_FILES=""
+            for file in $CHANGED_FILES; do
+              if [ -f "$file" ] && grep -l 'console\.log' "$file" 2>/dev/null; then
+                CONSOLE_LOG_FILES="$CONSOLE_LOG_FILES $file"
+              fi
+            done
+            
+            if [ -n "$CONSOLE_LOG_FILES" ]; then
+              echo "⚠️ WARNING: console.log found in changed files:"
+              echo "$CONSOLE_LOG_FILES"
               echo "Consider removing or replacing with proper logging"
             else
-              echo "✅ No console.log statements found"
+              echo "✅ No console.log statements found in changed files"
             fi
           else
             echo "✅ No source files changed"
@@ -174,9 +205,15 @@ jobs:
 
       - name: Check lock file consistency
         run: |
+          # Fetch base branch
+          git fetch origin ${{ github.base_ref }} --depth=1 || true
+          
+          # Get list of changed files
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD 2>/dev/null || echo "")
+          
           # Check if package.json was modified but lock file wasn't
-          PACKAGE_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -c 'package.json' || echo "0")
-          LOCK_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -c 'pnpm-lock.yaml' || echo "0")
+          PACKAGE_CHANGED=$(echo "$CHANGED_FILES" | grep -c 'package.json' || echo "0")
+          LOCK_CHANGED=$(echo "$CHANGED_FILES" | grep -c 'pnpm-lock.yaml' || echo "0")
           
           if [ "$PACKAGE_CHANGED" -gt 0 ] && [ "$LOCK_CHANGED" -eq 0 ]; then
             echo "⚠️ WARNING: package.json was modified but pnpm-lock.yaml wasn't updated"

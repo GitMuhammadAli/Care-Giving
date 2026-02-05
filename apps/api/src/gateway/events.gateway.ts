@@ -11,6 +11,7 @@ import { Server, Socket } from 'socket.io';
 import { Injectable, Inject, forwardRef, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from '../auth/service/auth.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 @WebSocketGateway({
@@ -42,6 +43,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     @Inject(forwardRef(() => AuthService))
     private authService: AuthService,
+    private prisma: PrismaService,
   ) {}
 
   async handleConnection(client: Socket) {
@@ -82,28 +84,74 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('joinFamily')
-  handleJoinFamily(@ConnectedSocket() client: Socket, @MessageBody() familyId: string) {
+  async handleJoinFamily(@ConnectedSocket() client: Socket, @MessageBody() familyId: string) {
+    const userId = client.data.userId;
+
+    // SECURITY: Verify user is authenticated and is a member of the family
+    if (!userId) {
+      this.logger.warn(`Unauthorized joinFamily attempt from client ${client.id}`);
+      return { success: false, error: 'Unauthorized' };
+    }
+
+    const membership = await this.prisma.familyMember.findFirst({
+      where: { userId, familyId },
+    });
+
+    if (!membership) {
+      this.logger.warn(`User ${userId} attempted to join family ${familyId} without membership`);
+      return { success: false, error: 'Not a member of this family' };
+    }
+
     client.join(`family:${familyId}`);
-    console.log(`Client ${client.id} joined family:${familyId}`);
+    this.logger.debug(`Client ${client.id} (user: ${userId}) joined family:${familyId}`);
     return { success: true };
   }
 
   @SubscribeMessage('leaveFamily')
   handleLeaveFamily(@ConnectedSocket() client: Socket, @MessageBody() familyId: string) {
     client.leave(`family:${familyId}`);
-    console.log(`Client ${client.id} left family:${familyId}`);
+    this.logger.debug(`Client ${client.id} left family:${familyId}`);
     return { success: true };
   }
 
   @SubscribeMessage('joinCareRecipient')
-  handleJoinCareRecipient(@ConnectedSocket() client: Socket, @MessageBody() careRecipientId: string) {
+  async handleJoinCareRecipient(@ConnectedSocket() client: Socket, @MessageBody() careRecipientId: string) {
+    const userId = client.data.userId;
+
+    // SECURITY: Verify user is authenticated and has access to this care recipient
+    if (!userId) {
+      this.logger.warn(`Unauthorized joinCareRecipient attempt from client ${client.id}`);
+      return { success: false, error: 'Unauthorized' };
+    }
+
+    // Check if user is a member of the family that has this care recipient
+    const careRecipient = await this.prisma.careRecipient.findFirst({
+      where: { id: careRecipientId },
+      select: { familyId: true },
+    });
+
+    if (!careRecipient) {
+      return { success: false, error: 'Care recipient not found' };
+    }
+
+    const membership = await this.prisma.familyMember.findFirst({
+      where: { userId, familyId: careRecipient.familyId },
+    });
+
+    if (!membership) {
+      this.logger.warn(`User ${userId} attempted to join care-recipient ${careRecipientId} without membership`);
+      return { success: false, error: 'Not authorized to access this care recipient' };
+    }
+
     client.join(`care-recipient:${careRecipientId}`);
+    this.logger.debug(`Client ${client.id} (user: ${userId}) joined care-recipient:${careRecipientId}`);
     return { success: true };
   }
 
   @SubscribeMessage('leaveCareRecipient')
   handleLeaveCareRecipient(@ConnectedSocket() client: Socket, @MessageBody() careRecipientId: string) {
     client.leave(`care-recipient:${careRecipientId}`);
+    this.logger.debug(`Client ${client.id} left care-recipient:${careRecipientId}`);
     return { success: true };
   }
 

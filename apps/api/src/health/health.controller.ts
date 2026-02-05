@@ -8,9 +8,11 @@ import {
 } from '@nestjs/terminus';
 import { PrismaHealthIndicator } from './prisma.health';
 import { RedisHealthIndicator } from './redis.health';
+import { Public } from '../system/decorator/public.decorator';
 
 @ApiTags('Health')
 @Controller('health')
+@Public() // Health endpoints should be publicly accessible for load balancers and monitoring
 export class HealthController {
   constructor(
     private health: HealthCheckService,

@@ -695,7 +695,7 @@ export class MailService implements OnModuleInit {
     const resetUrl = `${frontendUrl}/reset-password?token=${token}`;
     
     this.logger.log(`Sending password reset email to ${email}`);
-    this.logger.debug(`Reset URL: ${resetUrl} (FRONTEND_URL: ${frontendUrl})`);
+    // SECURITY: Don't log the reset URL or token - it could be used to compromise accounts
     
     await this.send({
       to: email,
@@ -709,8 +709,8 @@ export class MailService implements OnModuleInit {
     const frontendUrl = this.configService.get('app.frontendUrl');
     const verificationUrl = `${frontendUrl}/verify-email?email=${encodeURIComponent(email)}`;
     
-    this.logger.log(`Sending verification email to ${email} with OTP: ${otp}`);
-    this.logger.debug(`Verification URL: ${verificationUrl}`);
+    // SECURITY: Don't log the OTP - it could be used to compromise accounts
+    this.logger.log(`Sending verification email to ${email}`);
     
     await this.send({
       to: email,

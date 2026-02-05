@@ -100,9 +100,15 @@ async function bootstrap() {
     }),
   );
 
-  // Swagger - Available in all environments at /api
-  // In production, consider protecting with authentication if needed
-  setupSwagger(app);
+  // Swagger - Only available in non-production environments
+  // To enable in production, set ENABLE_SWAGGER=true (for internal/staging use only)
+  const enableSwagger = !isProduction || process.env.ENABLE_SWAGGER === 'true';
+  if (enableSwagger) {
+    setupSwagger(app);
+    if (isProduction) {
+      logger.warn('⚠️  Swagger is enabled in production - ensure this is intentional');
+    }
+  }
 
   // Global logging interceptor for request/response logging
   const loggingService = app.get(LoggingService);
@@ -154,7 +160,9 @@ async function bootstrap() {
     console.log('╠══════════════════════════════════════════════════════════════╣');
     console.log('║                                                              ║');
     console.log(`║   🚀  API:      http://localhost:${port}/${apiPrefix}`.padEnd(67) + '║');
-    console.log(`║   📚  Swagger:  http://localhost:${port}/api`.padEnd(67) + '║');
+    if (enableSwagger) {
+      console.log(`║   📚  Swagger:  http://localhost:${port}/api`.padEnd(67) + '║');
+    }
     console.log(`║   🌐  Frontend: ${frontendUrl}`.padEnd(67) + '║');
     console.log('║                                                              ║');
     console.log('╠══════════════════════════════════════════════════════════════╣');

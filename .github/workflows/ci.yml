@@ -12,7 +12,7 @@ concurrency:
 
 env:
   NODE_VERSION: '20'
-  PNPM_VERSION: '9.0.0'
+  PNPM_VERSION: '9'
 
 jobs:
   # ============================================================================
@@ -142,7 +142,7 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/carecircle_test
 
       - name: Run Tests with Coverage
-        run: pnpm test -- --coverage --coverageReporters=text --coverageReporters=lcov
+        run: pnpm test -- --coverage --coverageReporters=text --coverageReporters=lcov --passWithNoTests
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/carecircle_test
           REDIS_URL: redis://localhost:6379
@@ -150,8 +150,10 @@ jobs:
           REDIS_PORT: 6379
           REDIS_TLS: false
           NODE_ENV: test
-          JWT_SECRET: test_jwt_secret_for_ci_minimum_32_chars
-          JWT_REFRESH_SECRET: test_jwt_refresh_secret_for_ci_32_chars
+          # CI secrets must be 32+ chars to pass security validation
+          JWT_SECRET: ci-test-jwt-secret-must-be-at-least-32-characters-long
+          JWT_REFRESH_SECRET: ci-test-jwt-refresh-secret-must-be-32-chars-long
+          ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef
 
       - name: Upload Coverage Report
         uses: actions/upload-artifact@v4

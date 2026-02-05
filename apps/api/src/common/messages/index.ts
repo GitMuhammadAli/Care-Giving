@@ -10,11 +10,12 @@ export const AUTH_MESSAGES = {
   REGISTER_SUCCESS: 'Registration successful. Please check your email (or API console in dev mode) to verify your account.',
   EMAIL_ALREADY_EXISTS: 'An account with this email already exists. Please sign in or use a different email.',
   
-  // Login
-  INVALID_CREDENTIALS: "Invalid email or password. If you don't have an account, please register first.",
+  // Login - SECURITY: Use identical message for all credential failures to prevent user enumeration
+  INVALID_CREDENTIALS: 'Invalid email or password. Please check your credentials and try again.',
+  // These are now deprecated aliases for backward compatibility - all should use INVALID_CREDENTIALS
   INVALID_PASSWORD: 'Invalid email or password. Please check your credentials and try again.',
-  ACCOUNT_NOT_ACTIVE: 'Account is not active. Please check your email to verify your account.',
-  ACCOUNT_LOCKED: 'Your account has been locked due to too many failed login attempts. Please try again later.',
+  ACCOUNT_NOT_ACTIVE: 'Invalid email or password. Please check your credentials and try again.',
+  ACCOUNT_LOCKED: 'Your account has been temporarily locked. Please try again later.',
   
   // Logout
   LOGOUT_SUCCESS: 'Logged out successfully',

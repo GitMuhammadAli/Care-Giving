@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, ForbiddenException, ParseUUIDPipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ChatService } from '../service/chat.service';
 import { CurrentUser } from '../../system/decorator/current-user.decorator';
@@ -55,7 +55,7 @@ export class ChatController {
   @FamilyAccess({ param: 'familyId', roles: [FamilyRole.ADMIN, FamilyRole.CAREGIVER, FamilyRole.VIEWER] })
   @ApiOperation({ summary: 'Initialize family chat channel (creates if not exists, syncs all members)' })
   async initializeFamilyChat(
-    @Param('familyId') familyId: string,
+    @Param('familyId', ParseUUIDPipe) familyId: string,
     @CurrentUser('id') userId: string
   ) {
     // Get family info
@@ -97,7 +97,7 @@ export class ChatController {
   @FamilyAccess({ param: 'familyId', roles: [FamilyRole.ADMIN, FamilyRole.CAREGIVER] })
   @ApiOperation({ summary: 'Create or get family chat channel (ADMIN/CAREGIVER only)' })
   async createFamilyChannel(
-    @Param('familyId') familyId: string,
+    @Param('familyId', ParseUUIDPipe) familyId: string,
     @Body() dto: { familyName: string; memberIds?: string[] },
     @CurrentUser('id') userId: string
   ) {
@@ -125,7 +125,7 @@ export class ChatController {
   @FamilyAccess({ param: 'familyId', roles: [FamilyRole.ADMIN, FamilyRole.CAREGIVER] })
   @ApiOperation({ summary: 'Create care topic channel (ADMIN/CAREGIVER only)' })
   async createTopicChannel(
-    @Param('familyId') familyId: string,
+    @Param('familyId', ParseUUIDPipe) familyId: string,
     @Body() dto: { topic: string; topicName: string; memberIds?: string[] },
     @CurrentUser('id') userId: string
   ) {
@@ -154,8 +154,8 @@ export class ChatController {
   @FamilyAccess({ param: 'familyId', roles: [FamilyRole.ADMIN] })
   @ApiOperation({ summary: 'Add member to family chat channel (ADMIN only)' })
   async addMemberToChannel(
-    @Param('familyId') familyId: string,
-    @Param('memberId') memberId: string
+    @Param('familyId', ParseUUIDPipe) familyId: string,
+    @Param('memberId', ParseUUIDPipe) memberId: string
   ) {
     // Validate the member belongs to the family
     const isMember = await this.chatService.isUserFamilyMember(familyId, memberId);

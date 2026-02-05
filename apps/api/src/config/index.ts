@@ -164,28 +164,91 @@ export const mqttConfig = registerAs("mqtt", () => {
 // =============================================================================
 // JWT CONFIG
 // =============================================================================
-export const jwtConfig = registerAs("jwt", () => ({
-  secret: optionalString("JWT_SECRET", "REPLACE_ME_MIN_32_CHARS"),
-  refreshSecret: optionalString(
+const UNSAFE_JWT_DEFAULTS = [
+  "REPLACE_ME_MIN_32_CHARS",
+  "your-super-secret-jwt-key-min-32-chars-change-in-production",
+  "your-super-secret-refresh-key-min-32-chars-change-in-production",
+  "generate-a-strong-64-char-minimum-secret-for-production",
+  "generate-another-strong-64-char-minimum-secret-here",
+];
+
+export const jwtConfig = registerAs("jwt", () => {
+  const secret = optionalString("JWT_SECRET", "REPLACE_ME_MIN_32_CHARS");
+  const refreshSecret = optionalString(
     "JWT_REFRESH_SECRET",
     "REPLACE_ME_MIN_32_CHARS"
-  ),
-  expiresIn: optionalString("JWT_EXPIRES_IN", "15m"),
-  refreshExpiresIn: optionalString("JWT_REFRESH_EXPIRES_IN", "7d"),
-}));
+  );
+
+  // SECURITY: Fail fast in production if using unsafe default secrets
+  if (isProduction()) {
+    if (UNSAFE_JWT_DEFAULTS.includes(secret)) {
+      throw new Error(
+        "SECURITY ERROR: JWT_SECRET is using an unsafe default value. " +
+          "Generate a secure secret with: node -e \"console.log(require('crypto').randomBytes(64).toString('hex'))\""
+      );
+    }
+    if (UNSAFE_JWT_DEFAULTS.includes(refreshSecret)) {
+      throw new Error(
+        "SECURITY ERROR: JWT_REFRESH_SECRET is using an unsafe default value. " +
+          "Generate a secure secret with: node -e \"console.log(require('crypto').randomBytes(64).toString('hex'))\""
+      );
+    }
+    if (secret.length < 32) {
+      throw new Error(
+        "SECURITY ERROR: JWT_SECRET must be at least 32 characters long in production."
+      );
+    }
+    if (refreshSecret.length < 32) {
+      throw new Error(
+        "SECURITY ERROR: JWT_REFRESH_SECRET must be at least 32 characters long in production."
+      );
+    }
+  }
+
+  return {
+    secret,
+    refreshSecret,
+    expiresIn: optionalString("JWT_EXPIRES_IN", "15m"),
+    refreshExpiresIn: optionalString("JWT_REFRESH_EXPIRES_IN", "7d"),
+  };
+});
 
 // =============================================================================
 // SECURITY CONFIG
 // =============================================================================
-export const securityConfig = registerAs("security", () => ({
-  encryptionKey: optionalString(
+const UNSAFE_ENCRYPTION_DEFAULTS = [
+  "0123456789abcdef0123456789abcdef",
+  "generate-a-32-char-hex-key-here",
+];
+
+export const securityConfig = registerAs("security", () => {
+  const encryptionKey = optionalString(
     "ENCRYPTION_KEY",
     "0123456789abcdef0123456789abcdef"
-  ),
-  otpExpiresIn: int("OTP_EXPIRES_IN", 300),
-  maxLoginAttempts: int("MAX_LOGIN_ATTEMPTS", 5),
-  lockoutDuration: int("LOCKOUT_DURATION", 1800),
-}));
+  );
+
+  // SECURITY: Fail fast in production if using unsafe default encryption key
+  if (isProduction()) {
+    if (UNSAFE_ENCRYPTION_DEFAULTS.includes(encryptionKey)) {
+      throw new Error(
+        "SECURITY ERROR: ENCRYPTION_KEY is using an unsafe default value. " +
+          "Generate a secure key with: node -e \"console.log(require('crypto').randomBytes(16).toString('hex'))\""
+      );
+    }
+    if (encryptionKey.length !== 32) {
+      throw new Error(
+        "SECURITY ERROR: ENCRYPTION_KEY must be exactly 32 hex characters (16 bytes) in production."
+      );
+    }
+  }
+
+  return {
+    encryptionKey,
+    otpExpiresIn: int("OTP_EXPIRES_IN", 300),
+    maxLoginAttempts: int("MAX_LOGIN_ATTEMPTS", 5),
+    lockoutDuration: int("LOCKOUT_DURATION", 1800),
+  };
+});
 
 // =============================================================================
 // STORAGE CONFIG
