@@ -1,9 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
@@ -24,7 +23,7 @@ import {
 } from 'lucide-react';
 import { useAuthContext } from '@/components/providers/auth-provider';
 
-// Pain points that resonate with caregivers
+// Pain points that resonate with caregivers (memoized outside component)
 const painPoints = [
   {
     icon: MessageSquareX,
@@ -50,21 +49,21 @@ const painPoints = [
     solution: 'Real-time updates to everyone',
     description: 'Doctor visits, mood changes, small wins—everyone in the circle knows instantly.',
   },
-];
+] as const;
 
 // Trust signals
 const trustBadges = [
   { icon: Shield, text: 'Bank-level encryption' },
   { icon: Clock, text: 'Set up in 2 minutes' },
   { icon: Heart, text: '100% free forever' },
-];
+] as const;
 
 // Social proof stats
 const stats = [
   { value: '1000+', label: 'Families nationwide' },
   { value: 'Free', label: 'Forever, no catch' },
   { value: '2 min', label: 'Average setup time' },
-];
+] as const;
 
 // Feature highlights for the app preview section
 const appFeatures = [
@@ -74,7 +73,29 @@ const appFeatures = [
   'Document storage',
   'Family chat',
   'Emergency contacts',
-];
+] as const;
+
+// How it works steps
+const howItWorksSteps = [
+  {
+    step: '1',
+    title: 'Create your circle',
+    description: 'Name it after your loved one. Takes 30 seconds.',
+    icon: Sparkles,
+  },
+  {
+    step: '2',
+    title: 'Invite family',
+    description: 'Send a link. Siblings, nurses, anyone who helps.',
+    icon: Users,
+  },
+  {
+    step: '3',
+    title: 'Care together',
+    description: 'Share updates, coordinate tasks, stay connected.',
+    icon: Heart,
+  },
+] as const;
 
 // Testimonials - real pain, real relief
 const testimonials = [
@@ -96,7 +117,7 @@ const testimonials = [
     role: 'Hospice care provider',
     avatar: 'PO',
   },
-];
+] as const;
 
 export default function LandingPage() {
   const { isAuthenticated, isInitialized, user } = useAuthContext();
@@ -109,22 +130,26 @@ export default function LandingPage() {
     }
   }, [isInitialized, isAuthenticated, user, router]);
 
-  const MainCTA = ({ size = 'lg' as const, className = '' }) => (
-    isInitialized && isAuthenticated && user ? (
-      <Link href="/dashboard">
-        <Button variant="editorial" size={size} className={`gap-2 ${className}`}>
-          <LayoutDashboard className="w-4 h-4" />
-          Go to Dashboard
-        </Button>
-      </Link>
-    ) : (
-      <Link href="/register">
-        <Button variant="editorial" size={size} className={className}>
-          Get organized in 2 minutes — free
-        </Button>
-      </Link>
-    )
-  );
+  // Memoize the CTA component
+  const MainCTA = useMemo(() => {
+    const CTAComponent = ({ size = 'lg' as const, className = '' }) => (
+      isInitialized && isAuthenticated && user ? (
+        <Link href="/dashboard">
+          <Button variant="editorial" size={size} className={`gap-2 ${className}`}>
+            <LayoutDashboard className="w-4 h-4" />
+            Go to Dashboard
+          </Button>
+        </Link>
+      ) : (
+        <Link href="/register">
+          <Button variant="editorial" size={size} className={className}>
+            Get organized in 2 minutes — free
+          </Button>
+        </Link>
+      )
+    );
+    return CTAComponent;
+  }, [isInitialized, isAuthenticated, user]);
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
@@ -137,29 +162,26 @@ export default function LandingPage() {
         <main>
           {/* ═══════════════════════════════════════════════════════════════
               HERO SECTION - Hit the pain point HARD
+              Using CSS animations instead of framer-motion for GPU performance
           ═══════════════════════════════════════════════════════════════ */}
           <section className="min-h-screen pt-24 pb-16 texture-paper relative flex items-center">
             <div className="container mx-auto px-6">
               <div className="grid lg:grid-cols-12 gap-12 items-center">
                 {/* Left - Main message */}
                 <div className="lg:col-span-7">
-                  {/* Empathy hook */}
-                  <motion.p
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                    className="text-sage-600 font-medium mb-4 flex items-center gap-2"
+                  {/* Empathy hook - CSS fade-in */}
+                  <p 
+                    className="text-sage-600 font-medium mb-4 flex items-center gap-2 animate-fade-in-up"
+                    style={{ animationDelay: '0ms' }}
                   >
                     <Heart className="w-4 h-4 text-sage fill-sage/30" />
                     For the 53 million Americans caring for loved ones
-                  </motion.p>
+                  </p>
 
-                  {/* Main headline - direct, emotional */}
-                  <motion.h1
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.1 }}
-                    className="font-editorial text-4xl sm:text-5xl md:text-6xl lg:text-7xl text-foreground leading-[1.05] tracking-editorial mb-6"
+                  {/* Main headline - CSS fade-in with stagger */}
+                  <h1 
+                    className="font-editorial text-4xl sm:text-5xl md:text-6xl lg:text-7xl text-foreground leading-[1.05] tracking-editorial mb-6 animate-fade-in-up"
+                    style={{ animationDelay: '100ms' }}
                   >
                     Stop drowning in{' '}
                     <span className="relative inline-block">
@@ -171,26 +193,22 @@ export default function LandingPage() {
                     <br />
                     Start caring{' '}
                     <em className="not-italic text-sage">together.</em>
-                  </motion.h1>
+                  </h1>
 
-                  {/* Sub-headline - empathy + solution */}
-                  <motion.p
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.2 }}
-                    className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-8 max-w-xl"
+                  {/* Sub-headline - CSS fade-in */}
+                  <p 
+                    className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-8 max-w-xl animate-fade-in-up"
+                    style={{ animationDelay: '200ms' }}
                   >
                     CareCircle brings your family together in one private space—so you can 
                     coordinate care, share updates, and actually <em>support</em> each other 
                     instead of chasing information.
-                  </motion.p>
+                  </p>
 
-                  {/* CTA buttons */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.3 }}
-                    className="flex flex-wrap items-center gap-4 mb-10"
+                  {/* CTA buttons - CSS fade-in */}
+                  <div 
+                    className="flex flex-wrap items-center gap-4 mb-10 animate-fade-in-up"
+                    style={{ animationDelay: '300ms' }}
                   >
                     <MainCTA />
                     <Link href="/how-it-works">
@@ -199,14 +217,12 @@ export default function LandingPage() {
                         <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                       </Button>
                     </Link>
-                  </motion.div>
+                  </div>
 
-                  {/* Trust badges - inline */}
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.6, delay: 0.4 }}
-                    className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground"
+                  {/* Trust badges - CSS fade-in */}
+                  <div 
+                    className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground animate-fade-in"
+                    style={{ animationDelay: '400ms' }}
                   >
                     {trustBadges.map((badge) => (
                       <span key={badge.text} className="flex items-center gap-2">
@@ -214,15 +230,13 @@ export default function LandingPage() {
                         {badge.text}
                       </span>
                     ))}
-                  </motion.div>
+                  </div>
                 </div>
 
                 {/* Right - Visual proof / App preview mockup */}
-                <motion.div
-                  initial={{ opacity: 0, x: 30 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.8, delay: 0.3 }}
-                  className="lg:col-span-5"
+                <div 
+                  className="lg:col-span-5 animate-fade-in-right"
+                  style={{ animationDelay: '300ms' }}
                 >
                   <div className="relative">
                     {/* Phone mockup frame */}
@@ -283,73 +297,57 @@ export default function LandingPage() {
                       </div>
                     </div>
 
-                    {/* Floating badges */}
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.5, delay: 0.6 }}
-                      className="absolute -left-4 top-1/4 bg-background border border-border rounded-lg px-3 py-2 shadow-lg"
+                    {/* Floating badges - CSS scale animation */}
+                    <div
+                      className="absolute -left-4 top-1/4 bg-background border border-border rounded-lg px-3 py-2 shadow-lg animate-scale-in"
+                      style={{ animationDelay: '600ms' }}
                     >
                       <div className="flex items-center gap-2 text-sm">
                         <Bell className="w-4 h-4 text-sage" />
                         <span className="text-foreground font-medium">Never miss an update</span>
                       </div>
-                    </motion.div>
+                    </div>
 
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.5, delay: 0.8 }}
-                      className="absolute -right-4 bottom-1/4 bg-background border border-border rounded-lg px-3 py-2 shadow-lg"
+                    <div
+                      className="absolute -right-4 bottom-1/4 bg-background border border-border rounded-lg px-3 py-2 shadow-lg animate-scale-in"
+                      style={{ animationDelay: '800ms' }}
                     >
                       <div className="flex items-center gap-2 text-sm">
                         <Shield className="w-4 h-4 text-sage" />
                         <span className="text-foreground font-medium">Private & secure</span>
                       </div>
-                    </motion.div>
+                    </div>
                   </div>
-                </motion.div>
+                </div>
               </div>
             </div>
           </section>
 
           {/* ═══════════════════════════════════════════════════════════════
               PAIN POINTS → SOLUTIONS SECTION
+              Using CSS intersection observer animations
           ═══════════════════════════════════════════════════════════════ */}
-          <section className="py-20 bg-card">
+          <section className="py-20 bg-card content-section">
             <div className="container mx-auto px-6">
               {/* Section header */}
               <div className="text-center mb-16">
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  viewport={{ once: true }}
-                  className="label-caps text-terracotta mb-4"
-                >
+                <p className="label-caps text-terracotta mb-4 animate-on-scroll">
                   We understand the chaos
-                </motion.p>
-                <motion.h2
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  className="font-editorial text-3xl md:text-4xl lg:text-5xl text-foreground tracking-editorial max-w-3xl mx-auto"
-                >
+                </p>
+                <h2 className="font-editorial text-3xl md:text-4xl lg:text-5xl text-foreground tracking-editorial max-w-3xl mx-auto animate-on-scroll">
                   Caregiving is hard enough.
                   <br />
                   <span className="text-muted-foreground">Coordination shouldn't be.</span>
-                </motion.h2>
+                </h2>
               </div>
 
               {/* Pain points grid */}
               <div className="grid md:grid-cols-2 gap-6 lg:gap-8 max-w-5xl mx-auto">
                 {painPoints.map((point, index) => (
-                  <motion.div
+                  <div
                     key={point.problem}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.1 }}
-                    className="bg-background border border-border rounded-2xl p-6 md:p-8 hover:border-sage/50 hover:shadow-lg transition-all duration-300"
+                    className="bg-background border border-border rounded-2xl p-6 md:p-8 hover:border-sage/50 hover:shadow-lg transition-all duration-300 animate-on-scroll"
+                    style={{ animationDelay: `${index * 100}ms` }}
                   >
                     <div className="flex items-start gap-4">
                       <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-terracotta/10 flex items-center justify-center">
@@ -370,7 +368,7 @@ export default function LandingPage() {
                         </p>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -379,22 +377,20 @@ export default function LandingPage() {
           {/* ═══════════════════════════════════════════════════════════════
               SOCIAL PROOF - Stats & Trust
           ═══════════════════════════════════════════════════════════════ */}
-          <section className="py-16 texture-paper border-y border-border">
+          <section className="py-16 texture-paper border-y border-border content-section">
             <div className="container mx-auto px-6">
               <div className="grid grid-cols-3 gap-8 max-w-3xl mx-auto text-center">
                 {stats.map((stat, index) => (
-                  <motion.div
+                  <div
                     key={stat.label}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.1 }}
+                    className="animate-on-scroll"
+                    style={{ animationDelay: `${index * 100}ms` }}
                   >
                     <div className="flex items-center justify-center gap-1 mb-1">
                       <p className="font-editorial text-3xl md:text-4xl text-foreground">{stat.value}</p>
                     </div>
                     <p className="text-sm text-muted-foreground">{stat.label}</p>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -403,55 +399,23 @@ export default function LandingPage() {
           {/* ═══════════════════════════════════════════════════════════════
               HOW IT WORKS - Simple 3 Steps
           ═══════════════════════════════════════════════════════════════ */}
-          <section className="py-20 bg-card">
+          <section className="py-20 bg-card content-section">
             <div className="container mx-auto px-6">
               <div className="text-center mb-16">
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  viewport={{ once: true }}
-                  className="label-caps text-sage-600 mb-4"
-                >
+                <p className="label-caps text-sage-600 mb-4 animate-on-scroll">
                   Getting started
-                </motion.p>
-                <motion.h2
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  className="font-editorial text-3xl md:text-4xl text-foreground tracking-editorial"
-                >
+                </p>
+                <h2 className="font-editorial text-3xl md:text-4xl text-foreground tracking-editorial animate-on-scroll">
                   Up and running in <span className="text-sage">2 minutes</span>
-                </motion.h2>
+                </h2>
               </div>
 
               <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-                {[
-                  {
-                    step: '1',
-                    title: 'Create your circle',
-                    description: 'Name it after your loved one. Takes 30 seconds.',
-                    icon: Sparkles,
-                  },
-                  {
-                    step: '2',
-                    title: 'Invite family',
-                    description: 'Send a link. Siblings, nurses, anyone who helps.',
-                    icon: Users,
-                  },
-                  {
-                    step: '3',
-                    title: 'Care together',
-                    description: 'Share updates, coordinate tasks, stay connected.',
-                    icon: Heart,
-                  },
-                ].map((item, index) => (
-                  <motion.div
+                {howItWorksSteps.map((item, index) => (
+                  <div
                     key={item.step}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.1 }}
-                    className="text-center"
+                    className="text-center animate-on-scroll"
+                    style={{ animationDelay: `${index * 100}ms` }}
                   >
                     <div className="w-16 h-16 rounded-2xl bg-sage/10 flex items-center justify-center mx-auto mb-4">
                       <item.icon className="w-7 h-7 text-sage" />
@@ -463,7 +427,7 @@ export default function LandingPage() {
                       {item.title}
                     </h3>
                     <p className="text-muted-foreground text-sm">{item.description}</p>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -472,36 +436,23 @@ export default function LandingPage() {
           {/* ═══════════════════════════════════════════════════════════════
               TESTIMONIALS - Real Stories
           ═══════════════════════════════════════════════════════════════ */}
-          <section className="py-20 texture-paper">
+          <section className="py-20 texture-paper content-section">
             <div className="container mx-auto px-6">
               <div className="text-center mb-16">
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  viewport={{ once: true }}
-                  className="label-caps text-terracotta mb-4"
-                >
+                <p className="label-caps text-terracotta mb-4 animate-on-scroll">
                   From families like yours
-                </motion.p>
-                <motion.h2
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  className="font-editorial text-3xl md:text-4xl text-foreground tracking-editorial"
-                >
+                </p>
+                <h2 className="font-editorial text-3xl md:text-4xl text-foreground tracking-editorial animate-on-scroll">
                   Real relief. Real families.
-                </motion.h2>
+                </h2>
               </div>
 
               <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
                 {testimonials.map((testimonial, index) => (
-                  <motion.div
+                  <div
                     key={testimonial.author}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.1 }}
-                    className="bg-card border border-border rounded-2xl p-6"
+                    className="bg-card border border-border rounded-2xl p-6 animate-on-scroll"
+                    style={{ animationDelay: `${index * 100}ms` }}
                   >
                     <div className="flex gap-0.5 mb-4">
                       {[1, 2, 3, 4, 5].map((star) => (
@@ -520,7 +471,7 @@ export default function LandingPage() {
                         <p className="text-xs text-muted-foreground">{testimonial.role}</p>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -529,7 +480,7 @@ export default function LandingPage() {
           {/* ═══════════════════════════════════════════════════════════════
               FINAL CTA - Strong Close
           ═══════════════════════════════════════════════════════════════ */}
-          <section className="py-24 md:py-32 bg-foreground text-background relative overflow-hidden">
+          <section className="py-24 md:py-32 bg-foreground text-background relative overflow-hidden content-section">
             {/* Subtle pattern */}
             <div className="absolute inset-0 opacity-5">
               <div className="absolute inset-0" style={{
@@ -540,11 +491,7 @@ export default function LandingPage() {
 
             <div className="container mx-auto px-6 relative z-10">
               <div className="max-w-3xl mx-auto text-center">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                >
+                <div className="animate-on-scroll">
                   <p className="label-caps text-sage mb-6">Ready to get organized?</p>
                   
                   <h2 className="font-editorial text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-background leading-[1.1] tracking-editorial mb-6">
@@ -596,7 +543,7 @@ export default function LandingPage() {
                       Set up in 2 minutes
                     </span>
                   </div>
-                </motion.div>
+                </div>
               </div>
             </div>
           </section>

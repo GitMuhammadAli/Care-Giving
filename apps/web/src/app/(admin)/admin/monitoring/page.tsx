@@ -10,10 +10,13 @@ import {
   useCronJobNames,
 } from '@/hooks/admin';
 import { DataTable } from '@/components/admin';
+// Lazy-loaded chart components for better performance
 import {
-  AreaChart,
-  BarChart,
-  LineChart,
+  LazyAreaChart as AreaChart,
+  LazyBarChart as BarChart,
+  LazyLineChart as LineChart,
+  LazyDonutChart as DonutChart,
+  // Lightweight components that don't need lazy loading
   Card,
   Title,
   Text,
@@ -26,9 +29,8 @@ import {
   Tab,
   TabPanels,
   TabPanel,
-  DonutChart,
   Legend,
-} from '@tremor/react';
+} from '@/components/admin/lazy-charts';
 import {
   Activity,
   Clock,

@@ -1,20 +1,24 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 
 /**
  * "Living Canvas" Background - Warm, Calming, Trustworthy
+ * 
+ * Performance Optimizations:
+ * - GPU compositing with transform: translateZ(0)
+ * - CSS containment for layer isolation
+ * - IntersectionObserver to pause off-screen animations
+ * - Respects prefers-reduced-motion
  * 
  * Features:
  * - Soft floating spheres that drift gently
  * - Gentle sage/cream gradient that slowly shifts
  * - Leaves falling naturally from top
  * - Smooth, organic movement throughout
- * 
- * All CSS-based for smooth 60fps performance
  */
 
-// Soft floating sphere - warm and calming
+// Soft floating sphere - warm and calming (GPU optimized)
 const FloatingSphere = memo(function FloatingSphere({
   color,
   size,
@@ -22,6 +26,7 @@ const FloatingSphere = memo(function FloatingSphere({
   delay,
   duration,
   blur,
+  isPaused,
 }: {
   color: string;
   size: string;
@@ -29,15 +34,15 @@ const FloatingSphere = memo(function FloatingSphere({
   delay: number;
   duration: number;
   blur?: number;
+  isPaused?: boolean;
 }) {
   return (
     <div
-      className="absolute pointer-events-none animate-sphere-float"
+      className="absolute pointer-events-none animate-sphere-float gpu-accelerated"
       style={{
         ...position,
         width: size,
         height: size,
-        // Soft radial gradient for sphere effect
         background: `radial-gradient(circle at 35% 35%, 
           ${color} 0%, 
           ${color.replace(/[\d.]+\)$/, '0.5)')} 40%,
@@ -47,13 +52,17 @@ const FloatingSphere = memo(function FloatingSphere({
         filter: `blur(${blur || 40}px)`,
         animationDuration: `${duration}s`,
         animationDelay: `${delay}s`,
-        willChange: 'transform',
+        animationPlayState: isPaused ? 'paused' : 'running',
+        // GPU compositing optimizations
+        transform: 'translateZ(0)',
+        backfaceVisibility: 'hidden',
+        contain: 'layout style paint',
       }}
     />
   );
 });
 
-// Falling leaf with natural wind drift
+// Falling leaf with natural wind drift (GPU optimized)
 const FallingLeaf = memo(function FallingLeaf({
   delay,
   duration,
@@ -61,6 +70,7 @@ const FallingLeaf = memo(function FallingLeaf({
   size,
   color,
   drift,
+  isPaused,
 }: {
   delay: number;
   duration: number;
@@ -68,10 +78,11 @@ const FallingLeaf = memo(function FallingLeaf({
   size: number;
   color: string;
   drift: number;
+  isPaused?: boolean;
 }) {
   return (
     <div
-      className="absolute pointer-events-none animate-leaf-fall"
+      className="absolute pointer-events-none animate-leaf-fall gpu-accelerated"
       style={{
         left: `${startX}%`,
         top: '-60px',
@@ -79,14 +90,21 @@ const FallingLeaf = memo(function FallingLeaf({
         height: size * 1.4,
         animationDuration: `${duration}s`,
         animationDelay: `${delay}s`,
+        animationPlayState: isPaused ? 'paused' : 'running',
         ['--drift' as string]: `${drift * 80}px`,
-        willChange: 'transform, opacity',
+        // GPU compositing optimizations
+        transform: 'translateZ(0)',
+        backfaceVisibility: 'hidden',
+        contain: 'layout style paint',
       }}
     >
       <svg 
         viewBox="0 0 32 48" 
         className="w-full h-full animate-leaf-sway" 
-        style={{ animationDelay: `${delay * 0.3}s` }}
+        style={{ 
+          animationDelay: `${delay * 0.3}s`,
+          animationPlayState: isPaused ? 'paused' : 'running',
+        }}
       >
         <defs>
           <linearGradient id={`leaf-${startX}-${delay}`} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -109,23 +127,30 @@ const FallingLeaf = memo(function FallingLeaf({
   );
 });
 
-// Subtle pulse dot - representing care
+// Subtle pulse dot - representing care (GPU optimized)
 const CarePoint = memo(function CarePoint({
   x,
   y,
   delay,
   size,
+  isPaused,
 }: {
   x: string;
   y: string;
   delay: number;
   size?: number;
+  isPaused?: boolean;
 }) {
   const dotSize = size || 6;
   return (
     <div
-      className="absolute pointer-events-none"
-      style={{ left: x, top: y }}
+      className="absolute pointer-events-none gpu-accelerated"
+      style={{ 
+        left: x, 
+        top: y,
+        transform: 'translateZ(0)',
+        contain: 'layout style paint',
+      }}
     >
       <div
         className="rounded-full bg-sage-400/20 animate-care-pulse"
@@ -135,16 +160,17 @@ const CarePoint = memo(function CarePoint({
           marginLeft: -dotSize / 2,
           marginTop: -dotSize / 2,
           animationDelay: `${delay}s`,
+          animationPlayState: isPaused ? 'paused' : 'running',
         }}
       />
     </div>
   );
 });
 
-// Main gradient background
+// Main gradient background (GPU optimized)
 const GradientBase = memo(function GradientBase() {
   return (
-    <div className="absolute inset-0">
+    <div className="absolute inset-0 gpu-accelerated" style={{ contain: 'layout style paint' }}>
       {/* Base warm gradient */}
       <div
         className="absolute inset-0 animate-gradient-shift"
@@ -158,6 +184,8 @@ const GradientBase = memo(function GradientBase() {
               rgba(250, 248, 244, 0.1) 100%
             )
           `,
+          transform: 'translateZ(0)',
+          backfaceVisibility: 'hidden',
         }}
       />
       {/* Subtle radial overlays */}
@@ -168,13 +196,53 @@ const GradientBase = memo(function GradientBase() {
             radial-gradient(ellipse 100% 80% at 10% 10%, rgba(168, 181, 160, 0.2) 0%, transparent 50%),
             radial-gradient(ellipse 80% 60% at 90% 90%, rgba(139, 154, 126, 0.15) 0%, transparent 50%)
           `,
+          transform: 'translateZ(0)',
         }}
       />
     </div>
   );
 });
 
+// Hook to pause animations when not visible
+function useAnimationPause() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isPaused, setIsPaused] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    // Check for reduced motion preference
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReducedMotion(mediaQuery.matches);
+    
+    const handleChange = (e: MediaQueryListEvent) => {
+      setPrefersReducedMotion(e.matches);
+    };
+    
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
+  useEffect(() => {
+    if (!containerRef.current || prefersReducedMotion) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        // Pause animations when less than 10% visible
+        setIsPaused(!entry.isIntersecting);
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [prefersReducedMotion]);
+
+  return { containerRef, isPaused: isPaused || prefersReducedMotion, prefersReducedMotion };
+}
+
 export const AnimatedBackground = memo(function AnimatedBackground() {
+  const { containerRef, isPaused, prefersReducedMotion } = useAnimationPause();
+
   // Sphere configurations - soft, warm colors
   const spheres = [
     // Large background spheres
@@ -217,24 +285,40 @@ export const AnimatedBackground = memo(function AnimatedBackground() {
     { x: '70%', y: '78%', delay: 3 },
   ];
 
+  // If user prefers reduced motion, show static gradient only
+  if (prefersReducedMotion) {
+    return (
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <GradientBase />
+      </div>
+    );
+  }
+
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+    <div 
+      ref={containerRef}
+      className="absolute inset-0 overflow-hidden pointer-events-none"
+      style={{ 
+        isolation: 'isolate',
+        contain: 'layout style paint',
+      }}
+    >
       {/* Base gradient */}
       <GradientBase />
 
       {/* Floating spheres - soft and calming */}
       {spheres.map((sphere, i) => (
-        <FloatingSphere key={`sphere-${i}`} {...sphere} />
+        <FloatingSphere key={`sphere-${i}`} {...sphere} isPaused={isPaused} />
       ))}
 
       {/* Subtle care points */}
       {carePoints.map((point, i) => (
-        <CarePoint key={`care-${i}`} {...point} />
+        <CarePoint key={`care-${i}`} {...point} isPaused={isPaused} />
       ))}
 
       {/* Falling leaves */}
       {leaves.map((leaf, i) => (
-        <FallingLeaf key={`leaf-${i}`} {...leaf} />
+        <FallingLeaf key={`leaf-${i}`} {...leaf} isPaused={isPaused} />
       ))}
     </div>
   );

@@ -1,7 +1,9 @@
 'use client';
 
+import { memo, useMemo } from 'react';
 import Link from 'next/link';
 
+// Static data moved outside component
 const footerLinks = {
   product: [
     { label: 'Features', href: '/features' },
@@ -18,9 +20,52 @@ const footerLinks = {
     { label: 'Terms', href: '/terms' },
     { label: 'HIPAA', href: '/hipaa' },
   ],
-};
+} as const;
 
-export function Footer() {
+// Memoized footer link component
+const FooterLink = memo(function FooterLink({ 
+  href, 
+  label 
+}: { 
+  href: string; 
+  label: string;
+}) {
+  return (
+    <li>
+      <Link
+        href={href}
+        className="text-foreground hover:text-sage transition-colors"
+      >
+        {label}
+      </Link>
+    </li>
+  );
+});
+
+// Memoized link section
+const LinkSection = memo(function LinkSection({ 
+  title, 
+  links 
+}: { 
+  title: string;
+  links: readonly { label: string; href: string; }[];
+}) {
+  return (
+    <div>
+      <p className="label-caps text-slate mb-4">{title}</p>
+      <ul className="space-y-3 text-sm">
+        {links.map((link) => (
+          <FooterLink key={link.href} href={link.href} label={link.label} />
+        ))}
+      </ul>
+    </div>
+  );
+});
+
+export const Footer = memo(function Footer() {
+  // Memoize the year to prevent recalculation
+  const currentYear = useMemo(() => new Date().getFullYear(), []);
+
   return (
     <footer className="py-16 bg-background border-t border-border">
       <div className="container mx-auto px-6">
@@ -37,62 +82,28 @@ export function Footer() {
 
           {/* Links */}
           <div className="md:col-span-2 md:col-start-7">
-            <p className="label-caps text-slate mb-4">Product</p>
-            <ul className="space-y-3 text-sm">
-              {footerLinks.product.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="text-foreground hover:text-sage transition-colors"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <LinkSection title="Product" links={footerLinks.product} />
           </div>
 
           <div className="md:col-span-2">
-            <p className="label-caps text-slate mb-4">Company</p>
-            <ul className="space-y-3 text-sm">
-              {footerLinks.company.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="text-foreground hover:text-sage transition-colors"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <LinkSection title="Company" links={footerLinks.company} />
           </div>
 
           <div className="md:col-span-2">
-            <p className="label-caps text-slate mb-4">Legal</p>
-            <ul className="space-y-3 text-sm">
-              {footerLinks.legal.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="text-foreground hover:text-sage transition-colors"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <LinkSection title="Legal" links={footerLinks.legal} />
           </div>
         </div>
 
         {/* Bottom */}
         <div className="mt-16 pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} CareCircle. All rights reserved.
+            © {currentYear} CareCircle. All rights reserved.
           </p>
           <p className="text-sm text-muted-foreground">Made with care, for caregivers.</p>
         </div>
       </div>
     </footer>
   );
-}
+});
+
+export default Footer;
