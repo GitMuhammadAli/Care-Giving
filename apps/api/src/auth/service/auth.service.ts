@@ -16,6 +16,7 @@ import { CacheService, CACHE_KEYS, CACHE_TTL } from '../../system/module/cache';
 import { RegisterDto } from '../dto/register.dto';
 import { LoginDto } from '../dto/login.dto';
 import { AuthEvent } from '@prisma/client';
+import { AUTH_MESSAGES } from '../../common/messages';
 
 @Injectable()
 export class AuthService {
@@ -63,9 +64,7 @@ export class AuthService {
     });
 
     if (existingUser) {
-      throw new ConflictException(
-        'An account with this email already exists. Please sign in or use a different email.'
-      );
+      throw new ConflictException(AUTH_MESSAGES.EMAIL_ALREADY_EXISTS);
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
@@ -108,7 +107,7 @@ export class AuthService {
     await this.logAuthEvent(AuthEvent.REGISTER, user.email, user.id);
 
     return {
-      message: 'Registration successful. Please check your email (or API console in dev mode) to verify your account.',
+      message: AUTH_MESSAGES.REGISTER_SUCCESS,
       user: {
         email: user.email,
         fullName: user.fullName,
@@ -132,9 +131,7 @@ export class AuthService {
         { reason: 'user_not_found' }
       );
       // Security: Don't reveal if email exists, but provide helpful guidance
-      throw new UnauthorizedException(
-        'Invalid email or password. If you don\'t have an account, please register first.'
-      );
+      throw new UnauthorizedException(AUTH_MESSAGES.INVALID_CREDENTIALS);
     }
 
     if (user.status !== 'ACTIVE') {
@@ -146,9 +143,7 @@ export class AuthService {
         userAgent,
         { reason: 'account_not_active', status: user.status }
       );
-      throw new UnauthorizedException(
-        'Account is not active. Please check your email to verify your account.'
-      );
+      throw new UnauthorizedException(AUTH_MESSAGES.ACCOUNT_NOT_ACTIVE);
     }
 
     const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
@@ -161,9 +156,7 @@ export class AuthService {
         userAgent,
         { reason: 'invalid_password' }
       );
-      throw new UnauthorizedException(
-        'Invalid email or password. Please check your credentials and try again.'
-      );
+      throw new UnauthorizedException(AUTH_MESSAGES.INVALID_PASSWORD);
     }
 
     const tokens = await this.generateTokens(user.id, user.email);
@@ -223,7 +216,7 @@ export class AuthService {
     });
 
     if (!session || !session.isActive || session.expiresAt < new Date()) {
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new UnauthorizedException(AUTH_MESSAGES.INVALID_REFRESH_TOKEN);
     }
 
     const tokens = await this.generateTokens(session.user.id, session.user.email);
@@ -247,7 +240,7 @@ export class AuthService {
       data: { isActive: false },
     });
 
-    return { message: 'Logged out successfully' };
+    return { message: AUTH_MESSAGES.LOGOUT_SUCCESS };
   }
 
   async logoutAll(userId: string) {
@@ -258,7 +251,7 @@ export class AuthService {
 
     await this.logAudit(userId, 'LOGOUT_ALL', 'user', userId);
 
-    return { message: 'Logged out from all devices' };
+    return { message: AUTH_MESSAGES.LOGOUT_ALL_SUCCESS };
   }
 
   async forgotPassword(email: string) {
@@ -270,7 +263,7 @@ export class AuthService {
     });
 
     // Don't reveal if email exists (security best practice)
-    const successMessage = 'If an account exists with this email, you will receive a password reset link shortly.';
+    const successMessage = AUTH_MESSAGES.PASSWORD_RESET_EMAIL_SENT;
     
     if (!user) {
       this.logger.debug(`Password reset requested for non-existent email: ${normalizedEmail}`);
@@ -321,9 +314,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new BadRequestException(
-        'This password reset link has expired or is invalid. Please request a new one.'
-      );
+      throw new BadRequestException(AUTH_MESSAGES.RESET_TOKEN_INVALID);
     }
 
     // Return minimal info - just enough to show the user's masked email
@@ -351,9 +342,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new BadRequestException(
-        'This password reset link has expired or is invalid. Please request a new one.'
-      );
+      throw new BadRequestException(AUTH_MESSAGES.RESET_TOKEN_INVALID);
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 12);
@@ -380,7 +369,7 @@ export class AuthService {
     await this.logAudit(user.id, 'PASSWORD_RESET', 'user', user.id);
     await this.logAuthEvent(AuthEvent.PASSWORD_RESET_SUCCESS, user.email, user.id);
 
-    return { message: 'Password reset successfully' };
+    return { message: AUTH_MESSAGES.PASSWORD_RESET_SUCCESS };
   }
 
   async changePassword(userId: string, currentPassword: string, newPassword: string) {
@@ -389,12 +378,12 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException(AUTH_MESSAGES.USER_NOT_FOUND);
     }
 
     const isPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Current password is incorrect');
+      throw new UnauthorizedException(AUTH_MESSAGES.CURRENT_PASSWORD_INCORRECT);
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 12);
@@ -412,7 +401,7 @@ export class AuthService {
 
     await this.logAudit(userId, 'PASSWORD_CHANGE', 'user', userId);
 
-    return { message: 'Password changed successfully' };
+    return { message: AUTH_MESSAGES.PASSWORD_CHANGE_SUCCESS };
   }
 
   async getSessions(userId: string) {
@@ -551,23 +540,23 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException(AUTH_MESSAGES.USER_NOT_FOUND);
     }
 
     if (user.emailVerified) {
-      throw new BadRequestException('Email already verified');
+      throw new BadRequestException(AUTH_MESSAGES.EMAIL_ALREADY_VERIFIED);
     }
 
     if (!user.emailVerificationCode || !user.emailVerificationExpiresAt) {
-      throw new BadRequestException('No verification code found. Please request a new one.');
+      throw new BadRequestException(AUTH_MESSAGES.VERIFICATION_CODE_NOT_FOUND);
     }
 
     if (user.emailVerificationExpiresAt < new Date()) {
-      throw new BadRequestException('Verification code has expired. Please request a new one.');
+      throw new BadRequestException(AUTH_MESSAGES.VERIFICATION_CODE_EXPIRED);
     }
 
     if (user.emailVerificationCode !== otp) {
-      throw new BadRequestException('Invalid verification code');
+      throw new BadRequestException(AUTH_MESSAGES.VERIFICATION_CODE_INVALID);
     }
 
     // Verify the email and activate the user
@@ -617,7 +606,7 @@ export class AuthService {
     });
 
     return {
-      message: 'Email verified successfully',
+      message: AUTH_MESSAGES.EMAIL_VERIFIED_SUCCESS,
       tokens, // Used by controller to set httpOnly cookie
       accessToken: tokens.accessToken, // Returned to frontend
       user: this.sanitizeUser(userWithFamilies),
@@ -631,11 +620,11 @@ export class AuthService {
 
     if (!user) {
       // Don't reveal if email exists
-      return { message: 'If the email exists, a verification code has been sent' };
+      return { message: AUTH_MESSAGES.VERIFICATION_CODE_SENT_IF_EXISTS };
     }
 
     if (user.emailVerified) {
-      throw new BadRequestException('Email already verified');
+      throw new BadRequestException(AUTH_MESSAGES.EMAIL_ALREADY_VERIFIED);
     }
 
     const now = new Date();
@@ -676,7 +665,7 @@ export class AuthService {
       user.fullName,
     );
 
-    return { message: 'Verification code sent successfully' };
+    return { message: AUTH_MESSAGES.VERIFICATION_CODE_SENT };
   }
 
   async completeOnboarding(userId: string) {
@@ -690,7 +679,7 @@ export class AuthService {
 
     await this.logAudit(userId, 'COMPLETE_ONBOARDING', 'user', userId);
 
-    return { message: 'Onboarding completed successfully' };
+    return { message: AUTH_MESSAGES.ONBOARDING_COMPLETED };
   }
 
   private async generateTokens(userId: string, email: string) {
