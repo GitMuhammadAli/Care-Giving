@@ -613,7 +613,12 @@ export class MailService implements OnModuleInit {
   }
 
   async sendPasswordReset(email: string, token: string, name: string): Promise<void> {
-    const resetUrl = `${this.configService.get('app.frontendUrl')}/reset-password?token=${token}`;
+    const frontendUrl = this.configService.get('app.frontendUrl');
+    const resetUrl = `${frontendUrl}/reset-password?token=${token}`;
+    
+    this.logger.log(`Sending password reset email to ${email}`);
+    this.logger.debug(`Reset URL: ${resetUrl} (FRONTEND_URL: ${frontendUrl})`);
+    
     await this.send({
       to: email,
       subject: 'Reset Your Password - CareCircle',
@@ -623,7 +628,12 @@ export class MailService implements OnModuleInit {
   }
 
   async sendEmailVerification(email: string, otp: string, name: string): Promise<void> {
-    const verificationUrl = `${this.configService.get('app.frontendUrl')}/verify-email?email=${encodeURIComponent(email)}`;
+    const frontendUrl = this.configService.get('app.frontendUrl');
+    const verificationUrl = `${frontendUrl}/verify-email?email=${encodeURIComponent(email)}`;
+    
+    this.logger.log(`Sending verification email to ${email} with OTP: ${otp}`);
+    this.logger.debug(`Verification URL: ${verificationUrl}`);
+    
     await this.send({
       to: email,
       subject: 'Verify Your Email - CareCircle',

@@ -4,6 +4,7 @@ import {
   ConflictException,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -17,6 +18,8 @@ import { LoginDto } from '../dto/login.dto';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
@@ -31,7 +34,9 @@ export class AuthService {
     });
 
     if (existingUser) {
-      throw new ConflictException('Email already registered');
+      throw new ConflictException(
+        'An account with this email already exists. Please sign in or use a different email.'
+      );
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
@@ -53,12 +58,21 @@ export class AuthService {
       },
     });
 
-    // Send verification email (mail service logs OTP in dev mode)
-    await this.mailService.sendEmailVerification(
-      user.email,
-      otp,
-      user.fullName,
-    );
+    // Send verification email with proper error handling
+    try {
+      await this.mailService.sendEmailVerification(
+        user.email,
+        otp,
+        user.fullName,
+      );
+      this.logger.log(`Verification email sent to: ${user.email}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to send verification email to ${user.email}: ${error.message}`,
+        error.stack
+      );
+      // Don't fail registration if email fails - user can request resend
+    }
 
     // Log audit
     await this.logAudit(user.id, 'REGISTER', 'user', user.id);
@@ -186,13 +200,19 @@ export class AuthService {
   }
 
   async forgotPassword(email: string) {
+    const normalizedEmail = email.toLowerCase();
+    this.logger.log(`Password reset requested for: ${normalizedEmail}`);
+
     const user = await this.prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+      where: { email: normalizedEmail },
     });
 
     // Don't reveal if email exists (security best practice)
+    const successMessage = 'If an account exists with this email, you will receive a password reset link shortly.';
+    
     if (!user) {
-      return { message: 'If the email exists, a reset link has been sent' };
+      this.logger.debug(`Password reset requested for non-existent email: ${normalizedEmail}`);
+      return { message: successMessage };
     }
 
     const token = randomBytes(32).toString('hex');
@@ -206,10 +226,20 @@ export class AuthService {
       },
     });
 
-    // Send password reset email
-    await this.mailService.sendPasswordReset(user.email, token, user.fullName);
+    // Send password reset email with proper error handling
+    try {
+      await this.mailService.sendPasswordReset(user.email, token, user.fullName);
+      this.logger.log(`Password reset email sent successfully to: ${user.email}`);
+    } catch (error) {
+      // Log the error but don't reveal to user (security)
+      this.logger.error(
+        `Failed to send password reset email to ${user.email}: ${error.message}`,
+        error.stack
+      );
+      // Still return success message for security - don't let attackers know if email failed
+    }
 
-    return { message: 'If the email exists, a reset link has been sent' };
+    return { message: successMessage };
   }
 
   async verifyResetToken(token: string) {
@@ -226,7 +256,9 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new BadRequestException('Invalid or expired reset token');
+      throw new BadRequestException(
+        'This password reset link has expired or is invalid. Please request a new one.'
+      );
     }
 
     // Return minimal info - just enough to show the user's masked email
@@ -254,7 +286,9 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new BadRequestException('Invalid or expired reset token');
+      throw new BadRequestException(
+        'This password reset link has expired or is invalid. Please request a new one.'
+      );
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 12);
