@@ -2,8 +2,7 @@
 
 import { useAuthContext } from '@/components/providers/auth-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Menu, Bell, Search } from 'lucide-react';
+import { Menu, Search } from 'lucide-react';
 import { useState } from 'react';
 
 interface AdminHeaderProps {
@@ -52,12 +51,6 @@ export function AdminHeader({ title = 'Admin Dashboard', onMenuClick }: AdminHea
 
       {/* Right side */}
       <div className="flex items-center gap-4 ml-auto">
-        {/* Notifications */}
-        <button className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-sage-100 transition-colors relative">
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full" />
-        </button>
-
         {/* User info */}
         <div className="flex items-center gap-3">
           <div className="hidden sm:block text-right">
