@@ -104,17 +104,6 @@ export function AdminSidebar({ collapsed = false, onCollapse }: AdminSidebarProp
 
       {/* Footer */}
       <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-sage-200 bg-sage-50/50">
-        <Link
-          href="/dashboard"
-          className={cn(
-            'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-sage-100 transition-colors mb-1',
-            collapsed && 'justify-center px-2'
-          )}
-          title={collapsed ? 'Back to App' : undefined}
-        >
-          <Home className="w-5 h-5 flex-shrink-0" />
-          {!collapsed && <span>Back to App</span>}
-        </Link>
         <button
           onClick={handleLogout}
           className={cn(
