@@ -706,3 +706,82 @@ enum PeriodType {
   MONTHLY
 }
 
+// ============================================
+// MONITORING LOGS (for admin dashboard)
+// ============================================
+
+model EmailLog {
+  id          String      @id @default(cuid())
+  to          String
+  subject     String
+  template    String?
+  status      EmailStatus @default(PENDING)
+  provider    String      // brevo, smtp
+  error       String?     @db.Text
+  sentAt      DateTime?
+  createdAt   DateTime    @default(now())
+  userId      String?     // Who triggered it
+  metadata    Json?
+
+  @@index([createdAt])
+  @@index([status])
+  @@index([userId])
+}
+
+model AuthLog {
+  id          String    @id @default(cuid())
+  event       AuthEvent
+  userId      String?
+  email       String
+  ipAddress   String?
+  userAgent   String?
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+
+  @@index([createdAt])
+  @@index([event])
+  @@index([email])
+  @@index([userId])
+}
+
+model CronLog {
+  id             String     @id @default(cuid())
+  jobName        String
+  status         CronStatus
+  duration       Int?       // milliseconds
+  itemsProcessed Int?
+  error          String?    @db.Text
+  createdAt      DateTime   @default(now())
+  completedAt    DateTime?
+  metadata       Json?
+
+  @@index([createdAt])
+  @@index([jobName])
+  @@index([status])
+}
+
+enum EmailStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum AuthEvent {
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  LOGOUT
+  PASSWORD_RESET_REQUEST
+  PASSWORD_RESET_SUCCESS
+  EMAIL_VERIFICATION_SENT
+  EMAIL_VERIFIED
+  ACCOUNT_LOCKED
+  SESSION_EXPIRED
+  REGISTER
+}
+
+enum CronStatus {
+  STARTED
+  COMPLETED
+  FAILED
+}
+

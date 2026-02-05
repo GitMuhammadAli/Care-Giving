@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from './notifications.service';
 import { ConfigService } from '@nestjs/config';
 import { LockHelper } from '../system/helper/lock.helper';
+import { CronStatus } from '@prisma/client';
 
 /**
  * In-Process Reminder Scheduler
@@ -33,6 +34,74 @@ export class ReminderSchedulerService implements OnModuleInit {
   }
 
   /**
+   * Log cron job start
+   */
+  private async logCronStart(jobName: string): Promise<string | null> {
+    try {
+      const log = await this.prisma.cronLog.create({
+        data: {
+          jobName,
+          status: CronStatus.STARTED,
+        },
+      });
+      return log.id;
+    } catch (error) {
+      this.logger.warn(`Failed to log cron start: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Log cron job completion
+   */
+  private async logCronComplete(
+    logId: string | null,
+    startTime: Date,
+    itemsProcessed: number,
+  ): Promise<void> {
+    if (!logId) return;
+    try {
+      const duration = Date.now() - startTime.getTime();
+      await this.prisma.cronLog.update({
+        where: { id: logId },
+        data: {
+          status: CronStatus.COMPLETED,
+          duration,
+          itemsProcessed,
+          completedAt: new Date(),
+        },
+      });
+    } catch (error) {
+      this.logger.warn(`Failed to log cron completion: ${error.message}`);
+    }
+  }
+
+  /**
+   * Log cron job failure
+   */
+  private async logCronFailed(
+    logId: string | null,
+    startTime: Date,
+    error: string,
+  ): Promise<void> {
+    if (!logId) return;
+    try {
+      const duration = Date.now() - startTime.getTime();
+      await this.prisma.cronLog.update({
+        where: { id: logId },
+        data: {
+          status: CronStatus.FAILED,
+          duration,
+          error,
+          completedAt: new Date(),
+        },
+      });
+    } catch (err) {
+      this.logger.warn(`Failed to log cron failure: ${err.message}`);
+    }
+  }
+
+  /**
    * Check for medication reminders every minute
    * Uses distributed locking to prevent duplicate runs across multiple instances
    */
@@ -44,6 +113,10 @@ export class ReminderSchedulerService implements OnModuleInit {
       this.logger.debug('Medication reminder cron skipped - another instance is running');
       return;
     }
+
+    const startTime = new Date();
+    const logId = await this.logCronStart('medication-reminder');
+    let itemsProcessed = 0;
 
     try {
       const now = new Date();
@@ -104,6 +177,7 @@ export class ReminderSchedulerService implements OnModuleInit {
                 careRecipientId: medication.careRecipient.id,
               },
             });
+            itemsProcessed++;
           } catch (err) {
             this.logger.warn(`Failed to send medication notification to ${member.user.email}: ${err.message}`);
           }
@@ -111,8 +185,11 @@ export class ReminderSchedulerService implements OnModuleInit {
 
         this.logger.debug(`Sent medication reminder for ${medication.name}`);
       }
+
+      await this.logCronComplete(logId, startTime, itemsProcessed);
     } catch (error) {
       this.logger.error(`Medication reminder check failed: ${error.message}`);
+      await this.logCronFailed(logId, startTime, error.message);
     } finally {
       await this.lockHelper.release('cron:medication-reminders');
     }
@@ -131,6 +208,10 @@ export class ReminderSchedulerService implements OnModuleInit {
       this.logger.debug('Appointment reminder cron skipped - another instance is running');
       return;
     }
+
+    const startTime = new Date();
+    const logId = await this.logCronStart('appointment-reminder');
+    let itemsProcessed = 0;
 
     try {
       const now = new Date();
@@ -200,6 +281,7 @@ export class ReminderSchedulerService implements OnModuleInit {
                   reminderKey,
                 },
               });
+              itemsProcessed++;
             } catch (err) {
               this.logger.warn(`Failed to send appointment notification: ${err.message}`);
             }
@@ -208,8 +290,11 @@ export class ReminderSchedulerService implements OnModuleInit {
           this.logger.debug(`Sent appointment reminder for ${appointment.title} (${window.label} before)`);
         }
       }
+
+      await this.logCronComplete(logId, startTime, itemsProcessed);
     } catch (error) {
       this.logger.error(`Appointment reminder check failed: ${error.message}`);
+      await this.logCronFailed(logId, startTime, error.message);
     } finally {
       await this.lockHelper.release('cron:appointment-reminders');
     }
@@ -236,6 +321,10 @@ export class ReminderSchedulerService implements OnModuleInit {
       this.logger.debug('Refill alerts cron skipped - another instance is running');
       return;
     }
+
+    const startTime = new Date();
+    const logId = await this.logCronStart('refill-alert');
+    let itemsProcessed = 0;
 
     try {
       // Find all active medications and filter in code
@@ -303,6 +392,7 @@ export class ReminderSchedulerService implements OnModuleInit {
                 currentSupply: medication.currentSupply,
               },
             });
+            itemsProcessed++;
           } catch (err) {
             this.logger.warn(`Failed to send refill alert: ${err.message}`);
           }
@@ -310,8 +400,11 @@ export class ReminderSchedulerService implements OnModuleInit {
 
         this.logger.log(`Sent refill alert for ${medication.name}`);
       }
+
+      await this.logCronComplete(logId, startTime, itemsProcessed);
     } catch (error) {
       this.logger.error(`Refill alert check failed: ${error.message}`);
+      await this.logCronFailed(logId, startTime, error.message);
     } finally {
       await this.lockHelper.release('cron:refill-alerts');
     }

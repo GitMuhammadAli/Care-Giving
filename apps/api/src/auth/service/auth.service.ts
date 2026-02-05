@@ -15,6 +15,7 @@ import { MailService } from '../../system/module/mail/mail.service';
 import { CacheService, CACHE_KEYS, CACHE_TTL } from '../../system/module/cache';
 import { RegisterDto } from '../dto/register.dto';
 import { LoginDto } from '../dto/login.dto';
+import { AuthEvent } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -27,6 +28,34 @@ export class AuthService {
     private mailService: MailService,
     private cacheService: CacheService,
   ) {}
+
+  /**
+   * Log authentication event to database
+   */
+  private async logAuthEvent(
+    event: AuthEvent,
+    email: string,
+    userId?: string,
+    ipAddress?: string,
+    userAgent?: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
+    try {
+      await this.prisma.authLog.create({
+        data: {
+          event,
+          email: email.toLowerCase(),
+          userId,
+          ipAddress,
+          userAgent,
+          metadata: metadata as any,
+        },
+      });
+    } catch (error) {
+      // Don't fail auth operations due to logging issues
+      this.logger.warn(`Failed to log auth event: ${error.message}`);
+    }
+  }
 
   async register(dto: RegisterDto) {
     const existingUser = await this.prisma.user.findUnique({
@@ -74,8 +103,9 @@ export class AuthService {
       // Don't fail registration if email fails - user can request resend
     }
 
-    // Log audit
+    // Log audit and auth event
     await this.logAudit(user.id, 'REGISTER', 'user', user.id);
+    await this.logAuthEvent(AuthEvent.REGISTER, user.email, user.id);
 
     return {
       message: 'Registration successful. Please check your email (or API console in dev mode) to verify your account.',
@@ -86,12 +116,21 @@ export class AuthService {
     };
   }
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, ipAddress?: string, userAgent?: string) {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email.toLowerCase() },
     });
 
     if (!user) {
+      // Log failed login attempt
+      await this.logAuthEvent(
+        AuthEvent.LOGIN_FAILED, 
+        dto.email, 
+        undefined, 
+        ipAddress, 
+        userAgent,
+        { reason: 'user_not_found' }
+      );
       // Security: Don't reveal if email exists, but provide helpful guidance
       throw new UnauthorizedException(
         'Invalid email or password. If you don\'t have an account, please register first.'
@@ -99,6 +138,14 @@ export class AuthService {
     }
 
     if (user.status !== 'ACTIVE') {
+      await this.logAuthEvent(
+        AuthEvent.LOGIN_FAILED, 
+        dto.email, 
+        user.id, 
+        ipAddress, 
+        userAgent,
+        { reason: 'account_not_active', status: user.status }
+      );
       throw new UnauthorizedException(
         'Account is not active. Please check your email to verify your account.'
       );
@@ -106,6 +153,14 @@ export class AuthService {
 
     const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!isPasswordValid) {
+      await this.logAuthEvent(
+        AuthEvent.LOGIN_FAILED, 
+        dto.email, 
+        user.id, 
+        ipAddress, 
+        userAgent,
+        { reason: 'invalid_password' }
+      );
       throw new UnauthorizedException(
         'Invalid email or password. Please check your credentials and try again.'
       );
@@ -120,8 +175,15 @@ export class AuthService {
       data: { lastLoginAt: new Date() },
     });
 
-    // Log audit
+    // Log audit and auth event
     await this.logAudit(user.id, 'LOGIN', 'user', user.id);
+    await this.logAuthEvent(
+      AuthEvent.LOGIN_SUCCESS, 
+      user.email, 
+      user.id, 
+      ipAddress, 
+      userAgent
+    );
 
     // Fetch user with family memberships for complete response
     const userWithFamilies = await this.prisma.user.findUnique({
@@ -226,6 +288,9 @@ export class AuthService {
       },
     });
 
+    // Log auth event
+    await this.logAuthEvent(AuthEvent.PASSWORD_RESET_REQUEST, user.email, user.id);
+
     // Send password reset email with proper error handling
     try {
       await this.mailService.sendPasswordReset(user.email, token, user.fullName);
@@ -313,6 +378,7 @@ export class AuthService {
     await this.invalidateUserCache(user.id);
 
     await this.logAudit(user.id, 'PASSWORD_RESET', 'user', user.id);
+    await this.logAuthEvent(AuthEvent.PASSWORD_RESET_SUCCESS, user.email, user.id);
 
     return { message: 'Password reset successfully' };
   }
