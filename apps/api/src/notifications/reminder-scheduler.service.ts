@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from './notifications.service';
 import { ConfigService } from '@nestjs/config';
+import { LockHelper } from '../system/helper/lock.helper';
 
 /**
  * In-Process Reminder Scheduler
@@ -21,6 +22,7 @@ export class ReminderSchedulerService implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
     private readonly configService: ConfigService,
+    private readonly lockHelper: LockHelper,
   ) {
     this.isProduction = this.configService.get('app.isProduction', false);
   }
@@ -32,9 +34,17 @@ export class ReminderSchedulerService implements OnModuleInit {
 
   /**
    * Check for medication reminders every minute
+   * Uses distributed locking to prevent duplicate runs across multiple instances
    */
   @Cron(CronExpression.EVERY_MINUTE)
   async checkMedicationReminders() {
+    // Acquire distributed lock (55 seconds TTL, less than cron interval)
+    const lockAcquired = await this.lockHelper.acquire('cron:medication-reminders', 55);
+    if (!lockAcquired) {
+      this.logger.debug('Medication reminder cron skipped - another instance is running');
+      return;
+    }
+
     try {
       const now = new Date();
       const currentHour = now.getHours();
@@ -103,15 +113,25 @@ export class ReminderSchedulerService implements OnModuleInit {
       }
     } catch (error) {
       this.logger.error(`Medication reminder check failed: ${error.message}`);
+    } finally {
+      await this.lockHelper.release('cron:medication-reminders');
     }
   }
 
   /**
    * Check for appointment reminders every 5 minutes
    * Sends reminders at: 24 hours, 1 hour, and 30 minutes before
+   * Uses distributed locking to prevent duplicate runs across multiple instances
    */
   @Cron(CronExpression.EVERY_5_MINUTES)
   async checkAppointmentReminders() {
+    // Acquire distributed lock (4 minutes TTL, less than cron interval)
+    const lockAcquired = await this.lockHelper.acquire('cron:appointment-reminders', 240);
+    if (!lockAcquired) {
+      this.logger.debug('Appointment reminder cron skipped - another instance is running');
+      return;
+    }
+
     try {
       const now = new Date();
       const reminderWindows = [
@@ -190,6 +210,8 @@ export class ReminderSchedulerService implements OnModuleInit {
       }
     } catch (error) {
       this.logger.error(`Appointment reminder check failed: ${error.message}`);
+    } finally {
+      await this.lockHelper.release('cron:appointment-reminders');
     }
   }
 
@@ -204,9 +226,17 @@ export class ReminderSchedulerService implements OnModuleInit {
 
   /**
    * Check for medication refills daily at 9 AM
+   * Uses distributed locking to prevent duplicate runs across multiple instances
    */
   @Cron('0 9 * * *') // Every day at 9 AM
   async checkRefillAlerts() {
+    // Acquire distributed lock (5 minutes TTL)
+    const lockAcquired = await this.lockHelper.acquire('cron:refill-alerts', 300);
+    if (!lockAcquired) {
+      this.logger.debug('Refill alerts cron skipped - another instance is running');
+      return;
+    }
+
     try {
       // Find all active medications and filter in code
       const allMedications = await this.prisma.medication.findMany({
@@ -282,6 +312,8 @@ export class ReminderSchedulerService implements OnModuleInit {
       }
     } catch (error) {
       this.logger.error(`Refill alert check failed: ${error.message}`);
+    } finally {
+      await this.lockHelper.release('cron:refill-alerts');
     }
   }
 }

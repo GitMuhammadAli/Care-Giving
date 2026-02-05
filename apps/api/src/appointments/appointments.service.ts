@@ -764,30 +764,51 @@ export class AppointmentsService {
       },
     });
 
-    // Group by series and get summary
+    // Get all series IDs
+    const seriesIds = [...new Set(
+      appointments
+        .filter(a => a.recurringSeriesId)
+        .map(a => a.recurringSeriesId as string)
+    )];
+
+    if (seriesIds.length === 0) {
+      return [];
+    }
+
+    // Batch query: Get counts for all series at once (fixes N+1)
+    const [totalCounts, upcomingCounts] = await Promise.all([
+      this.prisma.appointment.groupBy({
+        by: ['recurringSeriesId'],
+        where: { recurringSeriesId: { in: seriesIds } },
+        _count: true,
+      }),
+      this.prisma.appointment.groupBy({
+        by: ['recurringSeriesId'],
+        where: {
+          recurringSeriesId: { in: seriesIds },
+          startTime: { gte: new Date() },
+          status: { in: ['SCHEDULED', 'CONFIRMED'] },
+        },
+        _count: true,
+      }),
+    ]);
+
+    // Create lookup maps
+    const totalMap = new Map(totalCounts.map(c => [c.recurringSeriesId, c._count]));
+    const upcomingMap = new Map(upcomingCounts.map(c => [c.recurringSeriesId, c._count]));
+
+    // Build result
     const seriesMap = new Map<string, any>();
-    
     for (const apt of appointments) {
       if (apt.recurringSeriesId && !seriesMap.has(apt.recurringSeriesId)) {
-        const count = await this.prisma.appointment.count({
-          where: { recurringSeriesId: apt.recurringSeriesId },
-        });
-        const upcoming = await this.prisma.appointment.count({
-          where: {
-            recurringSeriesId: apt.recurringSeriesId,
-            startTime: { gte: new Date() },
-            status: { in: ['SCHEDULED', 'CONFIRMED'] },
-          },
-        });
-
         seriesMap.set(apt.recurringSeriesId, {
           seriesId: apt.recurringSeriesId,
           title: apt.title,
           type: apt.type,
           doctor: apt.doctor,
           recurrenceRule: apt.recurrenceRule,
-          totalAppointments: count,
-          upcomingCount: upcoming,
+          totalAppointments: totalMap.get(apt.recurringSeriesId) || 0,
+          upcomingCount: upcomingMap.get(apt.recurringSeriesId) || 0,
           firstOccurrence: apt.startTime,
         });
       }

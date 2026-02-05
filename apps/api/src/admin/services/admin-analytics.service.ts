@@ -1,11 +1,32 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CacheService } from '../../system/module/cache/cache.service';
 
 @Injectable()
 export class AdminAnalyticsService {
-  constructor(private prisma: PrismaService) {}
+  // Cache TTLs (in seconds)
+  private readonly CACHE_TTL = {
+    overview: 60,        // 1 minute - frequently accessed
+    userMetrics: 300,    // 5 minutes
+    familyMetrics: 300,  // 5 minutes
+    usageMetrics: 300,   // 5 minutes
+  };
+
+  constructor(
+    private prisma: PrismaService,
+    private cacheService: CacheService,
+  ) {}
 
   async getOverview() {
+    const cacheKey = 'admin:analytics:overview';
+    return this.cacheService.getOrSet(
+      cacheKey,
+      () => this.fetchOverview(),
+      this.CACHE_TTL.overview,
+    );
+  }
+
+  private async fetchOverview() {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -80,6 +101,15 @@ export class AdminAnalyticsService {
   }
 
   async getUserMetrics(days: number = 30) {
+    const cacheKey = `admin:analytics:users:${days}`;
+    return this.cacheService.getOrSet(
+      cacheKey,
+      () => this.fetchUserMetrics(days),
+      this.CACHE_TTL.userMetrics,
+    );
+  }
+
+  private async fetchUserMetrics(days: number) {
     const now = new Date();
     const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
@@ -141,6 +171,15 @@ export class AdminAnalyticsService {
   }
 
   async getFamilyMetrics(days: number = 30) {
+    const cacheKey = `admin:analytics:families:${days}`;
+    return this.cacheService.getOrSet(
+      cacheKey,
+      () => this.fetchFamilyMetrics(days),
+      this.CACHE_TTL.familyMetrics,
+    );
+  }
+
+  private async fetchFamilyMetrics(days: number) {
     const now = new Date();
     const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
@@ -205,6 +244,15 @@ export class AdminAnalyticsService {
   }
 
   async getUsageMetrics() {
+    const cacheKey = 'admin:analytics:usage';
+    return this.cacheService.getOrSet(
+      cacheKey,
+      () => this.fetchUsageMetrics(),
+      this.CACHE_TTL.usageMetrics,
+    );
+  }
+
+  private async fetchUsageMetrics() {
     const now = new Date();
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);

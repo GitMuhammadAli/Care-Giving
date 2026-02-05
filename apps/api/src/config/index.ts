@@ -32,6 +32,10 @@ export const appConfig = registerAs("app", () => ({
   frontendUrl: optionalString("FRONTEND_URL", "http://localhost:4173"),
   isDevelopment: isDevelopment(),
   isProduction: isProduction(),
+  // Scalability flags
+  enableCronJobs: bool("ENABLE_CRON_JOBS", true),
+  enableQueues: bool("ENABLE_QUEUES", true),
+  enableRabbitMQ: bool("ENABLE_RABBITMQ", true),
 }));
 
 // =============================================================================
