@@ -278,15 +278,21 @@ export class DocumentsService {
       throw new NotFoundException('Document not found');
     }
 
-    // Get file extension from mimeType
-    const extension = this.getExtensionFromMimeType(document.mimeType);
+    // Get file extension from mimeType (handle null mimeType)
+    const mimeType = document.mimeType || 'application/octet-stream';
+    const extension = this.getExtensionFromMimeType(mimeType);
     const filename = `${document.name}${extension}`;
 
     // Get the base URL
     let baseUrl = document.url;
-    if (!baseUrl) {
+    if (!baseUrl && document.s3Key) {
       // Legacy fallback: generate URL from s3Key
       baseUrl = await this.storageService.getSignedUrl(document.s3Key, document.mimeType);
+    }
+
+    // Handle case where document has no URL (upload may have failed or is pending)
+    if (!baseUrl) {
+      throw new NotFoundException('Document file not available. The upload may still be processing or failed.');
     }
 
     // For Cloudinary URLs, create view and download URLs
@@ -306,7 +312,7 @@ export class DocumentsService {
       viewUrl,
       downloadUrl,
       filename,
-      mimeType: document.mimeType,
+      mimeType,
     };
   }
 
@@ -374,6 +380,100 @@ export class DocumentsService {
     }
 
     return grouped;
+  }
+
+  /**
+   * Process document upload synchronously (used when BullMQ worker is not available)
+   * This does the same thing as DocumentsProcessor but inline
+   */
+  async processUploadSync(
+    documentId: string,
+    familyId: string,
+    userId: string,
+    file: Express.Multer.File,
+  ) {
+    this.logger.log(`Processing document upload synchronously: ${documentId}`);
+
+    try {
+      // Determine resource type based on mimeType
+      let resourceType: 'image' | 'raw' | 'video' | 'auto' = 'raw';
+      if (file.mimetype.startsWith('image/')) {
+        resourceType = 'image';
+      } else if (file.mimetype.startsWith('video/')) {
+        resourceType = 'video';
+      }
+
+      // Upload file to Cloudinary
+      const uploadResult = await this.storageService.upload(file, {
+        folder: `carecircle/documents/${familyId}`,
+        resourceType,
+      });
+
+      // Get uploader info
+      const uploader = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { fullName: true },
+      });
+
+      // Update the document record with the storage info
+      const document = await this.prisma.document.update({
+        where: { id: documentId },
+        data: {
+          s3Key: uploadResult.key,
+          url: uploadResult.url,
+          status: 'READY',
+        },
+      });
+
+      this.logger.log(`Document upload complete (sync): ${documentId}`);
+
+      // Publish event for real-time sync
+      try {
+        await this.eventPublisher.publish(
+          ROUTING_KEYS.DOCUMENT_UPLOADED,
+          {
+            documentId: document.id,
+            documentName: document.name,
+            documentType: document.type,
+            familyId,
+            uploadedById: userId,
+            uploadedByName: uploader?.fullName || 'Unknown',
+          },
+          { aggregateType: 'Document', aggregateId: document.id },
+          { familyId, causedBy: userId },
+        );
+      } catch (error) {
+        this.logger.warn(`Failed to publish document.uploaded event: ${error.message}`);
+      }
+
+      // Also emit internal event for local WebSocket broadcast
+      this.eventEmitter.emit('document.uploaded', {
+        document,
+        uploadedBy: uploader,
+        familyId,
+      });
+
+      return document;
+    } catch (error) {
+      this.logger.error(`Document upload failed (sync): ${documentId}`, error);
+
+      // Update document status to failed
+      await this.prisma.document.update({
+        where: { id: documentId },
+        data: {
+          status: 'FAILED',
+        },
+      });
+
+      // Emit failure event
+      this.eventEmitter.emit('document.upload.failed', {
+        documentId,
+        familyId,
+        error: error.message,
+      });
+
+      throw error;
+    }
   }
 }
 

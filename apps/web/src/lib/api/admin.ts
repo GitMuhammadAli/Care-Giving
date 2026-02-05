@@ -188,6 +188,171 @@ export interface LogDashboard {
   timestamp: string;
 }
 
+// Monitoring Types
+export type EmailStatus = 'PENDING' | 'SENT' | 'FAILED';
+export type AuthEvent = 
+  | 'LOGIN_SUCCESS'
+  | 'LOGIN_FAILED'
+  | 'LOGOUT'
+  | 'PASSWORD_RESET_REQUEST'
+  | 'PASSWORD_RESET_SUCCESS'
+  | 'EMAIL_VERIFICATION_SENT'
+  | 'EMAIL_VERIFIED'
+  | 'ACCOUNT_LOCKED'
+  | 'SESSION_EXPIRED'
+  | 'REGISTER';
+export type CronStatus = 'STARTED' | 'COMPLETED' | 'FAILED';
+
+export interface TimeSeriesPoint {
+  timestamp: string;
+  value: number;
+}
+
+export interface TimeSeriesData {
+  data: TimeSeriesPoint[];
+  total: number;
+  interval: 'hour' | 'day';
+}
+
+export interface ResponseTimeStats {
+  avg: number;
+  p50: number;
+  p95: number;
+  p99: number;
+  timeSeries: TimeSeriesPoint[];
+}
+
+export interface EmailLog {
+  id: string;
+  to: string;
+  subject: string;
+  template?: string;
+  status: EmailStatus;
+  provider: string;
+  error?: string;
+  sentAt?: string;
+  createdAt: string;
+  userId?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface EmailLogFilter {
+  status?: EmailStatus;
+  provider?: string;
+  search?: string;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface EmailStats {
+  total: number;
+  sent: number;
+  failed: number;
+  pending: number;
+  byProvider: Record<string, number>;
+  byTemplate: Record<string, number>;
+}
+
+export interface AuthLog {
+  id: string;
+  event: AuthEvent;
+  email: string;
+  userId?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  metadata?: Record<string, any>;
+  createdAt: string;
+}
+
+export interface AuthLogFilter {
+  event?: AuthEvent;
+  email?: string;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface AuthStats {
+  total: number;
+  loginSuccess: number;
+  loginFailed: number;
+  passwordResets: number;
+  registrations: number;
+  byEvent: Record<string, number>;
+  failedLoginsByEmail: Array<{ email: string; count: number }>;
+}
+
+export interface AuthTimeSeries {
+  loginSuccess: TimeSeriesData;
+  loginFailed: TimeSeriesData;
+  registrations: TimeSeriesData;
+}
+
+export interface CronLog {
+  id: string;
+  jobName: string;
+  status: CronStatus;
+  duration?: number;
+  itemsProcessed?: number;
+  error?: string;
+  createdAt: string;
+  completedAt?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface CronLogFilter {
+  jobName?: string;
+  status?: CronStatus;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface CronStats {
+  total: number;
+  completed: number;
+  failed: number;
+  running: number;
+  avgDuration: number;
+  byJob: Array<{
+    jobName: string;
+    total: number;
+    completed: number;
+    failed: number;
+    avgDuration: number;
+  }>;
+}
+
+export interface CronTimeSeries {
+  completed: TimeSeriesData;
+  failed: TimeSeriesData;
+  avgDuration: TimeSeriesPoint[];
+}
+
+export interface RealtimeStats {
+  requestsLastMinute: number;
+  errorsLastMinute: number;
+  activeUsers: number;
+  avgResponseTime: number;
+  emailsSentToday: number;
+  cronJobsRunning: number;
+}
+
+export interface MonitoringDashboard {
+  requests: TimeSeriesData;
+  errors: TimeSeriesData;
+  responseTimes: ResponseTimeStats;
+  emails: EmailStats;
+  auth: AuthStats;
+  cron: CronStats;
+  realtime: RealtimeStats;
+  timestamp: string;
+}
+
 // API functions
 export const adminApi = {
   // Users
@@ -405,6 +570,85 @@ export const adminApi = {
 
   cleanupLogs: async (days: number = 30): Promise<{ message: string; deletedCount: number }> => {
     return api.delete(`/admin/logs/cleanup?days=${days}`);
+  },
+
+  // Monitoring
+  getMonitoringDashboard: async (hours: number = 24): Promise<MonitoringDashboard> => {
+    return api.get(`/admin/monitoring/dashboard?hours=${hours}`);
+  },
+
+  getRequestTimeSeries: async (hours: number = 24): Promise<TimeSeriesData> => {
+    return api.get(`/admin/monitoring/requests/timeseries?hours=${hours}`);
+  },
+
+  getErrorTimeSeries: async (hours: number = 24): Promise<TimeSeriesData> => {
+    return api.get(`/admin/monitoring/errors/timeseries?hours=${hours}`);
+  },
+
+  getResponseTimeStats: async (hours: number = 24): Promise<ResponseTimeStats> => {
+    return api.get(`/admin/monitoring/response-times?hours=${hours}`);
+  },
+
+  getEmailLogs: async (filter: EmailLogFilter = {}): Promise<PaginatedResponse<EmailLog>> => {
+    const params = new URLSearchParams();
+    Object.entries(filter).forEach(([key, value]) => {
+      if (value !== undefined && value !== '') {
+        params.append(key, String(value));
+      }
+    });
+    return api.get(`/admin/monitoring/emails?${params.toString()}`);
+  },
+
+  getEmailStats: async (hours: number = 24): Promise<EmailStats> => {
+    return api.get(`/admin/monitoring/emails/stats?hours=${hours}`);
+  },
+
+  getEmailTimeSeries: async (hours: number = 24): Promise<{ sent: TimeSeriesData; failed: TimeSeriesData }> => {
+    return api.get(`/admin/monitoring/emails/timeseries?hours=${hours}`);
+  },
+
+  getAuthLogs: async (filter: AuthLogFilter = {}): Promise<PaginatedResponse<AuthLog>> => {
+    const params = new URLSearchParams();
+    Object.entries(filter).forEach(([key, value]) => {
+      if (value !== undefined && value !== '') {
+        params.append(key, String(value));
+      }
+    });
+    return api.get(`/admin/monitoring/auth?${params.toString()}`);
+  },
+
+  getAuthStats: async (hours: number = 24): Promise<AuthStats> => {
+    return api.get(`/admin/monitoring/auth/stats?hours=${hours}`);
+  },
+
+  getAuthTimeSeries: async (hours: number = 24): Promise<AuthTimeSeries> => {
+    return api.get(`/admin/monitoring/auth/timeseries?hours=${hours}`);
+  },
+
+  getCronLogs: async (filter: CronLogFilter = {}): Promise<PaginatedResponse<CronLog>> => {
+    const params = new URLSearchParams();
+    Object.entries(filter).forEach(([key, value]) => {
+      if (value !== undefined && value !== '') {
+        params.append(key, String(value));
+      }
+    });
+    return api.get(`/admin/monitoring/cron?${params.toString()}`);
+  },
+
+  getCronStats: async (hours: number = 24): Promise<CronStats> => {
+    return api.get(`/admin/monitoring/cron/stats?hours=${hours}`);
+  },
+
+  getCronTimeSeries: async (hours: number = 24): Promise<CronTimeSeries> => {
+    return api.get(`/admin/monitoring/cron/timeseries?hours=${hours}`);
+  },
+
+  getCronJobNames: async (): Promise<{ jobNames: string[] }> => {
+    return api.get('/admin/monitoring/cron/jobs');
+  },
+
+  getRealtimeStats: async (): Promise<RealtimeStats> => {
+    return api.get('/admin/monitoring/realtime');
   },
 };
 

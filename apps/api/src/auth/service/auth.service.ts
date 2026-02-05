@@ -4,6 +4,7 @@ import {
   ConflictException,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -14,9 +15,13 @@ import { MailService } from '../../system/module/mail/mail.service';
 import { CacheService, CACHE_KEYS, CACHE_TTL } from '../../system/module/cache';
 import { RegisterDto } from '../dto/register.dto';
 import { LoginDto } from '../dto/login.dto';
+import { AuthEvent } from '@prisma/client';
+import { AUTH_MESSAGES } from '../../common/messages';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
@@ -25,13 +30,41 @@ export class AuthService {
     private cacheService: CacheService,
   ) {}
 
+  /**
+   * Log authentication event to database
+   */
+  private async logAuthEvent(
+    event: AuthEvent,
+    email: string,
+    userId?: string,
+    ipAddress?: string,
+    userAgent?: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
+    try {
+      await this.prisma.authLog.create({
+        data: {
+          event,
+          email: email.toLowerCase(),
+          userId,
+          ipAddress,
+          userAgent,
+          metadata: metadata as any,
+        },
+      });
+    } catch (error) {
+      // Don't fail auth operations due to logging issues
+      this.logger.warn(`Failed to log auth event: ${error.message}`);
+    }
+  }
+
   async register(dto: RegisterDto) {
     const existingUser = await this.prisma.user.findUnique({
       where: { email: dto.email.toLowerCase() },
     });
 
     if (existingUser) {
-      throw new ConflictException('Email already registered');
+      throw new ConflictException(AUTH_MESSAGES.EMAIL_ALREADY_EXISTS);
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
@@ -53,18 +86,28 @@ export class AuthService {
       },
     });
 
-    // Send verification email (mail service logs OTP in dev mode)
-    await this.mailService.sendEmailVerification(
-      user.email,
-      otp,
-      user.fullName,
-    );
+    // Send verification email with proper error handling
+    try {
+      await this.mailService.sendEmailVerification(
+        user.email,
+        otp,
+        user.fullName,
+      );
+      this.logger.log(`Verification email sent to: ${user.email}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to send verification email to ${user.email}: ${error.message}`,
+        error.stack
+      );
+      // Don't fail registration if email fails - user can request resend
+    }
 
-    // Log audit
+    // Log audit and auth event
     await this.logAudit(user.id, 'REGISTER', 'user', user.id);
+    await this.logAuthEvent(AuthEvent.REGISTER, user.email, user.id);
 
     return {
-      message: 'Registration successful. Please check your email (or API console in dev mode) to verify your account.',
+      message: AUTH_MESSAGES.REGISTER_SUCCESS,
       user: {
         email: user.email,
         fullName: user.fullName,
@@ -72,29 +115,48 @@ export class AuthService {
     };
   }
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, ipAddress?: string, userAgent?: string) {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email.toLowerCase() },
     });
 
     if (!user) {
-      // Security: Don't reveal if email exists, but provide helpful guidance
-      throw new UnauthorizedException(
-        'Invalid email or password. If you don\'t have an account, please register first.'
+      // Log failed login attempt
+      await this.logAuthEvent(
+        AuthEvent.LOGIN_FAILED, 
+        dto.email, 
+        undefined, 
+        ipAddress, 
+        userAgent,
+        { reason: 'user_not_found' }
       );
+      // Security: Don't reveal if email exists, but provide helpful guidance
+      throw new UnauthorizedException(AUTH_MESSAGES.INVALID_CREDENTIALS);
     }
 
     if (user.status !== 'ACTIVE') {
-      throw new UnauthorizedException(
-        'Account is not active. Please check your email to verify your account.'
+      await this.logAuthEvent(
+        AuthEvent.LOGIN_FAILED, 
+        dto.email, 
+        user.id, 
+        ipAddress, 
+        userAgent,
+        { reason: 'account_not_active', status: user.status }
       );
+      throw new UnauthorizedException(AUTH_MESSAGES.ACCOUNT_NOT_ACTIVE);
     }
 
     const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!isPasswordValid) {
-      throw new UnauthorizedException(
-        'Invalid email or password. Please check your credentials and try again.'
+      await this.logAuthEvent(
+        AuthEvent.LOGIN_FAILED, 
+        dto.email, 
+        user.id, 
+        ipAddress, 
+        userAgent,
+        { reason: 'invalid_password' }
       );
+      throw new UnauthorizedException(AUTH_MESSAGES.INVALID_PASSWORD);
     }
 
     const tokens = await this.generateTokens(user.id, user.email);
@@ -106,8 +168,15 @@ export class AuthService {
       data: { lastLoginAt: new Date() },
     });
 
-    // Log audit
+    // Log audit and auth event
     await this.logAudit(user.id, 'LOGIN', 'user', user.id);
+    await this.logAuthEvent(
+      AuthEvent.LOGIN_SUCCESS, 
+      user.email, 
+      user.id, 
+      ipAddress, 
+      userAgent
+    );
 
     // Fetch user with family memberships for complete response
     const userWithFamilies = await this.prisma.user.findUnique({
@@ -147,7 +216,7 @@ export class AuthService {
     });
 
     if (!session || !session.isActive || session.expiresAt < new Date()) {
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new UnauthorizedException(AUTH_MESSAGES.INVALID_REFRESH_TOKEN);
     }
 
     const tokens = await this.generateTokens(session.user.id, session.user.email);
@@ -171,7 +240,7 @@ export class AuthService {
       data: { isActive: false },
     });
 
-    return { message: 'Logged out successfully' };
+    return { message: AUTH_MESSAGES.LOGOUT_SUCCESS };
   }
 
   async logoutAll(userId: string) {
@@ -182,17 +251,23 @@ export class AuthService {
 
     await this.logAudit(userId, 'LOGOUT_ALL', 'user', userId);
 
-    return { message: 'Logged out from all devices' };
+    return { message: AUTH_MESSAGES.LOGOUT_ALL_SUCCESS };
   }
 
   async forgotPassword(email: string) {
+    const normalizedEmail = email.toLowerCase();
+    this.logger.log(`Password reset requested for: ${normalizedEmail}`);
+
     const user = await this.prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+      where: { email: normalizedEmail },
     });
 
     // Don't reveal if email exists (security best practice)
+    const successMessage = AUTH_MESSAGES.PASSWORD_RESET_EMAIL_SENT;
+    
     if (!user) {
-      return { message: 'If the email exists, a reset link has been sent' };
+      this.logger.debug(`Password reset requested for non-existent email: ${normalizedEmail}`);
+      return { message: successMessage };
     }
 
     const token = randomBytes(32).toString('hex');
@@ -206,10 +281,23 @@ export class AuthService {
       },
     });
 
-    // Send password reset email
-    await this.mailService.sendPasswordReset(user.email, token, user.fullName);
+    // Log auth event
+    await this.logAuthEvent(AuthEvent.PASSWORD_RESET_REQUEST, user.email, user.id);
 
-    return { message: 'If the email exists, a reset link has been sent' };
+    // Send password reset email with proper error handling
+    try {
+      await this.mailService.sendPasswordReset(user.email, token, user.fullName);
+      this.logger.log(`Password reset email sent successfully to: ${user.email}`);
+    } catch (error) {
+      // Log the error but don't reveal to user (security)
+      this.logger.error(
+        `Failed to send password reset email to ${user.email}: ${error.message}`,
+        error.stack
+      );
+      // Still return success message for security - don't let attackers know if email failed
+    }
+
+    return { message: successMessage };
   }
 
   async verifyResetToken(token: string) {
@@ -226,7 +314,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new BadRequestException('Invalid or expired reset token');
+      throw new BadRequestException(AUTH_MESSAGES.RESET_TOKEN_INVALID);
     }
 
     // Return minimal info - just enough to show the user's masked email
@@ -254,7 +342,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new BadRequestException('Invalid or expired reset token');
+      throw new BadRequestException(AUTH_MESSAGES.RESET_TOKEN_INVALID);
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 12);
@@ -279,8 +367,9 @@ export class AuthService {
     await this.invalidateUserCache(user.id);
 
     await this.logAudit(user.id, 'PASSWORD_RESET', 'user', user.id);
+    await this.logAuthEvent(AuthEvent.PASSWORD_RESET_SUCCESS, user.email, user.id);
 
-    return { message: 'Password reset successfully' };
+    return { message: AUTH_MESSAGES.PASSWORD_RESET_SUCCESS };
   }
 
   async changePassword(userId: string, currentPassword: string, newPassword: string) {
@@ -289,12 +378,12 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException(AUTH_MESSAGES.USER_NOT_FOUND);
     }
 
     const isPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Current password is incorrect');
+      throw new UnauthorizedException(AUTH_MESSAGES.CURRENT_PASSWORD_INCORRECT);
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 12);
@@ -312,7 +401,7 @@ export class AuthService {
 
     await this.logAudit(userId, 'PASSWORD_CHANGE', 'user', userId);
 
-    return { message: 'Password changed successfully' };
+    return { message: AUTH_MESSAGES.PASSWORD_CHANGE_SUCCESS };
   }
 
   async getSessions(userId: string) {
@@ -451,23 +540,23 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException(AUTH_MESSAGES.USER_NOT_FOUND);
     }
 
     if (user.emailVerified) {
-      throw new BadRequestException('Email already verified');
+      throw new BadRequestException(AUTH_MESSAGES.EMAIL_ALREADY_VERIFIED);
     }
 
     if (!user.emailVerificationCode || !user.emailVerificationExpiresAt) {
-      throw new BadRequestException('No verification code found. Please request a new one.');
+      throw new BadRequestException(AUTH_MESSAGES.VERIFICATION_CODE_NOT_FOUND);
     }
 
     if (user.emailVerificationExpiresAt < new Date()) {
-      throw new BadRequestException('Verification code has expired. Please request a new one.');
+      throw new BadRequestException(AUTH_MESSAGES.VERIFICATION_CODE_EXPIRED);
     }
 
     if (user.emailVerificationCode !== otp) {
-      throw new BadRequestException('Invalid verification code');
+      throw new BadRequestException(AUTH_MESSAGES.VERIFICATION_CODE_INVALID);
     }
 
     // Verify the email and activate the user
@@ -517,7 +606,7 @@ export class AuthService {
     });
 
     return {
-      message: 'Email verified successfully',
+      message: AUTH_MESSAGES.EMAIL_VERIFIED_SUCCESS,
       tokens, // Used by controller to set httpOnly cookie
       accessToken: tokens.accessToken, // Returned to frontend
       user: this.sanitizeUser(userWithFamilies),
@@ -531,11 +620,11 @@ export class AuthService {
 
     if (!user) {
       // Don't reveal if email exists
-      return { message: 'If the email exists, a verification code has been sent' };
+      return { message: AUTH_MESSAGES.VERIFICATION_CODE_SENT_IF_EXISTS };
     }
 
     if (user.emailVerified) {
-      throw new BadRequestException('Email already verified');
+      throw new BadRequestException(AUTH_MESSAGES.EMAIL_ALREADY_VERIFIED);
     }
 
     const now = new Date();
@@ -576,7 +665,7 @@ export class AuthService {
       user.fullName,
     );
 
-    return { message: 'Verification code sent successfully' };
+    return { message: AUTH_MESSAGES.VERIFICATION_CODE_SENT };
   }
 
   async completeOnboarding(userId: string) {
@@ -590,7 +679,7 @@ export class AuthService {
 
     await this.logAudit(userId, 'COMPLETE_ONBOARDING', 'user', userId);
 
-    return { message: 'Onboarding completed successfully' };
+    return { message: AUTH_MESSAGES.ONBOARDING_COMPLETED };
   }
 
   private async generateTokens(userId: string, email: string) {

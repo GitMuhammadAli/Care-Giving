@@ -3,4 +3,5 @@ export * from './use-admin-families';
 export * from './use-admin-analytics';
 export * from './use-admin-audit';
 export * from './use-admin-logs';
+export * from './use-admin-monitoring';
 

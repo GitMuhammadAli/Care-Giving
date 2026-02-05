@@ -14,6 +14,7 @@ import {
   LogOut,
   ChevronLeft,
   Heart,
+  Activity,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -29,6 +30,7 @@ const navigation = [
   { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
   { name: 'Audit Logs', href: '/admin/audit', icon: Shield },
   { name: 'System Logs', href: '/admin/logs', icon: FileText },
+  { name: 'Monitoring', href: '/admin/monitoring', icon: Activity },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 

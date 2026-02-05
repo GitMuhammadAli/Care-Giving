@@ -12,11 +12,14 @@ import {
   UploadedFile,
   BadRequestException,
   UseGuards,
+  Optional,
+  Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
+import { ConfigService } from '@nestjs/config';
 import { FamilyRole } from '@prisma/client';
 import { DocumentsService } from './documents.service';
 import { UpdateDocumentDto } from './dto/update-document.dto';
@@ -37,15 +40,24 @@ interface CurrentUserPayload {
 @FamilyAccess({ param: 'familyId' })
 @Controller('families/:familyId/documents')
 export class DocumentsController {
+  private readonly logger = new Logger(DocumentsController.name);
+  private readonly useQueues: boolean;
+
   constructor(
     private readonly documentsService: DocumentsService,
     private readonly storageService: StorageService,
-    @InjectQueue('document-upload') private documentQueue: Queue<DocumentUploadJob>,
-  ) {}
+    private readonly configService: ConfigService,
+    @Optional() @InjectQueue('document-upload') private documentQueue?: Queue<DocumentUploadJob>,
+  ) {
+    this.useQueues = this.configService.get('app.enableQueues', true) && !!this.documentQueue;
+    if (!this.useQueues) {
+      this.logger.log('Document uploads will be processed synchronously (queue not available)');
+    }
+  }
 
   @Post()
   @FamilyAccess({ param: 'familyId', roles: [FamilyRole.ADMIN, FamilyRole.CAREGIVER] })
-  @ApiOperation({ summary: 'Upload a document (async - ADMIN/CAREGIVER only)' })
+  @ApiOperation({ summary: 'Upload a document (ADMIN/CAREGIVER only)' })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('file'))
   async create(
@@ -58,7 +70,7 @@ export class DocumentsController {
       throw new BadRequestException('File is required');
     }
 
-    // Create a pending document record first (returns immediately to user)
+    // Create a pending document record first
     const document = await this.documentsService.createPending(familyId, user.id, {
       name: dto.name || file.originalname.replace(/\.[^/.]+$/, ''),
       type: dto.type,
@@ -68,33 +80,40 @@ export class DocumentsController {
       sizeBytes: file.size,
     });
 
-    // Add upload job to queue (processed in background)
-    await this.documentQueue.add(
-      'upload',
-      {
-        documentId: document.id,
-        familyId,
-        userId: user.id,
-        file: {
-          buffer: file.buffer.toString('base64'),
-          originalname: file.originalname,
-          mimetype: file.mimetype,
-          size: file.size,
+    // Check if we should use async queue or sync processing
+    if (this.useQueues && this.documentQueue) {
+      // Add upload job to queue (processed in background by worker)
+      await this.documentQueue.add(
+        'upload',
+        {
+          documentId: document.id,
+          familyId,
+          userId: user.id,
+          file: {
+            buffer: file.buffer.toString('base64'),
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size,
+          },
         },
-      },
-      {
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 2000,
+        {
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2000,
+          },
+          removeOnComplete: true,
+          removeOnFail: false,
         },
-        removeOnComplete: true,
-        removeOnFail: false,
-      },
-    );
+      );
 
-    // Return immediately with the pending document
-    return document;
+      // Return immediately with the pending document
+      return document;
+    } else {
+      // Process upload synchronously (when worker is not available)
+      this.logger.log(`Processing document upload synchronously for ${document.id}`);
+      return this.documentsService.processUploadSync(document.id, familyId, user.id, file);
+    }
   }
 
   @Get()
