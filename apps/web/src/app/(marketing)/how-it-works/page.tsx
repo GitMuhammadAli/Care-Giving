@@ -131,9 +131,9 @@ export default function HowItWorksPage() {
                     Get started free
                   </Button>
                 </Link>
-                <Button variant="editorial-outline" size="lg" className="gap-2">
+                <Button variant="editorial-outline" size="lg" className="gap-2 opacity-60 cursor-not-allowed" disabled>
                   <PlayCircle className="w-4 h-4" />
-                  Watch demo
+                  Demo coming soon
                 </Button>
               </motion.div>
             </div>
