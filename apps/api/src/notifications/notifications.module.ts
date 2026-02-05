@@ -6,10 +6,12 @@ import { GatewayModule } from '../gateway/gateway.module';
 import { WebPushService } from './web-push.service';
 import { ReminderSchedulerService } from './reminder-scheduler.service';
 import { PrismaModule } from '../prisma/prisma.module';
+import { SystemModule } from '../system/system.module';
 
 @Module({
   imports: [
     PrismaModule,
+    SystemModule, // For LockHelper (distributed locking)
     BullModule.registerQueue({
       name: 'notifications',
     }),
