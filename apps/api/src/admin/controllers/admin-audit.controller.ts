@@ -5,6 +5,7 @@ import {
   Param,
   UseGuards,
   Res,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
@@ -38,7 +39,7 @@ export class AdminAuditController {
   @Get('user/:userId')
   @ApiOperation({ summary: 'Get audit trail for specific user' })
   @ApiResponse({ status: 200, description: 'User audit trail' })
-  getUserAuditTrail(@Param('userId') userId: string) {
+  getUserAuditTrail(@Param('userId', ParseUUIDPipe) userId: string) {
     return this.adminAuditService.getUserAuditTrail(userId);
   }
 

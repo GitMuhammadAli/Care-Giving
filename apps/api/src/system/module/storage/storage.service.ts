@@ -11,7 +11,34 @@ export interface UploadOptions {
   transformation?: any;
   contentType?: string;
   skipLimitCheck?: boolean; // For system uploads
+  skipMimeValidation?: boolean; // For trusted system uploads
 }
+
+// SECURITY: Whitelist of allowed MIME types for file uploads
+const ALLOWED_MIME_TYPES = {
+  // Images
+  'image/jpeg': ['.jpg', '.jpeg'],
+  'image/png': ['.png'],
+  'image/gif': ['.gif'],
+  'image/webp': ['.webp'],
+  'image/svg+xml': ['.svg'],
+  // Documents
+  'application/pdf': ['.pdf'],
+  'application/msword': ['.doc'],
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+  'application/vnd.ms-excel': ['.xls'],
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+  'text/plain': ['.txt'],
+  'text/csv': ['.csv'],
+  // Videos (for care documentation)
+  'video/mp4': ['.mp4'],
+  'video/webm': ['.webm'],
+  'video/quicktime': ['.mov'],
+  // Audio (for voice notes)
+  'audio/mpeg': ['.mp3'],
+  'audio/wav': ['.wav'],
+  'audio/webm': ['.weba'],
+};
 
 export interface StorageProvider {
   upload(file: Express.Multer.File, options?: UploadOptions): Promise<UploadResult>;
@@ -55,7 +82,7 @@ export class StorageService {
         this.cloudinaryConfigured = true;
         // Log the cloud name to verify config is correct
         const config = cloudinary.config();
-        console.log('[StorageService] Cloudinary configured via URL, cloud_name:', config.cloud_name);
+        this.logger.log(`Cloudinary configured via URL, cloud_name: ${config.cloud_name}`);
       } else if (cloudinaryConfig?.cloudName && cloudinaryConfig?.apiKey && cloudinaryConfig?.apiSecret) {
         cloudinary.config({
           cloud_name: cloudinaryConfig.cloudName,
@@ -64,10 +91,10 @@ export class StorageService {
           secure: true,
         });
         this.cloudinaryConfigured = true;
-        console.log('[StorageService] Cloudinary configured via credentials');
+        this.logger.log('Cloudinary configured via credentials');
       } else {
         this.cloudinaryConfigured = false;
-        console.log('[StorageService] Cloudinary NOT configured - missing credentials');
+        this.logger.warn('Cloudinary NOT configured - missing credentials');
       }
     } else {
       this.cloudinaryConfigured = false;
@@ -78,13 +105,28 @@ export class StorageService {
     file: Express.Multer.File,
     options: UploadOptions = {},
   ): Promise<UploadResult> {
-    console.log('[StorageService] Upload called:', {
-      filename: file.originalname,
-      mimetype: file.mimetype,
-      size: file.size,
-      cloudinaryConfigured: this.cloudinaryConfigured,
-      resourceType: options.resourceType,
-    });
+    this.logger.debug(`Upload called: filename=${file.originalname}, mimetype=${file.mimetype}, size=${file.size}`);
+
+    // SECURITY: Validate MIME type against whitelist
+    if (!options.skipMimeValidation) {
+      const allowedTypes = Object.keys(ALLOWED_MIME_TYPES);
+      if (!allowedTypes.includes(file.mimetype)) {
+        this.logger.warn(`Rejected file upload with disallowed MIME type: ${file.mimetype}`);
+        throw new BadRequestException(
+          `File type '${file.mimetype}' is not allowed. Allowed types: images, PDF, Word, Excel, text, video, and audio files.`,
+        );
+      }
+
+      // Additional check: verify extension matches MIME type
+      const ext = '.' + file.originalname.split('.').pop()?.toLowerCase();
+      const allowedExtensions = ALLOWED_MIME_TYPES[file.mimetype as keyof typeof ALLOWED_MIME_TYPES];
+      if (allowedExtensions && !allowedExtensions.includes(ext)) {
+        this.logger.warn(`File extension ${ext} doesn't match MIME type ${file.mimetype}`);
+        throw new BadRequestException(
+          `File extension doesn't match the file type. This may indicate a potentially malicious file.`,
+        );
+      }
+    }
 
     // Check file size limit
     if (file.size > this.maxFileSizeBytes) {
@@ -119,7 +161,7 @@ export class StorageService {
     }
 
     if (!this.cloudinaryConfigured) {
-      console.log('[StorageService] Cloudinary not configured, using local fallback');
+      this.logger.debug('Cloudinary not configured, using local fallback');
       return this.uploadLocal(file, options);
     }
 
@@ -141,7 +183,7 @@ export class StorageService {
         },
         async (error, result) => {
           if (error) {
-            console.error('[StorageService] Cloudinary upload error:', error);
+            this.logger.error(`Cloudinary upload error: ${error.message}`);
             reject(error);
           } else if (result) {
             // Track successful upload
@@ -153,12 +195,7 @@ export class StorageService {
               );
             }
 
-            console.log('[StorageService] Cloudinary upload success:', {
-              url: result.secure_url,
-              publicId: result.public_id,
-              format: result.format,
-              resourceType: result.resource_type,
-            });
+            this.logger.debug(`Cloudinary upload success: publicId=${result.public_id}, format=${result.format}`);
             resolve({
               url: result.secure_url,
               key: result.public_id,
@@ -178,11 +215,11 @@ export class StorageService {
       return;
     }
 
-    console.log('[StorageService] Deleting from Cloudinary:', { key, resourceType });
+    this.logger.debug(`Deleting from Cloudinary: key=${key}, resourceType=${resourceType}`);
     const result = await cloudinary.uploader.destroy(key, {
       resource_type: resourceType,
     });
-    console.log('[StorageService] Delete result:', result);
+    this.logger.debug(`Delete result: ${JSON.stringify(result)}`);
   }
 
   async getSignedUrl(key: string, mimeType?: string): Promise<string> {

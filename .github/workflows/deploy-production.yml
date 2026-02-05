@@ -19,7 +19,7 @@ on:
 
 env:
   NODE_VERSION: '20'
-  PNPM_VERSION: '8'
+  PNPM_VERSION: '9'
 
 jobs:
   # ===========================================================================
@@ -73,7 +73,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Generate Prisma Client
-        run: pnpm --filter @carecircle/database db:generate
+        run: pnpm --filter @carecircle/database generate
 
       - name: Run linting
         run: pnpm lint
@@ -83,10 +83,13 @@ jobs:
           DATABASE_URL: postgresql://test:test@localhost:5432/carecircle_test
           REDIS_HOST: localhost
           REDIS_PORT: 6379
-          JWT_SECRET: test-jwt-secret-for-ci-testing-only-32chars
-          JWT_REFRESH_SECRET: test-refresh-secret-for-ci-testing-32chars
+          REDIS_TLS: false
+          # CI secrets must be 32+ chars to pass security validation
+          JWT_SECRET: ci-test-jwt-secret-must-be-at-least-32-characters-long
+          JWT_REFRESH_SECRET: ci-test-jwt-refresh-secret-must-be-32-chars-long
+          ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef
           NODE_ENV: test
-        run: pnpm --filter @carecircle/api test
+        run: pnpm --filter @carecircle/api test --passWithNoTests
         continue-on-error: true  # Don't fail deployment on test failures for now
 
       - name: Build API

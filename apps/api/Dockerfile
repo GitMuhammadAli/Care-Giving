@@ -53,8 +53,8 @@ USER nestjs
 
 WORKDIR /app/apps/api
 
-# Expose port
-EXPOSE 3001
+# Expose port (matches the default PORT in the app)
+EXPOSE 4000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

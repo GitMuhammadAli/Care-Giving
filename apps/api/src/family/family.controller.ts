@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   UseGuards,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { FamilyService } from './family.service';
@@ -43,7 +44,7 @@ export class FamilyController {
   @ApiOperation({ summary: 'Get family details by ID' })
   @ApiResponse({ status: 200, description: 'Family details' })
   @ApiResponse({ status: 403, description: 'Not a member of this family' })
-  getFamily(@Param('familyId') familyId: string, @CurrentUser() user: CurrentUserPayload) {
+  getFamily(@Param('familyId', ParseUUIDPipe) familyId: string, @CurrentUser() user: CurrentUserPayload) {
     return this.familyService.getFamily(familyId, user.id);
   }
 
@@ -51,7 +52,7 @@ export class FamilyController {
   @ApiOperation({ summary: 'Get all members of a family' })
   @ApiResponse({ status: 200, description: 'List of family members' })
   @ApiResponse({ status: 403, description: 'Not a member of this family' })
-  getMembers(@Param('familyId') familyId: string, @CurrentUser() user: CurrentUserPayload) {
+  getMembers(@Param('familyId', ParseUUIDPipe) familyId: string, @CurrentUser() user: CurrentUserPayload) {
     return this.familyService.getMembers(familyId, user.id);
   }
 
@@ -59,7 +60,7 @@ export class FamilyController {
   @ApiOperation({ summary: 'Get pending invitations for a family' })
   @ApiResponse({ status: 200, description: 'List of pending invitations' })
   @ApiResponse({ status: 403, description: 'Not a member of this family' })
-  getPendingInvitations(@Param('familyId') familyId: string, @CurrentUser() user: CurrentUserPayload) {
+  getPendingInvitations(@Param('familyId', ParseUUIDPipe) familyId: string, @CurrentUser() user: CurrentUserPayload) {
     return this.familyService.getPendingInvitations(familyId, user.id);
   }
 
@@ -68,7 +69,7 @@ export class FamilyController {
   @ApiResponse({ status: 200, description: 'Family updated successfully' })
   @ApiResponse({ status: 403, description: 'Only admins can update the family' })
   updateFamily(
-    @Param('familyId') familyId: string,
+    @Param('familyId', ParseUUIDPipe) familyId: string,
     @CurrentUser() user: CurrentUserPayload,
     @Body() dto: UpdateFamilyDto,
   ) {
@@ -79,7 +80,7 @@ export class FamilyController {
   @ApiOperation({ summary: 'Delete a family (Admin only)' })
   @ApiResponse({ status: 200, description: 'Family deleted successfully' })
   @ApiResponse({ status: 403, description: 'Only admins can delete the family' })
-  deleteFamily(@Param('familyId') familyId: string, @CurrentUser() user: CurrentUserPayload) {
+  deleteFamily(@Param('familyId', ParseUUIDPipe) familyId: string, @CurrentUser() user: CurrentUserPayload) {
     return this.familyService.deleteFamily(familyId, user.id);
   }
 
@@ -88,7 +89,7 @@ export class FamilyController {
   @ApiResponse({ status: 201, description: 'Invitation sent' })
   @ApiResponse({ status: 403, description: 'Only admins can invite members' })
   inviteMember(
-    @Param('familyId') familyId: string,
+    @Param('familyId', ParseUUIDPipe) familyId: string,
     @CurrentUser() user: CurrentUserPayload,
     @Body() dto: InviteMemberDto,
   ) {
@@ -128,8 +129,8 @@ export class FamilyController {
   @ApiResponse({ status: 403, description: 'Only admins can update member roles' })
   @ApiResponse({ status: 404, description: 'Member not found' })
   updateMemberRole(
-    @Param('familyId') familyId: string,
-    @Param('memberId') memberId: string,
+    @Param('familyId', ParseUUIDPipe) familyId: string,
+    @Param('memberId', ParseUUIDPipe) memberId: string,
     @CurrentUser() user: CurrentUserPayload,
     @Body() dto: UpdateMemberRoleDto,
   ) {
@@ -142,8 +143,8 @@ export class FamilyController {
   @ApiResponse({ status: 403, description: 'Only admins can remove members' })
   @ApiResponse({ status: 404, description: 'Member not found' })
   removeMember(
-    @Param('familyId') familyId: string,
-    @Param('memberId') memberId: string,
+    @Param('familyId', ParseUUIDPipe) familyId: string,
+    @Param('memberId', ParseUUIDPipe) memberId: string,
     @CurrentUser() user: CurrentUserPayload,
   ) {
     return this.familyService.removeMember(familyId, memberId, user.id);
@@ -155,8 +156,8 @@ export class FamilyController {
   @ApiResponse({ status: 403, description: 'Only admins can reset passwords' })
   @ApiResponse({ status: 404, description: 'Member not found' })
   resetMemberPassword(
-    @Param('familyId') familyId: string,
-    @Param('userId') userId: string,
+    @Param('familyId', ParseUUIDPipe) familyId: string,
+    @Param('userId', ParseUUIDPipe) userId: string,
     @CurrentUser() user: CurrentUserPayload,
   ) {
     return this.familyService.resetMemberPassword(familyId, userId, user.id);
@@ -168,7 +169,7 @@ export class FamilyController {
   @ApiResponse({ status: 403, description: 'Only admins can cancel invitations' })
   @ApiResponse({ status: 404, description: 'Invitation not found' })
   cancelInvitation(
-    @Param('invitationId') invitationId: string,
+    @Param('invitationId', ParseUUIDPipe) invitationId: string,
     @CurrentUser() user: CurrentUserPayload,
   ) {
     return this.familyService.cancelInvitation(invitationId, user.id);
@@ -180,7 +181,7 @@ export class FamilyController {
   @ApiResponse({ status: 403, description: 'Only admins can resend invitations' })
   @ApiResponse({ status: 404, description: 'Invitation not found' })
   resendInvitation(
-    @Param('invitationId') invitationId: string,
+    @Param('invitationId', ParseUUIDPipe) invitationId: string,
     @CurrentUser() user: CurrentUserPayload,
   ) {
     return this.familyService.resendInvitation(invitationId, user.id);

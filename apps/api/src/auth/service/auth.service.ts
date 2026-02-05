@@ -69,8 +69,8 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
 
-    // Generate 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    // Generate 8-digit OTP for stronger security
+    const otp = Math.floor(10000000 + Math.random() * 90000000).toString();
     const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
     const user = await this.prisma.user.create({
@@ -420,12 +420,12 @@ export class AuthService {
 
   async getProfile(userId: string) {
     const cacheKey = CACHE_KEYS.USER_PROFILE(userId);
-    console.log('getProfile called for user:', userId, 'cacheKey:', cacheKey);
+    this.logger.debug(`getProfile called for user: ${userId}, cacheKey: ${cacheKey}`);
 
     return this.cacheService.getOrSet(
       cacheKey,
       async () => {
-        console.log('getProfile - Cache MISS, fetching from database for user:', userId);
+        this.logger.debug(`getProfile - Cache MISS, fetching from database for user: ${userId}`);
         const user = await this.prisma.user.findUnique({
           where: { id: userId },
           include: {
@@ -509,7 +509,7 @@ export class AuthService {
     ]);
     // Also use pattern-based invalidation for thorough cleanup
     await this.cacheService.delPattern(`user:*${userId}*`);
-    console.log(`Invalidated all cache for user: ${userId}`);
+    this.logger.debug(`Invalidated all cache for user: ${userId}`);
     return { message: 'Cache invalidated successfully' };
   }
 
@@ -535,8 +535,20 @@ export class AuthService {
   }
 
   async verifyEmail(email: string, otp: string) {
+    const normalizedEmail = email.toLowerCase();
+    const attemptKey = `otp_attempts:${normalizedEmail}`;
+    const maxAttempts = 5;
+
+    // Check if user is locked out due to too many failed attempts
+    const currentAttempts = await this.cacheService.get<number>(attemptKey) || 0;
+    if (currentAttempts >= maxAttempts) {
+      throw new BadRequestException(
+        'Too many failed verification attempts. Please request a new code.'
+      );
+    }
+
     const user = await this.prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+      where: { email: normalizedEmail },
     });
 
     if (!user) {
@@ -556,8 +568,13 @@ export class AuthService {
     }
 
     if (user.emailVerificationCode !== otp) {
+      // Increment failed attempt counter (expires after 15 minutes)
+      await this.cacheService.set(attemptKey, currentAttempts + 1, 900);
       throw new BadRequestException(AUTH_MESSAGES.VERIFICATION_CODE_INVALID);
     }
+
+    // Clear attempt counter on successful verification
+    await this.cacheService.del([attemptKey]);
 
     // Verify the email and activate the user
     await this.prisma.user.update({
@@ -645,9 +662,12 @@ export class AuthService {
       }
     }
 
-    // Always generate a fresh 6-digit OTP (overwrites any existing code)
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    // Always generate a fresh 8-digit OTP (overwrites any existing code)
+    const otp = Math.floor(10000000 + Math.random() * 90000000).toString();
     const otpExpiresAt = new Date(Date.now() + codeValidityWindow);
+
+    // Clear any previous failed attempt counter when resending
+    await this.cacheService.del([`otp_attempts:${user.email.toLowerCase()}`]);
 
     // Update database - this overwrites any previous code
     await this.prisma.user.update({
@@ -733,12 +753,7 @@ export class AuthService {
       careRecipients: membership.family.careRecipients || [],
     })) || [];
 
-    console.log('Auth Service - sanitizeUser:', {
-      userId: user.id,
-      hasFamilyMemberships: !!familyMemberships,
-      membershipCount: familyMemberships?.length || 0,
-      families: families,
-    });
+    this.logger.debug(`Auth Service - sanitizeUser: userId=${user.id}, membershipCount=${familyMemberships?.length || 0}`);
 
     return {
       ...sanitized,
