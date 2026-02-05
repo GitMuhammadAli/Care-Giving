@@ -538,10 +538,29 @@ export class AuthService {
       throw new BadRequestException('Email already verified');
     }
 
-    // Generate new 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+    const now = new Date();
+    const rateLimitWindow = 60 * 1000; // 60 seconds - minimum time between requests
+    const codeValidityWindow = 5 * 60 * 1000; // 5 minutes - how long code stays valid
 
+    // Check rate limiting - prevent spam
+    if (user.emailVerificationCode && user.emailVerificationExpiresAt) {
+      const codeCreatedAt = new Date(user.emailVerificationExpiresAt.getTime() - codeValidityWindow);
+      const timeSinceLastCode = now.getTime() - codeCreatedAt.getTime();
+
+      // If code was sent less than 60 seconds ago, reject the request
+      if (timeSinceLastCode < rateLimitWindow) {
+        const waitSeconds = Math.ceil((rateLimitWindow - timeSinceLastCode) / 1000);
+        throw new BadRequestException(
+          `Please wait ${waitSeconds} seconds before requesting a new code`
+        );
+      }
+    }
+
+    // Always generate a fresh 6-digit OTP (overwrites any existing code)
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiresAt = new Date(Date.now() + codeValidityWindow);
+
+    // Update database - this overwrites any previous code
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
@@ -550,7 +569,7 @@ export class AuthService {
       },
     });
 
-    // Send verification email
+    // Send verification email with the new code
     await this.mailService.sendEmailVerification(
       user.email,
       otp,

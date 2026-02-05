@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
+import { SystemModule } from '../system/system.module';
 
 // Guards
 import { AdminGuard, SuperAdminGuard } from './guards';
@@ -23,7 +24,7 @@ import {
 } from './controllers';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, SystemModule],
   controllers: [
     AdminUsersController,
     AdminFamiliesController,

@@ -8,21 +8,36 @@ import {
   MessageBody,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Injectable, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Inject, forwardRef, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AuthService } from '../auth/service/auth.service';
 
 @Injectable()
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: (origin, callback) => {
+      // Allow connections from configured frontend URL or localhost in development
+      const allowedOrigins = [
+        process.env.FRONTEND_URL,
+        'http://localhost:3000',
+        'http://localhost:4173',
+      ].filter(Boolean);
+
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
   },
   namespace: '/',
 })
 export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
+  private readonly logger = new Logger(EventsGateway.name);
+
   @WebSocketServer()
   server: Server;
-
-  private userSockets = new Map<string, string[]>(); // userId -> socketIds
 
   constructor(
     @Inject(forwardRef(() => AuthService))
@@ -32,42 +47,38 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleConnection(client: Socket) {
     try {
       const token = client.handshake.auth.token || client.handshake.headers.authorization?.replace('Bearer ', '');
-      
+
       if (token) {
         const user = await this.authService.validateToken(token);
-        
+
         if (!user) {
-          console.log(`Client connection failed - invalid token: ${client.id}`);
+          this.logger.debug(`Client connection failed - invalid token: ${client.id}`);
           client.disconnect();
           return;
         }
-        
+
         client.data.userId = user.id;
-        
-        const existing = this.userSockets.get(user.id) || [];
-        existing.push(client.id);
-        this.userSockets.set(user.id, existing);
-        
-        console.log(`Client connected: ${client.id} (user: ${user.id})`);
+
+        // Join user-specific room for efficient routing (replaces socket ID tracking)
+        client.join(`user:${user.id}`);
+
+        this.logger.debug(`Client connected: ${client.id} (user: ${user.id})`);
       }
     } catch (error) {
-      console.log(`Client connection failed: ${client.id}`);
+      this.logger.debug(`Client connection failed: ${client.id}`);
       client.disconnect();
     }
   }
 
   handleDisconnect(client: Socket) {
     const userId = client.data.userId;
-    
+
     if (userId) {
-      const existing = this.userSockets.get(userId) || [];
-      this.userSockets.set(
-        userId,
-        existing.filter((id) => id !== client.id),
-      );
+      // Socket.IO automatically removes client from all rooms on disconnect
+      this.logger.debug(`Client disconnected: ${client.id} (user: ${userId})`);
+    } else {
+      this.logger.debug(`Client disconnected: ${client.id}`);
     }
-    
-    console.log(`Client disconnected: ${client.id}`);
   }
 
   @SubscribeMessage('joinFamily')
@@ -106,13 +117,9 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(`care-recipient:${careRecipientId}`).emit(event, data);
   }
 
-  // Emit to specific user (all their devices)
+  // Emit to specific user (all their devices) - uses room-based routing
   emitToUser(userId: string, event: string, data: any) {
-    const socketIds = this.userSockets.get(userId) || [];
-    
-    for (const socketId of socketIds) {
-      this.server.to(socketId).emit(event, data);
-    }
+    this.server.to(`user:${userId}`).emit(event, data);
   }
 
   // Broadcast to all connected clients
