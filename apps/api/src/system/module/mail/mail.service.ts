@@ -1,8 +1,10 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, Inject, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { Transporter } from 'nodemailer';
 import { LimitsService, ResourceType, PeriodType } from '../limits';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { EmailStatus } from '@prisma/client';
 
 export interface SendMailOptions {
   to: string | string[];
@@ -46,8 +48,71 @@ export class MailService implements OnModuleInit {
   constructor(
     private configService: ConfigService,
     private readonly limitsService: LimitsService,
+    @Optional() private readonly prisma: PrismaService,
   ) {
     this.provider = this.configService.get('mail.provider') || 'smtp';
+  }
+
+  /**
+   * Log email send attempt to database
+   */
+  private async logEmailStart(
+    to: string,
+    subject: string,
+    template?: string,
+  ): Promise<string | null> {
+    if (!this.prisma) return null;
+    try {
+      const log = await this.prisma.emailLog.create({
+        data: {
+          to,
+          subject,
+          template,
+          provider: this.brevoConfig ? 'brevo' : 'smtp',
+          status: EmailStatus.PENDING,
+        },
+      });
+      return log.id;
+    } catch (error) {
+      this.logger.warn(`Failed to log email start: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Update email log as sent
+   */
+  private async logEmailSent(logId: string | null): Promise<void> {
+    if (!this.prisma || !logId) return;
+    try {
+      await this.prisma.emailLog.update({
+        where: { id: logId },
+        data: {
+          status: EmailStatus.SENT,
+          sentAt: new Date(),
+        },
+      });
+    } catch (error) {
+      this.logger.warn(`Failed to update email log as sent: ${error.message}`);
+    }
+  }
+
+  /**
+   * Update email log as failed
+   */
+  private async logEmailFailed(logId: string | null, error: string): Promise<void> {
+    if (!this.prisma || !logId) return;
+    try {
+      await this.prisma.emailLog.update({
+        where: { id: logId },
+        data: {
+          status: EmailStatus.FAILED,
+          error,
+        },
+      });
+    } catch (err) {
+      this.logger.warn(`Failed to update email log as failed: ${err.message}`);
+    }
   }
 
   async onModuleInit(): Promise<void> {
@@ -216,6 +281,9 @@ export class MailService implements OnModuleInit {
     const recipientCount = Array.isArray(options.to) ? options.to.length : 1;
     const recipients = Array.isArray(options.to) ? options.to.join(', ') : options.to;
 
+    // Log email attempt to database
+    const emailLogId = await this.logEmailStart(recipients, options.subject, options.template);
+
     // Check email limits (unless explicitly skipped for critical emails)
     if (!options.skipLimitCheck) {
       try {
@@ -227,6 +295,7 @@ export class MailService implements OnModuleInit {
 
         if (!allowed) {
           this.logger.error(`Email limit reached (${status.count}/${status.limit}). Email to ${recipients} blocked.`);
+          await this.logEmailFailed(emailLogId, 'Daily email limit reached');
           throw new Error('Daily email limit reached. Please try again tomorrow.');
         }
 
@@ -254,6 +323,9 @@ export class MailService implements OnModuleInit {
         this.logger.log(`Sending email to ${recipients} via Brevo HTTP API...`);
         await this.sendViaBrevo(recipients, options.subject, mailContent, options.attachments);
 
+        // Mark as sent in log
+        await this.logEmailSent(emailLogId);
+
         // Track usage after successful send
         try {
           await this.limitsService.incrementUsage(
@@ -267,6 +339,7 @@ export class MailService implements OnModuleInit {
         return;
       } catch (error) {
         this.logger.error(`❌ Failed to send email via Brevo: ${error.message}`);
+        await this.logEmailFailed(emailLogId, error.message);
         throw error;
       }
     }
@@ -275,6 +348,7 @@ export class MailService implements OnModuleInit {
     if (!this.transporter || !this.smtpConfig) {
       this.logger.warn(`No mail provider configured, logging email instead`);
       this.logEmail(recipients, options.subject, mailContent);
+      await this.logEmailFailed(emailLogId, 'No mail provider configured');
       return;
     }
 
@@ -293,6 +367,9 @@ export class MailService implements OnModuleInit {
 
       this.logger.log(`✅ Email sent successfully! MessageId: ${result.messageId}`);
 
+      // Mark as sent in log
+      await this.logEmailSent(emailLogId);
+
       // Track usage after successful send
       try {
         await this.limitsService.incrementUsage(
@@ -306,6 +383,7 @@ export class MailService implements OnModuleInit {
     } catch (error) {
       this.logger.error(`❌ Failed to send email to ${recipients}: ${error.message}`);
       this.logger.error(`   Stack: ${error.stack}`);
+      await this.logEmailFailed(emailLogId, error.message);
       // Re-throw so callers know the email failed
       throw error;
     }

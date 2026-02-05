@@ -11,6 +11,10 @@ import {
   AdminFamiliesService,
   AdminAnalyticsService,
   AdminAuditService,
+  AdminEmailLogService,
+  AdminAuthLogService,
+  AdminCronLogService,
+  AdminTimeSeriesService,
 } from './services';
 
 // Controllers
@@ -21,6 +25,7 @@ import {
   AdminAuditController,
   AdminSystemController,
   AdminLogsController,
+  AdminMonitoringController,
 } from './controllers';
 
 @Module({
@@ -32,6 +37,7 @@ import {
     AdminAuditController,
     AdminSystemController,
     AdminLogsController,
+    AdminMonitoringController,
   ],
   providers: [
     // Guards
@@ -42,6 +48,10 @@ import {
     AdminFamiliesService,
     AdminAnalyticsService,
     AdminAuditService,
+    AdminEmailLogService,
+    AdminAuthLogService,
+    AdminCronLogService,
+    AdminTimeSeriesService,
   ],
   exports: [
     AdminGuard,
@@ -50,6 +60,10 @@ import {
     AdminFamiliesService,
     AdminAnalyticsService,
     AdminAuditService,
+    AdminEmailLogService,
+    AdminAuthLogService,
+    AdminCronLogService,
+    AdminTimeSeriesService,
   ],
 })
 export class AdminModule {}

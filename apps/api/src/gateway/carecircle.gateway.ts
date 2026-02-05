@@ -76,6 +76,56 @@ export class CareCircleGateway implements OnGatewayConnection, OnGatewayDisconne
     this.logger.log(`Client left family ${data.familyId}`);
   }
 
+  // Admin monitoring room - only for admin users
+  @SubscribeMessage('join_admin_monitoring')
+  handleJoinAdminMonitoring(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { userId: string; isAdmin: boolean },
+  ) {
+    if (data.isAdmin) {
+      client.join('admin:monitoring');
+      this.logger.log(`Admin ${data.userId} joined monitoring room`);
+      // Send initial stats
+      this.emitAdminStats();
+    }
+  }
+
+  @SubscribeMessage('leave_admin_monitoring')
+  handleLeaveAdminMonitoring(@ConnectedSocket() client: Socket) {
+    client.leave('admin:monitoring');
+    this.logger.log('Client left admin monitoring room');
+  }
+
+  // Emit realtime stats to admin dashboard
+  private emitAdminStats() {
+    const stats = {
+      connectedClients: this.server?.engine?.clientsCount || 0,
+      activeUsers: this.userSocketMap.size,
+      timestamp: new Date().toISOString(),
+    };
+    this.server.to('admin:monitoring').emit('admin_stats', stats);
+  }
+
+  // Emit admin stats periodically - called by cron or interval
+  emitRealtimeStats(stats: any) {
+    this.server.to('admin:monitoring').emit('admin_realtime', stats);
+  }
+
+  // Emit when new log entry is created
+  emitNewLogEntry(entry: any) {
+    this.server.to('admin:monitoring').emit('admin_new_log', entry);
+  }
+
+  // Emit when auth event happens
+  emitAuthEvent(event: any) {
+    this.server.to('admin:monitoring').emit('admin_auth_event', event);
+  }
+
+  // Emit when email is sent/fails
+  emitEmailEvent(event: any) {
+    this.server.to('admin:monitoring').emit('admin_email_event', event);
+  }
+
   // Event handlers for real-time updates
   @OnEvent('medication.logged')
   handleMedicationLogged(payload: { log: any; medication: any; loggedBy: any }) {
