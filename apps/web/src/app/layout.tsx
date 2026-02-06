@@ -20,12 +20,20 @@ export const metadata: Metadata = {
   keywords: ['caregiving', 'family care', 'elderly care', 'medication tracking', 'care coordination'],
   authors: [{ name: 'CareCircle' }],
   manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'CareCircle',
+  },
   icons: {
     icon: [
       { url: '/favicon.svg', type: 'image/svg+xml' },
-      { url: '/icons/icon.svg', type: 'image/svg+xml', sizes: 'any' },
+      { url: '/icons/icon-192x192.png', type: 'image/png', sizes: '192x192' },
+      { url: '/icons/icon-512x512.png', type: 'image/png', sizes: '512x512' },
     ],
-    apple: { url: '/icons/icon.svg', type: 'image/svg+xml' },
+    apple: [
+      { url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
   },
   openGraph: {
     type: 'website',

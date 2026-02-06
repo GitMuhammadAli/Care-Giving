@@ -9,7 +9,9 @@
     "build:analyze": "ANALYZE=true next build",
     "prestart": "npx kill-port 4173 || echo Port 4173 was free",
     "start": "next start -p 4173",
-    "lint": "next lint"
+    "lint": "next lint",
+    "generate:icons": "node scripts/generate-icons.js",
+    "generate:screenshots": "node scripts/generate-screenshots.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.2",
@@ -58,6 +60,7 @@
     "eslint-config-next": "14.0.4",
     "kill-port": "^2.0.1",
     "postcss": "^8.4.33",
+    "sharp": "^0.33.5",
     "tailwindcss": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.3.3"
