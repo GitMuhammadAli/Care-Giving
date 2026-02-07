@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card';
 import { Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { authApi } from '@/lib/api';
 import { ApiError } from '@/lib/api/client';
+import { AUTH, FORM } from '@/lib/messages';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -25,37 +26,28 @@ export default function ForgotPasswordPage() {
     // Basic email format validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setError('Please enter a valid email address');
-      toast.error('Please enter a valid email address');
+      setError(FORM.INVALID_EMAIL);
+      toast.error(FORM.INVALID_EMAIL);
       setIsLoading(false);
       return;
     }
 
     try {
       await authApi.forgotPassword(email);
-      // Show success toast - don't reveal if email exists (security)
-      toast.success('Request received! Check your inbox.', {
-        duration: 4000,
-        icon: '📧',
-      });
+      toast.success(AUTH.RESET_LINK_SENT, { duration: 4000 });
       setIsSubmitted(true);
     } catch (err) {
       if (err instanceof ApiError) {
-        // Rate limit or server errors - show specific message
         if (err.status === 429) {
-          setError('Too many requests. Please wait a few minutes before trying again.');
-          toast.error('Too many requests. Please try again later.');
+          setError(AUTH.RATE_LIMITED);
+          toast.error(AUTH.RATE_LIMITED);
         } else {
           setError(err.message);
           toast.error(err.message);
         }
       } else {
         // Network or unexpected error - still show success for security
-        // (don't let attackers know if the request failed)
-        toast.success('Request received! Check your inbox.', {
-          duration: 4000,
-          icon: '📧',
-        });
+        toast.success(AUTH.RESET_LINK_SENT, { duration: 4000 });
         setIsSubmitted(true);
       }
     } finally {

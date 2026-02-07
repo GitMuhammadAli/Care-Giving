@@ -69,8 +69,8 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
 
-    // Generate 8-digit OTP for stronger security
-    const otp = Math.floor(10000000 + Math.random() * 90000000).toString();
+    // Generate 6-digit OTP (industry standard, matches frontend input boxes)
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
     const user = await this.prisma.user.create({
@@ -132,6 +132,18 @@ export class AuthService {
       );
       // Security: Don't reveal if email exists, but provide helpful guidance
       throw new UnauthorizedException(AUTH_MESSAGES.INVALID_CREDENTIALS);
+    }
+
+    if (user.status === 'PENDING' || !user.emailVerified) {
+      await this.logAuthEvent(
+        AuthEvent.LOGIN_FAILED, 
+        dto.email, 
+        user.id, 
+        ipAddress, 
+        userAgent,
+        { reason: 'email_not_verified', status: user.status }
+      );
+      throw new UnauthorizedException(AUTH_MESSAGES.EMAIL_NOT_VERIFIED);
     }
 
     if (user.status !== 'ACTIVE') {
@@ -662,8 +674,8 @@ export class AuthService {
       }
     }
 
-    // Always generate a fresh 8-digit OTP (overwrites any existing code)
-    const otp = Math.floor(10000000 + Math.random() * 90000000).toString();
+    // Always generate a fresh 6-digit OTP (overwrites any existing code)
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiresAt = new Date(Date.now() + codeValidityWindow);
 
     // Clear any previous failed attempt counter when resending
