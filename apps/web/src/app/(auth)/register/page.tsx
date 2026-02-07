@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { Eye, EyeOff, Heart, Check } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { ApiError } from '@/lib/api/client';
+import { AUTH } from '@/lib/messages';
 
 /**
  * UNIQUE "Growth Journey" Register Animation
@@ -111,16 +112,14 @@ export default function RegisterPage() {
     setError('');
 
     if (passwordStrength.score < 4) {
-      const passwordError = 'Please meet all password requirements';
-      setError(passwordError);
-      toast.error(passwordError);
+      setError(AUTH.PASSWORD_REQUIREMENTS);
+      toast.error(AUTH.PASSWORD_REQUIREMENTS);
       return;
     }
 
     if (!agreed) {
-      const termsError = 'Please agree to the Terms of Service and Privacy Policy';
-      setError(termsError);
-      toast.error(termsError);
+      setError(AUTH.ACCEPT_TERMS);
+      toast.error(AUTH.ACCEPT_TERMS);
       return;
     }
 
@@ -132,20 +131,19 @@ export default function RegisterPage() {
         email: formData.email,
         password: formData.password,
       });
-      toast.success('Account created! Please check your email to verify your account.');
+      toast.success(AUTH.REGISTER_SUCCESS);
       const verifyUrl = returnUrl
         ? `/verify-email?email=${encodeURIComponent(formData.email)}&returnUrl=${encodeURIComponent(returnUrl)}`
         : `/verify-email?email=${encodeURIComponent(formData.email)}`;
       router.push(verifyUrl);
     } catch (err) {
       if (err instanceof ApiError) {
-        const errorMsg = err.message || 'Failed to create account. Please try again.';
+        const errorMsg = err.message || AUTH.REGISTER_FAILED;
         setError(errorMsg);
         toast.error(errorMsg);
       } else {
-        const genericError = 'Failed to create account. Please try again.';
-        setError(genericError);
-        toast.error(genericError);
+        setError(AUTH.REGISTER_FAILED);
+        toast.error(AUTH.REGISTER_FAILED);
       }
     } finally {
       setIsLoading(false);

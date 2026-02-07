@@ -13,6 +13,7 @@ import { Eye, EyeOff, Lock, CheckCircle2, XCircle, ArrowLeft, Shield, Loader2 } 
 import { authApi } from '@/lib/api';
 import { ApiError } from '@/lib/api/client';
 import { useAuth } from '@/hooks/use-auth';
+import { AUTH } from '@/lib/messages';
 
 type TokenStatus = 'verifying' | 'valid' | 'invalid' | 'missing';
 
@@ -66,9 +67,9 @@ function ResetPasswordForm() {
       } catch (err) {
         setTokenStatus('invalid');
         if (err instanceof ApiError) {
-          setTokenError(err.message || 'Invalid or expired reset link');
+          setTokenError(err.message || AUTH.RESET_TOKEN_INVALID);
         } else {
-          setTokenError('Invalid or expired reset link');
+          setTokenError(AUTH.RESET_TOKEN_INVALID);
         }
       }
     };
@@ -184,21 +185,21 @@ function ResetPasswordForm() {
     setError('');
 
     if (!token) {
-      setError('Reset token is missing');
+      setError(AUTH.RESET_TOKEN_MISSING);
       return;
     }
 
     // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      toast.error('Passwords do not match');
+      setError(AUTH.PASSWORDS_NO_MATCH);
+      toast.error(AUTH.PASSWORDS_NO_MATCH);
       return;
     }
 
     // Validate password strength
     if (!isPasswordValid) {
-      setError('Password does not meet requirements');
-      toast.error('Password does not meet requirements');
+      setError(AUTH.PASSWORD_WEAK);
+      toast.error(AUTH.PASSWORD_WEAK);
       return;
     }
 
@@ -211,16 +212,15 @@ function ResetPasswordForm() {
         clearAuth();
       }
       setIsSuccess(true);
-      toast.success('Password reset successful!');
+      toast.success(AUTH.RESET_SUCCESS);
     } catch (err) {
       if (err instanceof ApiError) {
-        const errorMsg = err.message || 'Failed to reset password';
+        const errorMsg = err.message || AUTH.RESET_FAILED;
         setError(errorMsg);
         toast.error(errorMsg);
       } else {
-        const genericError = 'Failed to reset password. The link may have expired.';
-        setError(genericError);
-        toast.error(genericError);
+        setError(AUTH.RESET_FAILED);
+        toast.error(AUTH.RESET_FAILED);
       }
     } finally {
       setIsLoading(false);

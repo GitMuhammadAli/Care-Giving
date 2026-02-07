@@ -9,6 +9,8 @@ const STATIC_ASSETS = [
   '/manifest.json',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
+  '/icons/badge-72x72.png',
+  '/icons/apple-touch-icon.png',
 ];
 
 // Install event - cache static assets

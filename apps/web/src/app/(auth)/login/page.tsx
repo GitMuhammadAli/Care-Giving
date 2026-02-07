@@ -12,6 +12,7 @@ import { Card } from '@/components/ui/card';
 import { Eye, EyeOff, Heart } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { ApiError } from '@/lib/api/client';
+import { AUTH } from '@/lib/messages';
 
 /**
  * UNIQUE "Welcome Embrace" Login Animation
@@ -91,7 +92,7 @@ export default function LoginPage() {
 
     try {
       await login(formData);
-      toast.success('Welcome back! Redirecting...');
+      toast.success(AUTH.LOGIN_SUCCESS);
       
       // Get the updated user state after login
       const authState = useAuth.getState();
@@ -112,21 +113,19 @@ export default function LoginPage() {
       }
     } catch (err) {
       if (err instanceof ApiError) {
-        const errorMsg = err.message || 'Invalid email or password';
+        const errorMsg = err.message || AUTH.LOGIN_FAILED;
 
         if (errorMsg.toLowerCase().includes('verify') || errorMsg.toLowerCase().includes('verified')) {
           setUnverifiedEmail(formData.email);
-          const verifyMsg = 'Please verify your email address before logging in.';
-          setError(verifyMsg);
-          toast.error(verifyMsg);
+          setError(AUTH.ACCOUNT_NOT_VERIFIED);
+          toast.error(AUTH.ACCOUNT_NOT_VERIFIED);
         } else {
           setError(errorMsg);
           toast.error(errorMsg);
         }
       } else {
-        const genericError = 'Invalid email or password';
-        setError(genericError);
-        toast.error(genericError);
+        setError(AUTH.LOGIN_FAILED);
+        toast.error(AUTH.LOGIN_FAILED);
       }
       setIsLoading(false);
     }
