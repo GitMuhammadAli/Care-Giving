@@ -34,9 +34,12 @@ const nextConfig = {
   poweredByHeader: false, // Remove X-Powered-By header for security
   compress: true, // Enable gzip compression
   
-  experimental: {
-    instrumentationHook: true,
-  },
+  // NOTE: instrumentationHook is disabled due to a micromatch infinite recursion
+  // bug in Next.js 14.0.4 (RangeError: Maximum call stack size exceeded).
+  // Re-enable after upgrading to Next.js 14.1+ where this is fixed.
+  // experimental: {
+  //   instrumentationHook: true,
+  // },
   
   images: {
     // Optimize images with modern formats
