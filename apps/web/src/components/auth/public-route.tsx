@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, ReactNode } from 'react';
+import { Suspense, useEffect, ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthContext } from '@/components/providers/auth-provider';
 
@@ -24,8 +24,17 @@ interface PublicRouteProps {
  * - Redirects to dashboard if already authenticated (unless allowAuthenticated is true)
  * - Supports returnUrl parameter for redirect after login
  * - Shows loading state while auth is being determined
+ * - Wrapped in Suspense for useSearchParams() (required by Next.js 14.2+)
  */
-export function PublicRoute({
+export function PublicRoute(props: PublicRouteProps) {
+  return (
+    <Suspense fallback={props.loadingComponent || <AuthLoadingSpinner />}>
+      <PublicRouteInner {...props} />
+    </Suspense>
+  );
+}
+
+function PublicRouteInner({
   children,
   redirectTo = '/dashboard',
   loadingComponent,

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -71,7 +71,7 @@ const heartbeatVariants = {
   },
 };
 
-export default function LoginPage() {
+function LoginContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { login, user } = useAuth();
@@ -313,5 +313,17 @@ export default function LoginPage() {
         Your data is protected with enterprise-grade security
       </motion.p>
     </motion.div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="w-full max-w-md mx-auto flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sage" />
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }

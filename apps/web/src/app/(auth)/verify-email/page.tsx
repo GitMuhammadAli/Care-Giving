@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -14,7 +14,7 @@ import { ApiError } from '@/lib/api/client';
 import { useAuth } from '@/hooks/use-auth';
 import { AUTH, FORM } from '@/lib/messages';
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const emailParam = searchParams.get('email');
@@ -389,5 +389,17 @@ export default function VerifyEmailPage() {
         </p>
       )}
     </motion.div>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={
+      <div className="w-full max-w-md mx-auto flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sage" />
+      </div>
+    }>
+      <VerifyEmailContent />
+    </Suspense>
   );
 }

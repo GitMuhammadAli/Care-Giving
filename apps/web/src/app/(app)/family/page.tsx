@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/page-header';
@@ -64,7 +64,7 @@ const roleConfig = {
   },
 };
 
-export default function FamilyPage() {
+function FamilyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
@@ -837,5 +837,17 @@ export default function FamilyPage() {
         )}
       </Modal>
     </div>
+  );
+}
+
+export default function FamilyPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sage" />
+      </div>
+    }>
+      <FamilyContent />
+    </Suspense>
   );
 }
