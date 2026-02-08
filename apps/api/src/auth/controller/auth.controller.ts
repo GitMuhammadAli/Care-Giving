@@ -294,6 +294,7 @@ Now all protected endpoints will use this token automatically.
   @Post("change-password")
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth("JWT-auth")
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: "Change password (authenticated)" })
   @ApiResponse({
     status: 200,

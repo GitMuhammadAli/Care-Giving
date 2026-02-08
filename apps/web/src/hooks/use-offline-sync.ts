@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
@@ -21,15 +21,17 @@ export function useOfflineSync() {
   const [syncing, setSyncing] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const queryClient = useQueryClient();
+  // Ref to always access the latest syncPendingActions (avoids stale closure)
+  const syncRef = useRef<() => Promise<void>>();
 
-  // Monitor online status
+  // Monitor online status - uses ref to avoid stale closure
   useEffect(() => {
     const unsubscribe = onOnlineStatusChange((isOnline) => {
       setOnline(isOnline);
       
       if (isOnline) {
         toast.success('Back online! Syncing changes...', { icon: '🌐' });
-        syncPendingActions();
+        syncRef.current?.();
       } else {
         toast('You are offline. Changes will sync when connected.', { 
           icon: '📴',
@@ -106,6 +108,9 @@ export function useOfflineSync() {
     setPendingCount(await getPendingActions().then((p) => p.length));
     setSyncing(false);
   }, [syncing, queryClient]);
+
+  // Keep ref in sync so online status handler always calls the latest version
+  syncRef.current = syncPendingActions;
 
   // Process individual action
   const processAction = async (action: PendingAction): Promise<void> => {

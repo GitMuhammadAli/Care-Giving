@@ -56,6 +56,12 @@ export function useWebSocket(familyId?: string) {
       if (familyId) {
         wsClient.leaveFamily(familyId);
       }
+      // Disconnect WebSocket on unmount to prevent leaked connections
+      if (hasConnectedRef.current) {
+        wsClient.disconnect();
+        hasConnectedRef.current = false;
+        setIsConnected(false);
+      }
     };
   }, [isAuthenticated, user?.id, familyId]); // Only depend on user.id, not entire user object
 

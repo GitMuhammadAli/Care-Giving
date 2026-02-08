@@ -46,13 +46,18 @@ export const databaseConfig = registerAs("database", () => {
   const databaseUrl = optionalString("DATABASE_URL");
   const dbSsl = bool("DB_SSL", false);
   const isProd = isProduction();
+  // Allow overriding SSL cert validation (default: true for security)
+  // Set DB_SSL_REJECT_UNAUTHORIZED=false only if your DB provider requires it
+  const rejectUnauthorized = bool("DB_SSL_REJECT_UNAUTHORIZED", true);
+
+  const sslConfig = dbSsl || isProd ? { rejectUnauthorized } : false;
 
   // Use DATABASE_URL if provided, otherwise build from components
   if (databaseUrl) {
     return {
       type: "postgres" as const,
       url: databaseUrl,
-      ssl: dbSsl || isProd ? { rejectUnauthorized: false } : false,
+      ssl: sslConfig,
       synchronize: false,
       logging: isDevelopment(),
     };
@@ -65,7 +70,7 @@ export const databaseConfig = registerAs("database", () => {
     username: optionalString("DB_USERNAME", "postgres"),
     password: optionalString("DB_PASSWORD", ""),
     database: optionalString("DB_DATABASE", "carecircle"),
-    ssl: dbSsl || isProd ? { rejectUnauthorized: false } : false,
+    ssl: sslConfig,
     synchronize: false,
     logging: isDevelopment(),
   };

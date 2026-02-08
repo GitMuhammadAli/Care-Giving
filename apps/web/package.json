@@ -31,7 +31,7 @@
     "@vercel/speed-insights": "^1.0.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
-    "date-fns": "^3.0.6",
+    "date-fns": "^3.6.0",
     "dotenv": "^16.4.0",
     "framer-motion": "^10.17.9",
     "js-cookie": "^3.0.5",

@@ -14,9 +14,11 @@ import { AuthService } from '../auth/service/auth.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
+// NOTE: @WebSocketGateway decorator is evaluated at class definition time (before DI),
+// so process.env must be used here instead of ConfigService.
 @WebSocketGateway({
   cors: {
-    origin: (origin, callback) => {
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
       // Allow connections from configured frontend URL or localhost in development
       const allowedOrigins = [
         process.env.FRONTEND_URL,

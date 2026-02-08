@@ -8,8 +8,10 @@ import {
   Param,
   Query,
   UseGuards,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AdminUsersService } from '../services/admin-users.service';
 import { JwtAuthGuard } from '../../system/guard/jwt-auth.guard';
 import { AdminGuard } from '../guards/admin.guard';
@@ -37,7 +39,7 @@ export class AdminUsersController {
   @ApiOperation({ summary: 'Get user details' })
   @ApiResponse({ status: 200, description: 'User details' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.adminUsersService.findOne(id);
   }
 
@@ -55,7 +57,7 @@ export class AdminUsersController {
   @ApiResponse({ status: 200, description: 'User updated' })
   @ApiResponse({ status: 404, description: 'User not found' })
   update(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: AdminUpdateUserDto,
     @CurrentUser() admin: CurrentUserPayload,
   ) {
@@ -63,12 +65,13 @@ export class AdminUsersController {
   }
 
   @Post(':id/suspend')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Suspend user account' })
   @ApiResponse({ status: 200, description: 'User suspended' })
   @ApiResponse({ status: 404, description: 'User not found' })
   @ApiResponse({ status: 400, description: 'Cannot suspend super admin' })
   suspend(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body('reason') reason: string,
     @CurrentUser() admin: CurrentUserPayload,
   ) {
@@ -76,29 +79,32 @@ export class AdminUsersController {
   }
 
   @Post(':id/activate')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Activate user account' })
   @ApiResponse({ status: 200, description: 'User activated' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  activate(@Param('id') id: string, @CurrentUser() admin: CurrentUserPayload) {
+  activate(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() admin: CurrentUserPayload) {
     return this.adminUsersService.activate(id, admin.id);
   }
 
   @Post(':id/reset-password')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: 'Force password reset for user' })
   @ApiResponse({ status: 200, description: 'Password reset initiated' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  resetPassword(@Param('id') id: string, @CurrentUser() admin: CurrentUserPayload) {
+  resetPassword(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() admin: CurrentUserPayload) {
     return this.adminUsersService.resetPassword(id, admin.id);
   }
 
   @Delete(':id')
   @UseGuards(SuperAdminGuard)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: 'Delete user (Super Admin only)' })
   @ApiResponse({ status: 200, description: 'User deleted' })
   @ApiResponse({ status: 404, description: 'User not found' })
   @ApiResponse({ status: 400, description: 'Cannot delete super admin' })
   delete(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body('reason') reason: string,
     @CurrentUser() admin: CurrentUserPayload,
   ) {
@@ -106,6 +112,7 @@ export class AdminUsersController {
   }
 
   @Post('bulk-action')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: 'Perform bulk action on users' })
   @ApiResponse({ status: 200, description: 'Bulk action completed' })
   bulkAction(@Body() dto: BulkUserActionDto, @CurrentUser() admin: CurrentUserPayload) {
@@ -116,7 +123,7 @@ export class AdminUsersController {
   @ApiOperation({ summary: 'Get user activity log' })
   @ApiResponse({ status: 200, description: 'User activity' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  getUserActivity(@Param('id') id: string) {
+  getUserActivity(@Param('id', ParseUUIDPipe) id: string) {
     return this.adminUsersService.getUserActivity(id);
   }
 }

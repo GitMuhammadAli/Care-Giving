@@ -15,29 +15,6 @@ export async function register() {
   }
 }
 
-export async function onRequestError(
-  err: { digest: string } & Error,
-  request: {
-    path: string;
-    method: string;
-    headers: { [key: string]: string };
-  },
-  context: {
-    routerKind: 'Pages Router' | 'App Router';
-    routePath: string;
-    routeType: 'render' | 'route' | 'action' | 'middleware';
-    renderSource: 'react-server-components' | 'react-server-components-payload' | 'server-rendering';
-    revalidateReason: 'on-demand' | 'stale' | undefined;
-    renderType: 'dynamic' | 'dynamic-resume';
-  }
-) {
-  // Log errors for monitoring
-  console.error('[CareCircle] Request error:', {
-    digest: err.digest,
-    message: err.message,
-    path: request.path,
-    method: request.method,
-    routePath: context.routePath,
-    routeType: context.routeType,
-  });
-}
+// Note: onRequestError is available in Next.js 15+
+// For Next.js 14.x, error monitoring should be handled via error.tsx boundaries
+// or middleware-level error handling

@@ -71,7 +71,8 @@ export class AuthService {
 
     // Generate 6-digit OTP (industry standard, matches frontend input boxes)
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+    const otpExpirySeconds = this.configService.get<number>('security.otpExpiresIn') || 300;
+    const otpExpiresAt = new Date(Date.now() + otpExpirySeconds * 1000);
 
     const user = await this.prisma.user.create({
       data: {
@@ -549,7 +550,7 @@ export class AuthService {
   async verifyEmail(email: string, otp: string) {
     const normalizedEmail = email.toLowerCase();
     const attemptKey = `otp_attempts:${normalizedEmail}`;
-    const maxAttempts = 5;
+    const maxAttempts = this.configService.get<number>('security.maxLoginAttempts') || 5;
 
     // Check if user is locked out due to too many failed attempts
     const currentAttempts = await this.cacheService.get<number>(attemptKey) || 0;
@@ -658,7 +659,8 @@ export class AuthService {
 
     const now = new Date();
     const rateLimitWindow = 60 * 1000; // 60 seconds - minimum time between requests
-    const codeValidityWindow = 5 * 60 * 1000; // 5 minutes - how long code stays valid
+    const otpExpirySeconds = this.configService.get<number>('security.otpExpiresIn') || 300;
+    const codeValidityWindow = otpExpirySeconds * 1000;
 
     // Check rate limiting - prevent spam
     if (user.emailVerificationCode && user.emailVerificationExpiresAt) {

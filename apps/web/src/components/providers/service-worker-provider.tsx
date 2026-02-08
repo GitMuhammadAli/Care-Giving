@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 
 /**
@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/use-auth';
  */
 export function ServiceWorkerProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
+  const updateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     // Only register service worker in browser and production
@@ -22,31 +23,12 @@ export function ServiceWorkerProvider({ children }: { children: React.ReactNode 
       return;
     }
 
-    // Register service worker
-    navigator.serviceWorker
-      .register('/sw.js', {
-        scope: '/',
-      })
-      .then((registration) => {
-        console.log('[App] Service Worker registered:', registration.scope);
-
-        // Check for updates periodically
-        setInterval(() => {
-          registration.update();
-        }, 60 * 60 * 1000); // Check every hour
-      })
-      .catch((error) => {
-        console.error('[App] Service Worker registration failed:', error);
-      });
-
-    // Handle service worker updates
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
+    const handleControllerChange = () => {
       console.log('[App] Service Worker updated, reloading page...');
       window.location.reload();
-    });
+    };
 
-    // Listen for messages from service worker
-    navigator.serviceWorker.addEventListener('message', (event) => {
+    const handleMessage = (event: MessageEvent) => {
       console.log('[App] Message from Service Worker:', event.data);
 
       // Handle notification click navigation
@@ -62,7 +44,41 @@ export function ServiceWorkerProvider({ children }: { children: React.ReactNode 
         console.log('[App] Sync offline actions triggered');
         // Trigger any app-specific sync logic here
       }
-    });
+    };
+
+    // Register service worker
+    navigator.serviceWorker
+      .register('/sw.js', {
+        scope: '/',
+      })
+      .then((registration) => {
+        console.log('[App] Service Worker registered:', registration.scope);
+
+        // Check for updates periodically (store ref for cleanup)
+        updateIntervalRef.current = setInterval(() => {
+          registration.update();
+        }, 60 * 60 * 1000); // Check every hour
+      })
+      .catch((error) => {
+        console.error('[App] Service Worker registration failed:', error);
+      });
+
+    // Handle service worker updates
+    navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
+
+    // Listen for messages from service worker
+    navigator.serviceWorker.addEventListener('message', handleMessage);
+
+    return () => {
+      // Clean up interval
+      if (updateIntervalRef.current) {
+        clearInterval(updateIntervalRef.current);
+        updateIntervalRef.current = null;
+      }
+      // Clean up event listeners
+      navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+      navigator.serviceWorker.removeEventListener('message', handleMessage);
+    };
   }, []);
 
   // Optionally: Auto-subscribe authenticated users to push notifications

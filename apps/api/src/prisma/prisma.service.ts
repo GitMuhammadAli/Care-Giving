@@ -21,11 +21,13 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   private readonly MAX_DELAY_MS = 10000; // 10 seconds
 
   constructor() {
+    // NOTE: process.env is intentionally used here (not ConfigService) because
+    // PrismaClient requires configuration in super() before NestJS DI is available.
+    // The DATABASE_URL must come from process.env at this stage of bootstrapping.
     super({
       log: process.env.NODE_ENV === 'development'
         ? ['query', 'info', 'warn', 'error']
         : ['error'], // Production: only errors to reduce overhead
-      // FREE-TIER: Connection optimizations for Neon pooler
       datasources: {
         db: {
           url: process.env.DATABASE_URL,
@@ -130,10 +132,6 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     throw lastError;
   }
 }
-
-
-
-
 
 
 

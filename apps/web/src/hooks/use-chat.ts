@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { StreamChat, Channel } from 'stream-chat';
 import { useAuth } from './use-auth';
 import { api } from '@/lib/api/client';
@@ -35,6 +35,8 @@ export function useChat(options: UseChatOptions = {}) {
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [isConfigured, setIsConfigured] = useState(true);
+  // Use ref to track the client for cleanup to avoid stale closure
+  const clientRef = useRef<StreamChat | null>(null);
 
   // Initialize Stream Chat client
   useEffect(() => {
@@ -81,6 +83,7 @@ export function useChat(options: UseChatOptions = {}) {
             tokenResponse.token
           );
 
+          clientRef.current = chatClient;
           setClient(chatClient);
           setIsConnected(true);
           console.log('[Chat] Connected to Stream Chat');
@@ -113,10 +116,13 @@ export function useChat(options: UseChatOptions = {}) {
 
     return () => {
       isCancelled = true;
-      if (client) {
-        client.disconnectUser().then(() => {
+      // Use ref to get the latest client instance (avoids stale closure)
+      const currentClient = clientRef.current;
+      if (currentClient) {
+        currentClient.disconnectUser().then(() => {
           console.log('[Chat] Disconnected from Stream Chat');
         });
+        clientRef.current = null;
       }
     };
   }, [isAuthenticated, user, options.autoConnect]);

@@ -49,6 +49,8 @@ model User {
   pushTokens          PushToken[]
 
   @@index([systemRole])
+  @@index([status])
+  @@index([emailVerified])
 }
 
 model Session {
@@ -69,6 +71,7 @@ model Session {
   @@index([userId])
   @@index([refreshToken])
   @@index([expiresAt])
+  @@index([userId, isActive])
 }
 
 model PushToken {
@@ -156,6 +159,8 @@ model FamilyInvitation {
 
   @@index([familyId])
   @@index([email])
+  @@index([email, status])
+  @@index([expiresAt])
 }
 
 enum InvitationStatus {
@@ -279,6 +284,7 @@ model Appointment {
   @@index([careRecipientId])
   @@index([startTime])
   @@index([recurringSeriesId])
+  @@index([status])
 }
 
 enum AppointmentType {
@@ -428,6 +434,7 @@ model CaregiverShift {
 
   @@index([careRecipientId, startTime])
   @@index([caregiverId])
+  @@index([status])
 }
 
 enum ShiftStatus {
@@ -519,6 +526,7 @@ model Document {
 
   @@index([familyId, type])
   @@index([status])
+  @@index([uploadedById])
 }
 
 enum DocumentStatus {

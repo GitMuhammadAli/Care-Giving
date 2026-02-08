@@ -4,7 +4,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Install pnpm
-RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+RUN corepack enable && corepack prepare pnpm@10.4.0 --activate
 
 # Copy workspace files
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml* ./
@@ -29,7 +29,7 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 # Install pnpm
-RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+RUN corepack enable && corepack prepare pnpm@10.4.0 --activate
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs

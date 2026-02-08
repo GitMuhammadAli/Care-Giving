@@ -66,8 +66,9 @@ async function bootstrap() {
   );
 
   // CORS - Allow multiple origins in production if needed
+  const corsOrigin = configService.get<string>('CORS_ORIGIN');
   const allowedOrigins = isProduction 
-    ? [frontendUrl, process.env.CORS_ORIGIN].filter(Boolean) 
+    ? [frontendUrl, corsOrigin].filter(Boolean) 
     : true;
   
   app.enableCors({
@@ -102,7 +103,7 @@ async function bootstrap() {
 
   // Swagger - Only available in non-production environments
   // To enable in production, set ENABLE_SWAGGER=true (for internal/staging use only)
-  const enableSwagger = !isProduction || process.env.ENABLE_SWAGGER === 'true';
+  const enableSwagger = !isProduction || configService.get<string>('ENABLE_SWAGGER') === 'true';
   if (enableSwagger) {
     setupSwagger(app);
     if (isProduction) {
