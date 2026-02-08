@@ -60,7 +60,7 @@ function groupScheduleByTimeOfDay(items: ApiScheduleItem[]): { time: string; lab
     }
   }
 
-  const result = [];
+  const result: { time: string; label: string; items: MedicationScheduleItem[] }[] = [];
   if (morning.length > 0) result.push({ time: 'morning', label: 'Morning', items: morning });
   if (afternoon.length > 0) result.push({ time: 'afternoon', label: 'Afternoon', items: afternoon });
   if (evening.length > 0) result.push({ time: 'evening', label: 'Evening', items: evening });

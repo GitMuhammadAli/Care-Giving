@@ -187,7 +187,7 @@ export default function EmergencyPage() {
                   <p className="text-sm text-muted-foreground">"{careRecipient.preferredName}"</p>
                 )}
                 <p className="text-sm text-muted-foreground mt-1">
-                  DOB: {new Date(careRecipient.dateOfBirth).toLocaleDateString()}
+                  DOB: {careRecipient.dateOfBirth ? new Date(careRecipient.dateOfBirth).toLocaleDateString() : 'N/A'}
                   {age && ` (Age ${age})`}
                 </p>
               </div>
