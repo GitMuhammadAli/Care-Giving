@@ -199,7 +199,7 @@ export default function AdminOverviewPage() {
         <div className="dashboard-card">
           <h3 className="font-editorial text-lg text-foreground mb-4">System Alerts</h3>
           <div className="space-y-4">
-            {overview?.careRecipients.activeEmergencies > 0 ? (
+            {(overview?.careRecipients?.activeEmergencies ?? 0) > 0 ? (
               <div className="flex items-center gap-3 p-4 bg-destructive/5 border border-destructive/20 rounded-xl">
                 <AlertCircle className="w-5 h-5 text-destructive" />
                 <div>
