@@ -69,7 +69,13 @@ export function AddTimelineEntryModal({ isOpen, onClose, careRecipientId }: Prop
       resetForm();
     },
     onError: (error: any) => {
-      const message = error?.message || 'Failed to add entry';
+      const fieldErrors = error?.data?.errors;
+      if (fieldErrors && typeof fieldErrors === 'object') {
+        const firstError = Object.values(fieldErrors).flat()[0];
+        toast.error(typeof firstError === 'string' ? firstError : 'Validation failed. Please check all fields.');
+        return;
+      }
+      const message = error?.data?.message || error?.message || 'Failed to add entry';
       toast.error(typeof message === 'string' ? message : 'Failed to add entry. Please check all fields.');
     },
   });
@@ -99,32 +105,53 @@ export function AddTimelineEntryModal({ isOpen, onClose, careRecipientId }: Prop
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const vitals = formData.type === 'VITALS' ? {
-      bloodPressure: formData.bloodPressureSystolic && formData.bloodPressureDiastolic 
-        ? `${formData.bloodPressureSystolic}/${formData.bloodPressureDiastolic}`
-        : null,
-      heartRate: formData.heartRate ? parseInt(formData.heartRate) : null,
-      temperature: formData.temperature ? parseFloat(formData.temperature) : null,
-      bloodSugar: formData.bloodSugar ? parseInt(formData.bloodSugar) : null,
-      oxygenLevel: formData.oxygenLevel ? parseInt(formData.oxygenLevel) : null,
-      weight: formData.weight ? parseFloat(formData.weight) : null,
-    } : null;
-
-    mutation.mutate({
+    // Build clean payload matching the backend DTO exactly.
+    // The DTO only accepts: type, title, description, severity, vitals, occurredAt, attachments
+    // Extra metadata (mood, meal, sleep, activity) goes into the vitals JSON field.
+    const payload: Record<string, unknown> = {
       type: formData.type,
       title: formData.title || ENTRY_TYPES.find((t) => t.value === formData.type)?.label.replace(/^\S+\s/, ''),
-      description: formData.description,
-      vitals,
-      metadata: {
-        mood: formData.mood || null,
-        activityType: formData.activityType || null,
-        activityDuration: formData.activityDuration ? parseInt(formData.activityDuration) : null,
-        sleepQuality: formData.sleepQuality || null,
-        sleepDuration: formData.sleepDuration ? parseFloat(formData.sleepDuration) : null,
-        mealType: formData.mealType || null,
-        mealDescription: formData.mealDescription || null,
-      },
-    });
+    };
+
+    if (formData.description.trim()) {
+      payload.description = formData.description.trim();
+    }
+
+    // Build vitals / extra data as a single JSON object
+    const vitalsData: Record<string, unknown> = {};
+
+    if (formData.type === 'VITALS') {
+      if (formData.bloodPressureSystolic && formData.bloodPressureDiastolic) {
+        vitalsData.bloodPressure = `${formData.bloodPressureSystolic}/${formData.bloodPressureDiastolic}`;
+      }
+      if (formData.heartRate) vitalsData.heartRate = parseInt(formData.heartRate);
+      if (formData.temperature) vitalsData.temperature = parseFloat(formData.temperature);
+      if (formData.bloodSugar) vitalsData.bloodSugar = parseInt(formData.bloodSugar);
+      if (formData.oxygenLevel) vitalsData.oxygenLevel = parseInt(formData.oxygenLevel);
+      if (formData.weight) vitalsData.weight = parseFloat(formData.weight);
+    }
+
+    if (formData.type === 'MOOD' && formData.mood) {
+      vitalsData.mood = formData.mood;
+    }
+    if (formData.type === 'ACTIVITY') {
+      if (formData.activityType) vitalsData.activityType = formData.activityType;
+      if (formData.activityDuration) vitalsData.activityDuration = parseInt(formData.activityDuration);
+    }
+    if (formData.type === 'SLEEP') {
+      if (formData.sleepQuality) vitalsData.sleepQuality = formData.sleepQuality;
+      if (formData.sleepDuration) vitalsData.sleepDuration = parseFloat(formData.sleepDuration);
+    }
+    if (formData.type === 'MEAL') {
+      if (formData.mealType) vitalsData.mealType = formData.mealType;
+      if (formData.mealDescription) vitalsData.mealDescription = formData.mealDescription;
+    }
+
+    if (Object.keys(vitalsData).length > 0) {
+      payload.vitals = vitalsData;
+    }
+
+    mutation.mutate(payload);
   };
 
   return (

@@ -48,7 +48,14 @@ export function AddMedicationModal({ isOpen, onClose, careRecipientId }: Props) 
       resetForm();
     },
     onError: (error: any) => {
-      const message = error?.message || error?.response?.data?.message || 'Failed to add medication';
+      // The API returns { message, errors: { field: ['msg'] } } for validation failures
+      const fieldErrors = error?.data?.errors;
+      if (fieldErrors && typeof fieldErrors === 'object') {
+        const firstError = Object.values(fieldErrors).flat()[0];
+        toast.error(typeof firstError === 'string' ? firstError : 'Validation failed. Please check all fields.');
+        return;
+      }
+      const message = error?.data?.message || error?.message || 'Failed to add medication';
       toast.error(typeof message === 'string' ? message : 'Failed to add medication. Please check all required fields.');
     },
   });
@@ -72,12 +79,43 @@ export function AddMedicationModal({ isOpen, onClose, careRecipientId }: Props) 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    mutation.mutate({
-      ...formData,
-      currentSupply: formData.currentSupply ? parseInt(formData.currentSupply) : null,
-      refillAt: formData.refillAt ? parseInt(formData.refillAt) : null,
-      endDate: formData.endDate || null,
-    });
+
+    // Build a clean payload – only include optional fields when they have values.
+    // Sending empty strings or null for @IsOptional DTO fields can trip
+    // class-validator with forbidNonWhitelisted / transform enabled.
+    const payload: Record<string, unknown> = {
+      name: formData.name,
+      dosage: formData.dosage,
+      form: formData.form,
+      frequency: formData.frequency,
+    };
+
+    if (formData.scheduledTimes.length > 0) {
+      payload.scheduledTimes = formData.scheduledTimes;
+    }
+    if (formData.instructions.trim()) {
+      payload.instructions = formData.instructions.trim();
+    }
+    if (formData.prescribedBy.trim()) {
+      payload.prescribedBy = formData.prescribedBy.trim();
+    }
+    if (formData.pharmacy.trim()) {
+      payload.pharmacy = formData.pharmacy.trim();
+    }
+    if (formData.currentSupply) {
+      payload.currentSupply = parseInt(formData.currentSupply);
+    }
+    if (formData.refillAt) {
+      payload.refillAt = parseInt(formData.refillAt);
+    }
+    if (formData.startDate) {
+      payload.startDate = formData.startDate;
+    }
+    if (formData.endDate) {
+      payload.endDate = formData.endDate;
+    }
+
+    mutation.mutate(payload);
   };
 
   const addTime = () => {

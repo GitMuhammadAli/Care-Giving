@@ -51,7 +51,7 @@ export function EditCareRecipientModal({ isOpen, onClose, careRecipient }: Props
   const [newCondition, setNewCondition] = useState('');
 
   const mutation = useMutation({
-    mutationFn: (data: typeof formData) =>
+    mutationFn: (data: Record<string, unknown>) =>
       api.patch(`/care-recipients/${careRecipient.id}`, data),
     onSuccess: () => {
       // Invalidate all related queries for consistent updates
@@ -63,14 +63,35 @@ export function EditCareRecipientModal({ isOpen, onClose, careRecipient }: Props
       toast.success('Care recipient updated successfully');
       onClose();
     },
-    onError: () => {
-      toast.error('Failed to update care recipient');
+    onError: (error: any) => {
+      const fieldErrors = error?.data?.errors;
+      if (fieldErrors && typeof fieldErrors === 'object') {
+        const firstError = Object.values(fieldErrors).flat()[0];
+        toast.error(typeof firstError === 'string' ? firstError : 'Validation failed. Please check all fields.');
+        return;
+      }
+      toast.error(error?.data?.message || error?.message || 'Failed to update care recipient');
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    mutation.mutate(formData);
+    // Build clean payload – omit empty optional fields to avoid class-transformer
+    // converting null/empty to invalid types (e.g. "" → "null" for @IsDateString).
+    const payload: Record<string, unknown> = {
+      fullName: formData.fullName,
+    };
+    if (formData.preferredName.trim()) payload.preferredName = formData.preferredName.trim();
+    if (formData.dateOfBirth) payload.dateOfBirth = formData.dateOfBirth;
+    if (formData.bloodType) payload.bloodType = formData.bloodType;
+    if (formData.allergies.length > 0) payload.allergies = formData.allergies;
+    if (formData.conditions.length > 0) payload.conditions = formData.conditions;
+    if (formData.notes.trim()) payload.notes = formData.notes.trim();
+    if (formData.insuranceProvider.trim()) payload.insuranceProvider = formData.insuranceProvider.trim();
+    if (formData.insurancePolicyNo.trim()) payload.insurancePolicyNo = formData.insurancePolicyNo.trim();
+    if (formData.primaryHospital.trim()) payload.primaryHospital = formData.primaryHospital.trim();
+    if (formData.hospitalAddress.trim()) payload.hospitalAddress = formData.hospitalAddress.trim();
+    mutation.mutate(payload);
   };
 
   const addAllergy = () => {

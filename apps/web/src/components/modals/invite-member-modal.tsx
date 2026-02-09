@@ -32,7 +32,13 @@ export function InviteMemberModal({ isOpen, onClose, familyId }: Props) {
       resetForm();
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to send invitation');
+      const fieldErrors = error?.data?.errors;
+      if (fieldErrors && typeof fieldErrors === 'object') {
+        const firstError = Object.values(fieldErrors).flat()[0];
+        toast.error(typeof firstError === 'string' ? firstError : 'Validation failed. Please check all fields.');
+        return;
+      }
+      toast.error(error?.data?.message || error?.message || 'Failed to send invitation');
     },
   });
 

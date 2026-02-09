@@ -49,7 +49,13 @@ export function AddAppointmentModal({ isOpen, onClose, careRecipientId, selected
       resetForm();
     },
     onError: (error: any) => {
-      const message = error?.message || 'Failed to schedule appointment';
+      const fieldErrors = error?.data?.errors;
+      if (fieldErrors && typeof fieldErrors === 'object') {
+        const firstError = Object.values(fieldErrors).flat()[0];
+        toast.error(typeof firstError === 'string' ? firstError : 'Validation failed. Please check all fields.');
+        return;
+      }
+      const message = error?.data?.message || error?.message || 'Failed to schedule appointment';
       toast.error(typeof message === 'string' ? message : 'Failed to schedule appointment. Please check all fields.');
     },
   });
@@ -77,12 +83,39 @@ export function AddAppointmentModal({ isOpen, onClose, careRecipientId, selected
     
     const dateTime = new Date(`${formData.date}T${formData.time}`);
     
-    mutation.mutate({
-      ...formData,
+    // Build clean payload – only include fields that exist in the backend DTO.
+    // Sending extra fields trips forbidNonWhitelisted, sending null for
+    // optional strings gets converted to "null" by class-transformer.
+    const payload: Record<string, unknown> = {
+      title: formData.title,
+      type: formData.type,
       dateTime: dateTime.toISOString(),
       duration: parseInt(formData.duration),
-      recurrenceEndDate: formData.recurrenceEndDate || null,
-    });
+    };
+
+    if (formData.doctorName.trim()) {
+      payload.doctorName = formData.doctorName.trim();
+    }
+    if (formData.location.trim()) {
+      payload.location = formData.location.trim();
+    }
+    if (formData.address.trim()) {
+      payload.address = formData.address.trim();
+    }
+    if (formData.notes.trim()) {
+      payload.notes = formData.notes.trim();
+    }
+    if (formData.recurrence !== DEFAULT_RECURRENCE) {
+      payload.recurrence = formData.recurrence;
+      if (formData.recurrenceEndDate) {
+        payload.recurrenceEndDate = formData.recurrenceEndDate;
+      }
+    }
+    if (formData.reminderBefore.length > 0) {
+      payload.reminderBefore = formData.reminderBefore;
+    }
+
+    mutation.mutate(payload);
   };
 
   const toggleReminder = (value: string) => {

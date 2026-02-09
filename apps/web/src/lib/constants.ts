@@ -47,7 +47,18 @@ export const DEFAULT_FAMILY_ROLE = 'CAREGIVER';
 // 2. Blood Type  (Backend DTO: BloodType)
 // ───────────────────────────────────────────
 
+// Backend BloodType enum values use display strings: 'A+', 'A-', etc.
 export const BLOOD_TYPE_LABELS: Record<string, string> = {
+  'A+': 'A+',
+  'A-': 'A-',
+  'B+': 'B+',
+  'B-': 'B-',
+  'AB+': 'AB+',
+  'AB-': 'AB-',
+  'O+': 'O+',
+  'O-': 'O-',
+  'Unknown': 'Unknown',
+  // Also map SCREAMING_SNAKE keys for any data already stored that way
   A_POSITIVE: 'A+',
   A_NEGATIVE: 'A-',
   B_POSITIVE: 'B+',
@@ -59,17 +70,17 @@ export const BLOOD_TYPE_LABELS: Record<string, string> = {
   UNKNOWN: 'Unknown',
 } as const;
 
-/** Options for blood-type <select>. */
+/** Options for blood-type <select>. Values match the backend BloodType enum. */
 export const BLOOD_TYPE_OPTIONS = [
   { value: '', label: 'Unknown' },
-  { value: 'A_POSITIVE', label: 'A+' },
-  { value: 'A_NEGATIVE', label: 'A-' },
-  { value: 'B_POSITIVE', label: 'B+' },
-  { value: 'B_NEGATIVE', label: 'B-' },
-  { value: 'AB_POSITIVE', label: 'AB+' },
-  { value: 'AB_NEGATIVE', label: 'AB-' },
-  { value: 'O_POSITIVE', label: 'O+' },
-  { value: 'O_NEGATIVE', label: 'O-' },
+  { value: 'A+', label: 'A+' },
+  { value: 'A-', label: 'A-' },
+  { value: 'B+', label: 'B+' },
+  { value: 'B-', label: 'B-' },
+  { value: 'AB+', label: 'AB+' },
+  { value: 'AB-', label: 'AB-' },
+  { value: 'O+', label: 'O+' },
+  { value: 'O-', label: 'O-' },
 ] as const;
 
 // ───────────────────────────────────────────
@@ -192,15 +203,16 @@ export const APPOINTMENT_STATUS_LABELS: Record<string, string> = {
 // 8. Recurrence Pattern  (Backend DTO enum)
 // ───────────────────────────────────────────
 
+// Backend RecurrencePattern enum uses lowercase values
 export const RECURRENCE_OPTIONS = [
-  { value: 'NONE', label: 'Does not repeat' },
-  { value: 'DAILY', label: 'Daily' },
-  { value: 'WEEKLY', label: 'Weekly' },
-  { value: 'BIWEEKLY', label: 'Every 2 weeks' },
-  { value: 'MONTHLY', label: 'Monthly' },
+  { value: 'none', label: 'Does not repeat' },
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'biweekly', label: 'Every 2 weeks' },
+  { value: 'monthly', label: 'Monthly' },
 ] as const;
 
-export const DEFAULT_RECURRENCE = 'NONE';
+export const DEFAULT_RECURRENCE = 'none';
 
 // ───────────────────────────────────────────
 // 9. Document Type  (Prisma: DocumentType)

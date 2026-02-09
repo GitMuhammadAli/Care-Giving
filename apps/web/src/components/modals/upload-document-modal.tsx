@@ -44,7 +44,13 @@ export function UploadDocumentModal({ isOpen, onClose, familyId }: Props) {
       resetForm();
     },
     onError: (error: any) => {
-      const message = error?.message || 'Failed to upload document';
+      const fieldErrors = error?.data?.errors;
+      if (fieldErrors && typeof fieldErrors === 'object') {
+        const firstError = Object.values(fieldErrors).flat()[0];
+        toast.error(typeof firstError === 'string' ? firstError : 'Validation failed. Please check all fields.');
+        return;
+      }
+      const message = error?.data?.message || error?.message || 'Failed to upload document';
       toast.error(typeof message === 'string' ? message : 'Failed to upload document. Please check all fields.');
     },
   });

@@ -120,7 +120,17 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
           >
-            {label}
+            {label.endsWith(' *') ? (
+              <>
+                {label.slice(0, -2)} <span className="text-destructive">*</span>
+              </>
+            ) : (
+              label
+            )}
+            {/* Show red * when required prop is set but label doesn't already include * */}
+            {props.required && !label.endsWith(' *') && !label.includes('*') && (
+              <span className="text-destructive"> *</span>
+            )}
           </motion.label>
         )}
         

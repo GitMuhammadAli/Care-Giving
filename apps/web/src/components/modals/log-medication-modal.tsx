@@ -54,8 +54,13 @@ export function LogMedicationModal({ isOpen, onClose, medication, careRecipientI
       resetForm();
     },
     onError: (error: any) => {
-      const message = error?.message || 'Failed to log medication';
-      toast.error(typeof message === 'string' ? message : 'Failed to log medication.');
+      const fieldErrors = error?.data?.errors;
+      if (fieldErrors && typeof fieldErrors === 'object') {
+        const firstError = Object.values(fieldErrors).flat()[0];
+        toast.error(typeof firstError === 'string' ? firstError : 'Validation failed. Please check all fields.');
+        return;
+      }
+      toast.error(error?.data?.message || error?.message || 'Failed to log medication');
     },
   });
 
@@ -69,13 +74,16 @@ export function LogMedicationModal({ isOpen, onClose, medication, careRecipientI
   const handleSubmit = () => {
     if (!action) return;
 
-    const data: any = {
+    // Build clean payload – omit optional fields instead of sending null
+    const data: Record<string, unknown> = {
       status: action,
       scheduledTime: medication.scheduledTime,
-      notes: notes || null,
     };
 
-    if (action === 'SKIPPED') {
+    if (notes.trim()) {
+      data.notes = notes.trim();
+    }
+    if (action === 'SKIPPED' && skipReason) {
       data.skipReason = skipReason === 'Other' ? customReason : skipReason;
     }
 
