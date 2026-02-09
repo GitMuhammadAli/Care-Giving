@@ -304,7 +304,7 @@ function RegisterContent() {
                   >
                     <div className="space-y-2">
                       <Label htmlFor="firstName" className="text-sm font-medium">
-                        First Name <span className="text-destructive">*</span>
+                        First Name <span style={{ color: '#dc2626' }}>*</span>
                       </Label>
                       <Input
                         id="firstName"
@@ -319,7 +319,7 @@ function RegisterContent() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="lastName" className="text-sm font-medium">
-                        Last Name <span className="text-destructive">*</span>
+                        Last Name <span style={{ color: '#dc2626' }}>*</span>
                       </Label>
                       <Input
                         id="lastName"
@@ -341,7 +341,7 @@ function RegisterContent() {
                     transition={{ delay: 0.4, duration: 0.3 }}
                   >
                     <Label htmlFor="email" className="text-sm font-medium">
-                      Email Address <span className="text-destructive">*</span>
+                      Email Address <span style={{ color: '#dc2626' }}>*</span>
                     </Label>
                     <Input
                       id="email"
@@ -362,7 +362,7 @@ function RegisterContent() {
                     transition={{ delay: 0.45, duration: 0.3 }}
                   >
                     <Label htmlFor="password" className="text-sm font-medium">
-                      Password <span className="text-destructive">*</span>
+                      Password <span style={{ color: '#dc2626' }}>*</span>
                     </Label>
                     <div className="relative">
                       <Input

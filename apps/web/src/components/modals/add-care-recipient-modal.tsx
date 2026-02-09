@@ -122,7 +122,7 @@ export function AddCareRecipientModal({ isOpen, onClose, familyId, onSuccess }: 
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Full Name <span className="text-destructive">*</span>
+                Full Name <span style={{ color: '#dc2626' }}>*</span>
               </label>
               <Input
                 value={formData.fullName}

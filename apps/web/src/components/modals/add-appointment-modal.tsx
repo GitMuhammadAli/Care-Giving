@@ -139,7 +139,7 @@ export function AddAppointmentModal({ isOpen, onClose, careRecipientId, selected
           />
           <div>
             <label className="block text-sm font-medium text-text-primary mb-2">
-              Type
+              Type <span style={{ color: '#dc2626' }}>*</span>
             </label>
             <select
               value={formData.type}

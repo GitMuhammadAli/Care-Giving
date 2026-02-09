@@ -122,14 +122,15 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           >
             {label.endsWith(' *') ? (
               <>
-                {label.slice(0, -2)} <span className="text-destructive">*</span>
+                {label.slice(0, -2)}{' '}
+                <span style={{ color: '#dc2626' }} aria-hidden="true">*</span>
               </>
             ) : (
               label
             )}
             {/* Show red * when required prop is set but label doesn't already include * */}
             {props.required && !label.endsWith(' *') && !label.includes('*') && (
-              <span className="text-destructive"> *</span>
+              <span style={{ color: '#dc2626' }} aria-hidden="true"> *</span>
             )}
           </motion.label>
         )}

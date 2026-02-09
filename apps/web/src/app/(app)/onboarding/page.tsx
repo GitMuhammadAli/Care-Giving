@@ -328,7 +328,7 @@ export default function OnboardingPage() {
 
                 <form onSubmit={handleCreateFamily} className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Family Name <span className="text-destructive">*</span></label>
+                    <label className="text-sm font-medium mb-2 block">Family Name <span style={{ color: '#dc2626' }}>*</span></label>
                     <Input
                       placeholder="e.g., The Thompsons, Grandma's Care Team"
                       value={familyData.name}

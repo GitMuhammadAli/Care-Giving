@@ -256,7 +256,7 @@ function VerifyEmailContent() {
               {!showOtpInput && (
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-sm font-medium">
-                    Email Address <span className="text-destructive">*</span>
+                    Email Address <span style={{ color: '#dc2626' }}>*</span>
                   </Label>
                   <Input
                     id="email"

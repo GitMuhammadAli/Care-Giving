@@ -48,11 +48,18 @@ export function AddMedicationModal({ isOpen, onClose, careRecipientId }: Props) 
       resetForm();
     },
     onError: (error: any) => {
+      // Log full error for debugging in browser console
+      console.error('[AddMedication] API error:', JSON.stringify(error?.data || error, null, 2));
+
       // The API returns { message, errors: { field: ['msg'] } } for validation failures
       const fieldErrors = error?.data?.errors;
       if (fieldErrors && typeof fieldErrors === 'object') {
+        const allErrors = Object.entries(fieldErrors)
+          .map(([field, msgs]) => `${field}: ${(msgs as string[]).join(', ')}`)
+          .join('\n');
         const firstError = Object.values(fieldErrors).flat()[0];
         toast.error(typeof firstError === 'string' ? firstError : 'Validation failed. Please check all fields.');
+        console.error('[AddMedication] Validation errors:\n', allErrors);
         return;
       }
       const message = error?.data?.message || error?.message || 'Failed to add medication';
@@ -162,7 +169,7 @@ export function AddMedicationModal({ isOpen, onClose, careRecipientId }: Props) 
         {/* Form */}
         <div>
           <label className="block text-sm font-medium text-text-primary mb-2">
-            Form <span className="text-destructive">*</span>
+            Form <span style={{ color: '#dc2626' }}>*</span>
           </label>
           <select
             value={formData.form}
@@ -179,7 +186,7 @@ export function AddMedicationModal({ isOpen, onClose, careRecipientId }: Props) 
         {/* Frequency */}
         <div>
           <label className="block text-sm font-medium text-text-primary mb-2">
-            Frequency <span className="text-destructive">*</span>
+            Frequency <span style={{ color: '#dc2626' }}>*</span>
           </label>
           <select
             value={formData.frequency}

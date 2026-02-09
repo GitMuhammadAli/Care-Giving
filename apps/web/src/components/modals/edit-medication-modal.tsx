@@ -163,7 +163,7 @@ export function EditMedicationModal({ isOpen, onClose, medication, careRecipient
         {/* Form */}
         <div>
           <label className="block text-sm font-medium text-text-primary mb-2">
-            Form <span className="text-destructive">*</span>
+            Form <span style={{ color: '#dc2626' }}>*</span>
           </label>
           <select
             value={formData.form}
@@ -180,7 +180,7 @@ export function EditMedicationModal({ isOpen, onClose, medication, careRecipient
         {/* Frequency */}
         <div>
           <label className="block text-sm font-medium text-text-primary mb-2">
-            Frequency <span className="text-destructive">*</span>
+            Frequency <span style={{ color: '#dc2626' }}>*</span>
           </label>
           <select
             value={formData.frequency}

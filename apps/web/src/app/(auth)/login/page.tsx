@@ -211,7 +211,7 @@ function LoginContent() {
               transition={{ delay: 0.3, duration: 0.3 }}
             >
               <Label htmlFor="email" className="text-sm font-medium">
-                Email Address <span className="text-destructive">*</span>
+                Email Address <span style={{ color: '#dc2626' }}>*</span>
               </Label>
               <Input
                 id="email"
@@ -233,7 +233,7 @@ function LoginContent() {
             >
               <div className="flex items-center justify-between">
                 <Label htmlFor="password" className="text-sm font-medium">
-                  Password <span className="text-destructive">*</span>
+                  Password <span style={{ color: '#dc2626' }}>*</span>
                 </Label>
                 <Link
                   href="/forgot-password"
