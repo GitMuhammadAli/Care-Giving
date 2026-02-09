@@ -3,7 +3,7 @@
   "framework": "nextjs",
   "buildCommand": "pnpm run build",
   "outputDirectory": ".next",
-  "installCommand": "pnpm install",
+  "installCommand": "pnpm install --force",
   "regions": ["iad1"],
   "headers": [
     {
