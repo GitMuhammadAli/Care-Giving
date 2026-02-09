@@ -40,16 +40,7 @@ import {
   subMonths,
   parseISO,
 } from 'date-fns';
-
-const appointmentColors: Record<string, { bg: string; text: string }> = {
-  DOCTOR_VISIT: { bg: 'bg-info-light', text: 'text-info' },
-  PHYSICAL_THERAPY: { bg: 'bg-success-light', text: 'text-success' },
-  LAB_WORK: { bg: 'bg-warning-light', text: 'text-warning' },
-  IMAGING: { bg: 'bg-chart-purple/10', text: 'text-chart-purple' },
-  SPECIALIST: { bg: 'bg-accent-primary-light', text: 'text-accent-primary' },
-  HOME_HEALTH: { bg: 'bg-accent-warm-light', text: 'text-accent-warm' },
-  OTHER: { bg: 'bg-bg-muted', text: 'text-text-secondary' },
-};
+import { APPOINTMENT_TYPE_COLORS as appointmentColors } from '@/lib/constants';
 
 export default function CalendarPage() {
   const { selectedCareRecipientId: careRecipientId, currentRole } = useFamilySpace();

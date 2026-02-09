@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Pill, Calendar, AlertTriangle, Clock, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { BLOOD_TYPE_LABELS } from '@/lib/constants';
 
 interface CareRecipientCardProps {
   recipient: {
@@ -69,7 +70,7 @@ export function CareRecipientCard({
                   </h3>
                   <p className="text-sm text-text-secondary mt-0.5">
                     Age {age}
-                    {recipient.bloodType && ` • Blood Type: ${recipient.bloodType}`}
+                    {recipient.bloodType && ` • Blood Type: ${BLOOD_TYPE_LABELS[recipient.bloodType] || recipient.bloodType}`}
                   </p>
                 </div>
                 <ChevronRight className="w-5 h-5 text-text-tertiary group-hover:text-accent-primary transition-colors" />

@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCreateCareRecipient } from '@/hooks/use-care-recipients';
+import { BLOOD_TYPE_OPTIONS } from '@/lib/constants';
 
 interface Props {
   isOpen: boolean;
@@ -161,12 +162,15 @@ export function AddCareRecipientModal({ isOpen, onClose, familyId, onSuccess }: 
               <label className="block text-sm font-medium text-foreground mb-1.5">
                 Blood Type
               </label>
-              <Input
+              <select
                 value={formData.bloodType}
                 onChange={(e) => setFormData({ ...formData, bloodType: e.target.value })}
-                placeholder="e.g., A+"
-                className="rounded-xl"
-              />
+                className="w-full h-10 px-3 rounded-xl border border-border bg-background text-foreground"
+              >
+                {BLOOD_TYPE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
             </div>
           </div>
 

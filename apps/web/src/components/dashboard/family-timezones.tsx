@@ -6,6 +6,7 @@ import { Globe, Clock, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useFamilyMembers } from '@/hooks/use-family';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ROLE_LABELS } from '@/lib/constants';
 
 interface FamilyTimezonesProps {
   familyId: string;
@@ -197,7 +198,7 @@ export const FamilyTimezones = memo(function FamilyTimezones({ familyId }: Famil
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-foreground text-sm truncate">{member.name}</p>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">{member.role}</span>
+                      <span className="text-xs text-muted-foreground">{ROLE_LABELS[member.role] || member.role}</span>
                       <span className={`text-xs capitalize ${statusColors[member.status].text}`}>
                         • {member.status === 'sleeping' ? '🌙 Likely asleep' : member.status}
                       </span>

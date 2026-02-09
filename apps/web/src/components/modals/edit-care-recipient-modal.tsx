@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { api } from '@/lib/api/client';
 import toast from 'react-hot-toast';
+import { BLOOD_TYPE_OPTIONS } from '@/lib/constants';
 
 interface CareRecipient {
   id: string;
@@ -131,13 +132,20 @@ export function EditCareRecipientModal({ isOpen, onClose, careRecipient }: Props
             onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
             required
           />
-          <Input
-            label="Blood Type"
-            value={formData.bloodType}
-            onChange={(e) => setFormData({ ...formData, bloodType: e.target.value })}
-            placeholder="e.g., A+"
-            className="sm:col-span-2"
-          />
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
+              Blood Type
+            </label>
+            <select
+              value={formData.bloodType}
+              onChange={(e) => setFormData({ ...formData, bloodType: e.target.value })}
+              className="w-full px-4 py-3 rounded-lg border border-border bg-bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 focus:border-accent-primary"
+            >
+              {BLOOD_TYPE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* Allergies */}

@@ -8,6 +8,11 @@ import { Input } from '@/components/ui/input';
 import { api } from '@/lib/api/client';
 import { queueAction, isOnline } from '@/lib/offline-storage';
 import toast from 'react-hot-toast';
+import {
+  TIMELINE_TYPE_OPTIONS as ENTRY_TYPES,
+  MOOD_OPTIONS as MOODS,
+  DEFAULT_TIMELINE_TYPE,
+} from '@/lib/constants';
 
 interface Props {
   isOpen: boolean;
@@ -15,23 +20,10 @@ interface Props {
   careRecipientId: string;
 }
 
-const ENTRY_TYPES = [
-  { value: 'note', label: '📝 Note', color: 'text-text-secondary' },
-  { value: 'vitals', label: '❤️ Vitals', color: 'text-accent-warm' },
-  { value: 'incident', label: '⚠️ Incident', color: 'text-warning' },
-  { value: 'mood', label: '😊 Mood', color: 'text-info' },
-  { value: 'meal', label: '🍽️ Meal', color: 'text-accent-warm' },
-  { value: 'activity', label: '🚶 Activity', color: 'text-success' },
-  { value: 'sleep', label: '😴 Sleep', color: 'text-info' },
-  { value: 'symptom', label: '🩺 Symptom', color: 'text-error' },
-];
-
-const MOODS = ['😊 Great', '🙂 Good', '😐 Okay', '😔 Low', '😢 Sad', '😤 Frustrated'];
-
 export function AddTimelineEntryModal({ isOpen, onClose, careRecipientId }: Props) {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
-    type: 'note',
+    type: DEFAULT_TIMELINE_TYPE,
     title: '',
     description: '',
     // Vitals
@@ -76,14 +68,15 @@ export function AddTimelineEntryModal({ isOpen, onClose, careRecipientId }: Prop
       onClose();
       resetForm();
     },
-    onError: () => {
-      toast.error('Failed to add entry');
+    onError: (error: any) => {
+      const message = error?.message || 'Failed to add entry';
+      toast.error(typeof message === 'string' ? message : 'Failed to add entry. Please check all fields.');
     },
   });
 
   const resetForm = () => {
     setFormData({
-      type: 'note',
+      type: DEFAULT_TIMELINE_TYPE,
       title: '',
       description: '',
       bloodPressureSystolic: '',
@@ -106,7 +99,7 @@ export function AddTimelineEntryModal({ isOpen, onClose, careRecipientId }: Prop
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const vitals = formData.type === 'vitals' ? {
+    const vitals = formData.type === 'VITALS' ? {
       bloodPressure: formData.bloodPressureSystolic && formData.bloodPressureDiastolic 
         ? `${formData.bloodPressureSystolic}/${formData.bloodPressureDiastolic}`
         : null,
@@ -169,7 +162,7 @@ export function AddTimelineEntryModal({ isOpen, onClose, careRecipientId }: Prop
         />
 
         {/* Vitals Fields */}
-        {formData.type === 'vitals' && (
+        {formData.type === 'VITALS' && (
           <div className="space-y-4 p-4 bg-bg-muted rounded-lg">
             <h3 className="font-medium text-text-primary">Vital Signs</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -237,7 +230,7 @@ export function AddTimelineEntryModal({ isOpen, onClose, careRecipientId }: Prop
         )}
 
         {/* Mood Fields */}
-        {formData.type === 'mood' && (
+        {formData.type === 'MOOD' && (
           <div className="space-y-4 p-4 bg-bg-muted rounded-lg">
             <h3 className="font-medium text-text-primary">Mood</h3>
             <div className="flex flex-wrap gap-2">
@@ -260,7 +253,7 @@ export function AddTimelineEntryModal({ isOpen, onClose, careRecipientId }: Prop
         )}
 
         {/* Activity Fields */}
-        {formData.type === 'activity' && (
+        {formData.type === 'ACTIVITY' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-bg-muted rounded-lg">
             <Input
               label="Activity Type"
@@ -279,7 +272,7 @@ export function AddTimelineEntryModal({ isOpen, onClose, careRecipientId }: Prop
         )}
 
         {/* Sleep Fields */}
-        {formData.type === 'sleep' && (
+        {formData.type === 'SLEEP' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-bg-muted rounded-lg">
             <div>
               <label className="block text-sm font-medium text-text-primary mb-2">
@@ -309,7 +302,7 @@ export function AddTimelineEntryModal({ isOpen, onClose, careRecipientId }: Prop
         )}
 
         {/* Meal Fields */}
-        {formData.type === 'meal' && (
+        {formData.type === 'MEAL' && (
           <div className="space-y-4 p-4 bg-bg-muted rounded-lg">
             <div>
               <label className="block text-sm font-medium text-text-primary mb-2">

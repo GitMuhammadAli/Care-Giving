@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api/client';
 import { queueAction, isOnline } from '@/lib/offline-storage';
 import toast from 'react-hot-toast';
+import { MEDICATION_SKIP_REASONS as SKIP_REASONS } from '@/lib/constants';
 
 interface Medication {
   id: string;
@@ -23,19 +24,9 @@ interface Props {
   careRecipientId: string;
 }
 
-const SKIP_REASONS = [
-  'Refused to take',
-  'Felt nauseous',
-  'Sleeping',
-  'Not available',
-  'Doctor advised to skip',
-  'Ran out of medication',
-  'Other',
-];
-
 export function LogMedicationModal({ isOpen, onClose, medication, careRecipientId }: Props) {
   const queryClient = useQueryClient();
-  const [action, setAction] = useState<'given' | 'skipped' | null>(null);
+  const [action, setAction] = useState<'GIVEN' | 'SKIPPED' | null>(null);
   const [skipReason, setSkipReason] = useState('');
   const [customReason, setCustomReason] = useState('');
   const [notes, setNotes] = useState('');
@@ -55,15 +46,16 @@ export function LogMedicationModal({ isOpen, onClose, medication, careRecipientI
       if (result?.queued) {
         toast.success('Logged offline. Will sync when online.');
       } else {
-        toast.success(action === 'given' ? 'Medication logged as given' : 'Medication logged as skipped');
+        toast.success(action === 'GIVEN' ? 'Medication logged as given' : 'Medication logged as skipped');
       }
       queryClient.invalidateQueries({ queryKey: ['medications', careRecipientId] });
       queryClient.invalidateQueries({ queryKey: ['timeline', careRecipientId] });
       onClose();
       resetForm();
     },
-    onError: () => {
-      toast.error('Failed to log medication');
+    onError: (error: any) => {
+      const message = error?.message || 'Failed to log medication';
+      toast.error(typeof message === 'string' ? message : 'Failed to log medication.');
     },
   });
 
@@ -83,7 +75,7 @@ export function LogMedicationModal({ isOpen, onClose, medication, careRecipientI
       notes: notes || null,
     };
 
-    if (action === 'skipped') {
+    if (action === 'SKIPPED') {
       data.skipReason = skipReason === 'Other' ? customReason : skipReason;
     }
 
@@ -111,9 +103,9 @@ export function LogMedicationModal({ isOpen, onClose, medication, careRecipientI
         <div className="grid grid-cols-2 gap-4">
           <button
             type="button"
-            onClick={() => setAction('given')}
+            onClick={() => setAction('GIVEN')}
             className={`p-6 rounded-xl flex flex-col items-center gap-2 transition-all ${
-              action === 'given'
+              action === 'GIVEN'
                 ? 'bg-success text-white ring-2 ring-success ring-offset-2'
                 : 'bg-success-light text-success hover:bg-success/20'
             }`}
@@ -123,9 +115,9 @@ export function LogMedicationModal({ isOpen, onClose, medication, careRecipientI
           </button>
           <button
             type="button"
-            onClick={() => setAction('skipped')}
+            onClick={() => setAction('SKIPPED')}
             className={`p-6 rounded-xl flex flex-col items-center gap-2 transition-all ${
-              action === 'skipped'
+              action === 'SKIPPED'
                 ? 'bg-warning text-white ring-2 ring-warning ring-offset-2'
                 : 'bg-warning-light text-warning hover:bg-warning/20'
             }`}
@@ -136,7 +128,7 @@ export function LogMedicationModal({ isOpen, onClose, medication, careRecipientI
         </div>
 
         {/* Skip Reason */}
-        {action === 'skipped' && (
+        {action === 'SKIPPED' && (
           <div className="space-y-3 animate-fade-in">
             <label className="block text-sm font-medium text-text-primary">
               Why was this medication skipped?
@@ -195,7 +187,7 @@ export function LogMedicationModal({ isOpen, onClose, medication, careRecipientI
             variant="primary" 
             onClick={handleSubmit}
             isLoading={mutation.isPending}
-            disabled={!action || (action === 'skipped' && !skipReason) || (skipReason === 'Other' && !customReason)}
+            disabled={!action || (action === 'SKIPPED' && !skipReason) || (skipReason === 'Other' && !customReason)}
           >
             Log Medication
           </Button>

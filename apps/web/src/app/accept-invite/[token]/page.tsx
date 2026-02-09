@@ -9,6 +9,7 @@ import { api } from '@/lib/api/client';
 import { useAuthContext } from '@/components/providers/auth-provider';
 import { useAuth } from '@/hooks/use-auth';
 import { Users, CheckCircle, XCircle, Loader2, Home, Heart } from 'lucide-react';
+import { ROLE_LABELS } from '@/lib/constants';
 
 interface InvitationDetails {
   id: string;
@@ -210,7 +211,7 @@ export default function AcceptInvitePage() {
               {invitation?.familyName}
             </h2>
             <p className="text-center text-muted-foreground">
-              Role: <span className="font-medium text-sage-700">{invitation?.role}</span>
+              Role: <span className="font-medium text-sage-700">{ROLE_LABELS[invitation?.role ?? ''] || invitation?.role}</span>
             </p>
           </div>
 

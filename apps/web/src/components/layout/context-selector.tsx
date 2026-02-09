@@ -5,6 +5,7 @@ import { Check, ChevronDown, Users, Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useFamilySpace } from '@/contexts/family-space-context';
 import { Avatar } from '@/components/ui/avatar';
+import { ROLE_LABELS } from '@/lib/constants';
 
 interface ContextSelectorProps {
   compact?: boolean;
@@ -127,7 +128,7 @@ export function ContextSelector({ compact = false, className }: ContextSelectorP
                     'text-[10px] px-1.5 py-0.5 rounded border',
                     getRoleBadgeColor(family.role)
                   )}>
-                    {family.role}
+                    {ROLE_LABELS[family.role] || family.role}
                   </span>
                   {selectedFamily?.id === family.id && (
                     <Check className="w-4 h-4 text-primary shrink-0" />

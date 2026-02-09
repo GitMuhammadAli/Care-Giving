@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useFamilySpace } from '@/contexts/family-space-context';
 import { cn } from '@/lib/utils';
+import { ROLE_LABELS } from '@/lib/constants';
 
 interface FamilySpaceSelectorProps {
   onAddCareRecipient?: () => void;
@@ -94,7 +95,7 @@ export function FamilySpaceSelector({ onAddCareRecipient, className }: FamilySpa
               <Home className="w-4 h-4 mr-2 text-muted-foreground shrink-0" />
               <span className="flex-1 truncate">{family.name}</span>
               <span className={cn('text-[10px] px-1.5 py-0.5 rounded shrink-0', getRoleBadge(family.role))}>
-                {family.role}
+                {ROLE_LABELS[family.role] || family.role}
               </span>
               {family.id === selectedFamilyId && (
                 <Check className="w-4 h-4 text-primary ml-1 shrink-0" />

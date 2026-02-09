@@ -8,6 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { medicationsApi, Medication } from '@/lib/api';
 import toast from 'react-hot-toast';
+import {
+  MEDICATION_FREQUENCY_OPTIONS as FREQUENCIES,
+  MEDICATION_FORM_OPTIONS as FORMS,
+  DEFAULT_MEDICATION_FORM,
+  DEFAULT_MEDICATION_FREQUENCY,
+} from '@/lib/constants';
 
 interface Props {
   isOpen: boolean;
@@ -16,37 +22,13 @@ interface Props {
   careRecipientId: string;
 }
 
-// Must match Prisma MedicationFrequency enum exactly
-const FREQUENCIES = [
-  { value: 'DAILY', label: 'Once daily' },
-  { value: 'TWICE_DAILY', label: 'Twice daily' },
-  { value: 'THREE_TIMES_DAILY', label: 'Three times daily' },
-  { value: 'FOUR_TIMES_DAILY', label: 'Four times daily' },
-  { value: 'WEEKLY', label: 'Weekly' },
-  { value: 'AS_NEEDED', label: 'As needed' },
-  { value: 'OTHER', label: 'Other / Custom' },
-];
-
-// Must match Prisma MedicationForm enum exactly
-const FORMS = [
-  { value: 'TABLET', label: 'Tablet' },
-  { value: 'CAPSULE', label: 'Capsule' },
-  { value: 'LIQUID', label: 'Liquid' },
-  { value: 'INJECTION', label: 'Injection' },
-  { value: 'PATCH', label: 'Patch' },
-  { value: 'CREAM', label: 'Cream' },
-  { value: 'INHALER', label: 'Inhaler' },
-  { value: 'DROPS', label: 'Drops' },
-  { value: 'OTHER', label: 'Other' },
-];
-
 export function EditMedicationModal({ isOpen, onClose, medication, careRecipientId }: Props) {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     name: '',
     dosage: '',
-    form: 'TABLET',
-    frequency: 'DAILY',
+    form: DEFAULT_MEDICATION_FORM,
+    frequency: DEFAULT_MEDICATION_FREQUENCY,
     scheduledTimes: ['08:00'],
     instructions: '',
     prescribedBy: '',

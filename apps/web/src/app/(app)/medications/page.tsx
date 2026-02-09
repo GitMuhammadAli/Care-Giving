@@ -27,29 +27,10 @@ import {
   Pencil,
   Trash2,
 } from 'lucide-react';
-
-// Format enum values for display
-const frequencyLabels: Record<string, string> = {
-  DAILY: 'Daily',
-  TWICE_DAILY: 'Twice daily',
-  THREE_TIMES_DAILY: '3x daily',
-  FOUR_TIMES_DAILY: '4x daily',
-  WEEKLY: 'Weekly',
-  AS_NEEDED: 'As needed',
-  OTHER: 'Other',
-};
-
-const formLabels: Record<string, string> = {
-  TABLET: 'Tablet',
-  CAPSULE: 'Capsule',
-  LIQUID: 'Liquid',
-  INJECTION: 'Injection',
-  PATCH: 'Patch',
-  CREAM: 'Cream',
-  INHALER: 'Inhaler',
-  DROPS: 'Drops',
-  OTHER: 'Other',
-};
+import {
+  MEDICATION_FREQUENCY_LABELS as frequencyLabels,
+  MEDICATION_FORM_LABELS as formLabels,
+} from '@/lib/constants';
 
 // Group schedule items by time of day
 function groupScheduleByTimeOfDay(items: ApiScheduleItem[]): { time: string; label: string; items: MedicationScheduleItem[] }[] {

@@ -23,6 +23,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { careRecipientsApi, authApi } from '@/lib/api';
 import { useAuth } from '@/hooks/use-auth';
 import toast from 'react-hot-toast';
+import { ROLE_LABELS } from '@/lib/constants';
 
 type Step = 'family' | 'care-recipient' | 'invite' | 'complete';
 
@@ -502,7 +503,7 @@ export default function OnboardingPage() {
                         <div key={index} className="flex items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-lg hover:bg-primary/10 transition-colors">
                           <div>
                             <p className="font-medium text-foreground">{invite.email}</p>
-                            <p className="text-sm text-primary font-medium">{invite.role}</p>
+                            <p className="text-sm text-primary font-medium">{ROLE_LABELS[invite.role] || invite.role}</p>
                           </div>
                           <Button
                             variant="ghost"

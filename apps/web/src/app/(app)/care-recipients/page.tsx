@@ -42,6 +42,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useCreateFamily, useUpdateFamily, useDeleteFamily } from '@/hooks/use-family';
 import { careRecipientsApi, CareRecipient } from '@/lib/api';
 import toast from 'react-hot-toast';
+import { BLOOD_TYPE_LABELS, ROLE_LABELS } from '@/lib/constants';
 
 export default function CareRecipientsPage() {
   const { user, refetchUser } = useAuth();
@@ -248,7 +249,7 @@ export default function CareRecipientsPage() {
                           <span>{recipientCount} loved one{recipientCount !== 1 ? 's' : ''}</span>
                           <span>•</span>
                           <Badge variant={isAdmin ? 'default' : 'secondary'} className="text-xs py-0">
-                            {family.role}
+                            {ROLE_LABELS[family.role] || family.role}
                           </Badge>
                         </div>
                       </div>
@@ -383,7 +384,7 @@ export default function CareRecipientsPage() {
                       {recipient.bloodType && (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Droplets className="w-4 h-4 shrink-0" />
-                          <span>Blood Type: {recipient.bloodType}</span>
+                          <span>Blood Type: {BLOOD_TYPE_LABELS[recipient.bloodType] || recipient.bloodType}</span>
                         </div>
                       )}
                     </div>

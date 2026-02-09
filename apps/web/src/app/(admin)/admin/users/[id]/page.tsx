@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { ROLE_LABELS } from '@/lib/constants';
 
 const statusColors: Record<string, string> = {
   ACTIVE: 'bg-sage/10 text-sage border-sage/20',
@@ -216,7 +217,7 @@ export default function AdminUserDetailPage() {
                   </p>
                 </div>
                 <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border', roleColors[membership.role] || roleColors.USER)}>
-                  {membership.role}
+                  {ROLE_LABELS[membership.role] || membership.role}
                 </span>
               </div>
             ))}

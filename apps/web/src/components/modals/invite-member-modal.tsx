@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { api } from '@/lib/api/client';
 import toast from 'react-hot-toast';
+import { FAMILY_ROLE_OPTIONS as ROLES, DEFAULT_FAMILY_ROLE } from '@/lib/constants';
 
 interface Props {
   isOpen: boolean;
@@ -15,31 +16,10 @@ interface Props {
   familyId: string;
 }
 
-const ROLES = [
-  {
-    value: 'admin',
-    label: 'Admin',
-    description: 'Can manage family, invite members, edit all data',
-    icon: '👑',
-  },
-  {
-    value: 'caregiver',
-    label: 'Caregiver',
-    description: 'Can log medications, add notes, manage schedule',
-    icon: '💪',
-  },
-  {
-    value: 'viewer',
-    label: 'Viewer',
-    description: 'Can view all information but not make changes',
-    icon: '👁️',
-  },
-];
-
 export function InviteMemberModal({ isOpen, onClose, familyId }: Props) {
   const queryClient = useQueryClient();
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState('caregiver');
+  const [role, setRole] = useState(DEFAULT_FAMILY_ROLE);
   const [message, setMessage] = useState('');
 
   const mutation = useMutation({
@@ -58,7 +38,7 @@ export function InviteMemberModal({ isOpen, onClose, familyId }: Props) {
 
   const resetForm = () => {
     setEmail('');
-    setRole('caregiver');
+    setRole(DEFAULT_FAMILY_ROLE);
     setMessage('');
   };
 

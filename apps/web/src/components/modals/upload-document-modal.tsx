@@ -8,6 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { api } from '@/lib/api/client';
 import toast from 'react-hot-toast';
+import {
+  DOCUMENT_TYPE_OPTIONS as DOCUMENT_TYPES,
+  DEFAULT_DOCUMENT_TYPE,
+  MAX_FILE_SIZE,
+  ALLOWED_FILE_TYPES as ALLOWED_TYPES,
+} from '@/lib/constants';
 
 interface Props {
   isOpen: boolean;
@@ -15,35 +21,13 @@ interface Props {
   familyId: string;
 }
 
-const DOCUMENT_CATEGORIES = [
-  { value: 'medical_record', label: 'Medical Record' },
-  { value: 'lab_result', label: 'Lab Result' },
-  { value: 'prescription', label: 'Prescription' },
-  { value: 'insurance', label: 'Insurance' },
-  { value: 'legal', label: 'Legal Document' },
-  { value: 'id', label: 'ID / Card' },
-  { value: 'image', label: 'Photo / Image' },
-  { value: 'other', label: 'Other' },
-];
-
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const ALLOWED_TYPES = [
-  'application/pdf',
-  'image/jpeg',
-  'image/png',
-  'image/gif',
-  'image/webp',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-];
-
 export function UploadDocumentModal({ isOpen, onClose, familyId }: Props) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({
     title: '',
-    category: 'medical_record',
+    type: DEFAULT_DOCUMENT_TYPE,
     description: '',
     expirationDate: '',
   });
@@ -59,8 +43,9 @@ export function UploadDocumentModal({ isOpen, onClose, familyId }: Props) {
       onClose();
       resetForm();
     },
-    onError: () => {
-      toast.error('Failed to upload document');
+    onError: (error: any) => {
+      const message = error?.message || 'Failed to upload document';
+      toast.error(typeof message === 'string' ? message : 'Failed to upload document. Please check all fields.');
     },
   });
 
@@ -68,7 +53,7 @@ export function UploadDocumentModal({ isOpen, onClose, familyId }: Props) {
     setFile(null);
     setFormData({
       title: '',
-      category: 'medical_record',
+      type: DEFAULT_DOCUMENT_TYPE,
       description: '',
       expirationDate: '',
     });
@@ -118,8 +103,15 @@ export function UploadDocumentModal({ isOpen, onClose, familyId }: Props) {
     const data = new FormData();
     data.append('file', file);
     data.append('title', formData.title);
-    data.append('category', formData.category);
-    data.append('description', formData.description);
+    data.append('type', formData.type);
+    // Derive category from selected document type
+    const docType = DOCUMENT_TYPES.find((dt) => dt.value === formData.type);
+    if (docType) {
+      data.append('category', docType.category);
+    }
+    if (formData.description) {
+      data.append('description', formData.description);
+    }
     if (formData.expirationDate) {
       data.append('expirationDate', formData.expirationDate);
     }
@@ -209,18 +201,18 @@ export function UploadDocumentModal({ isOpen, onClose, familyId }: Props) {
           required
         />
 
-        {/* Category */}
+        {/* Document Type */}
         <div>
           <label className="block text-sm font-medium text-text-primary mb-2">
-            Category
+            Document Type
           </label>
           <select
-            value={formData.category}
-            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+            value={formData.type}
+            onChange={(e) => setFormData({ ...formData, type: e.target.value })}
             className="w-full px-4 py-3 rounded-lg border border-border bg-bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 focus:border-accent-primary"
           >
-            {DOCUMENT_CATEGORIES.map((cat) => (
-              <option key={cat.value} value={cat.value}>{cat.label}</option>
+            {DOCUMENT_TYPES.map((dt) => (
+              <option key={dt.value} value={dt.value}>{dt.label}</option>
             ))}
           </select>
         </div>

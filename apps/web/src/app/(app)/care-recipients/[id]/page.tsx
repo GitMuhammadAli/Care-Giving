@@ -17,6 +17,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { EmergencyButton } from '@/components/care/emergency-button';
 import { EditCareRecipientModal } from '@/components/modals/edit-care-recipient-modal';
 import { api } from '@/lib/api/client';
+import { BLOOD_TYPE_LABELS } from '@/lib/constants';
 import Link from 'next/link';
 
 interface CareRecipient {
@@ -136,7 +137,7 @@ export default function CareRecipientDetailPage() {
               {careRecipient.bloodType && (
                 <span className="flex items-center gap-1">
                   <Droplets className="w-4 h-4" />
-                  Blood Type: {careRecipient.bloodType}
+                  Blood Type: {BLOOD_TYPE_LABELS[careRecipient.bloodType] || careRecipient.bloodType}
                 </span>
               )}
             </div>

@@ -7,6 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { api } from '@/lib/api/client';
 import toast from 'react-hot-toast';
+import {
+  APPOINTMENT_TYPE_OPTIONS as APPOINTMENT_TYPES,
+  RECURRENCE_OPTIONS,
+  DEFAULT_APPOINTMENT_TYPE,
+  DEFAULT_RECURRENCE,
+} from '@/lib/constants';
 
 interface Props {
   isOpen: boolean;
@@ -15,30 +21,11 @@ interface Props {
   selectedDate?: Date;
 }
 
-const APPOINTMENT_TYPES = [
-  { value: 'doctor_visit', label: 'Doctor Visit' },
-  { value: 'specialist', label: 'Specialist' },
-  { value: 'lab_work', label: 'Lab Work' },
-  { value: 'imaging', label: 'Imaging' },
-  { value: 'physical_therapy', label: 'Physical Therapy' },
-  { value: 'dental', label: 'Dental' },
-  { value: 'vision', label: 'Vision' },
-  { value: 'other', label: 'Other' },
-];
-
-const RECURRENCE_OPTIONS = [
-  { value: 'none', label: 'Does not repeat' },
-  { value: 'daily', label: 'Daily' },
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'biweekly', label: 'Every 2 weeks' },
-  { value: 'monthly', label: 'Monthly' },
-];
-
 export function AddAppointmentModal({ isOpen, onClose, careRecipientId, selectedDate }: Props) {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     title: '',
-    type: 'doctor_visit',
+    type: DEFAULT_APPOINTMENT_TYPE,
     doctorName: '',
     location: '',
     address: '',
@@ -46,7 +33,7 @@ export function AddAppointmentModal({ isOpen, onClose, careRecipientId, selected
     time: '09:00',
     duration: '60',
     notes: '',
-    recurrence: 'none',
+    recurrence: DEFAULT_RECURRENCE,
     recurrenceEndDate: '',
     reminderBefore: ['1day', '1hour'],
     transportAssignedTo: '',
@@ -61,15 +48,16 @@ export function AddAppointmentModal({ isOpen, onClose, careRecipientId, selected
       onClose();
       resetForm();
     },
-    onError: () => {
-      toast.error('Failed to schedule appointment');
+    onError: (error: any) => {
+      const message = error?.message || 'Failed to schedule appointment';
+      toast.error(typeof message === 'string' ? message : 'Failed to schedule appointment. Please check all fields.');
     },
   });
 
   const resetForm = () => {
     setFormData({
       title: '',
-      type: 'doctor_visit',
+      type: DEFAULT_APPOINTMENT_TYPE,
       doctorName: '',
       location: '',
       address: '',
@@ -77,7 +65,7 @@ export function AddAppointmentModal({ isOpen, onClose, careRecipientId, selected
       time: '09:00',
       duration: '60',
       notes: '',
-      recurrence: 'none',
+      recurrence: DEFAULT_RECURRENCE,
       recurrenceEndDate: '',
       reminderBefore: ['1day', '1hour'],
       transportAssignedTo: '',
@@ -206,7 +194,7 @@ export function AddAppointmentModal({ isOpen, onClose, careRecipientId, selected
               ))}
             </select>
           </div>
-          {formData.recurrence !== 'none' && (
+          {formData.recurrence !== DEFAULT_RECURRENCE && (
             <Input
               label="Repeat Until"
               type="date"

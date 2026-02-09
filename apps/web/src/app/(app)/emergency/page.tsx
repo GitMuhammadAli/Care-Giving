@@ -28,6 +28,7 @@ import { useQuery } from '@tanstack/react-query';
 import { careRecipientsApi } from '@/lib/api';
 import { useMedications } from '@/hooks/use-medications';
 import { Skeleton } from '@/components/ui/skeleton';
+import { BLOOD_TYPE_LABELS } from '@/lib/constants';
 
 export default function EmergencyPage() {
   const { selectedCareRecipientId: careRecipientId } = useFamilySpace();
@@ -198,7 +199,7 @@ export default function EmergencyPage() {
                 <Droplet className="w-6 h-6 text-destructive" />
                 <div>
                   <p className="text-sm font-medium">Blood Type</p>
-                  <p className="text-2xl font-bold text-destructive">{careRecipient.bloodType}</p>
+                  <p className="text-2xl font-bold text-destructive">{BLOOD_TYPE_LABELS[careRecipient.bloodType] || careRecipient.bloodType}</p>
                 </div>
               </div>
             )}

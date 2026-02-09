@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { ROLE_LABELS } from '@/lib/constants';
 
 const roleColors: Record<string, string> = {
   ADMIN: 'bg-sage/10 text-sage border-sage/20',
@@ -134,7 +135,7 @@ export default function AdminFamilyDetailPage() {
               </div>
               <div className="flex items-center gap-3">
                 <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border', roleColors[member.role] || roleColors.VIEWER)}>
-                  {member.role}
+                  {ROLE_LABELS[member.role] || member.role}
                 </span>
                 <div className="flex items-center gap-1">
                   {member.role !== 'ADMIN' && (
@@ -223,7 +224,7 @@ export default function AdminFamilyDetailPage() {
                   </p>
                 </div>
                 <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border', roleColors[invitation.role] || roleColors.VIEWER)}>
-                  {invitation.role}
+                  {ROLE_LABELS[invitation.role] || invitation.role}
                 </span>
               </div>
             ))}
