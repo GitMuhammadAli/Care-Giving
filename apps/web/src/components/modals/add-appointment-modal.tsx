@@ -110,7 +110,7 @@ export function AddAppointmentModal({ isOpen, onClose, careRecipientId, selected
         {/* Title & Type */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
-            label="Appointment Title"
+            label="Appointment Title *"
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
             placeholder="e.g., Annual Checkup"
@@ -158,14 +158,14 @@ export function AddAppointmentModal({ isOpen, onClose, careRecipientId, selected
         {/* Date & Time */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Input
-            label="Date"
+            label="Date *"
             type="date"
             value={formData.date}
             onChange={(e) => setFormData({ ...formData, date: e.target.value })}
             required
           />
           <Input
-            label="Time"
+            label="Time *"
             type="time"
             value={formData.time}
             onChange={(e) => setFormData({ ...formData, time: e.target.value })}

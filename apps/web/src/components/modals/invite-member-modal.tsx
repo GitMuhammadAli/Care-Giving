@@ -84,7 +84,7 @@ export function InviteMemberModal({ isOpen, onClose, familyId }: Props) {
         {/* Email */}
         <div>
           <Input
-            label="Email Address"
+            label="Email Address *"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}

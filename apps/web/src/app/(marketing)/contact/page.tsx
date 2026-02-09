@@ -217,7 +217,7 @@ export default function ContactPage() {
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <div className="grid md:grid-cols-2 gap-5">
                     <div>
-                      <label className="text-sm text-muted-foreground block mb-2">Name</label>
+                      <label className="text-sm text-muted-foreground block mb-2">Name <span className="text-destructive">*</span></label>
                       <Input
                         type="text"
                         value={formData.name}
@@ -227,7 +227,7 @@ export default function ContactPage() {
                       />
                     </div>
                     <div>
-                      <label className="text-sm text-muted-foreground block mb-2">Email</label>
+                      <label className="text-sm text-muted-foreground block mb-2">Email <span className="text-destructive">*</span></label>
                       <Input
                         type="email"
                         value={formData.email}
@@ -255,7 +255,7 @@ export default function ContactPage() {
                   </div>
 
                   <div>
-                    <label className="text-sm text-muted-foreground block mb-2">Message</label>
+                    <label className="text-sm text-muted-foreground block mb-2">Message <span className="text-destructive">*</span></label>
                     <Textarea
                       rows={5}
                       value={formData.message}

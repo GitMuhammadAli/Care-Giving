@@ -28,6 +28,29 @@ import {
   Trash2,
 } from 'lucide-react';
 
+// Format enum values for display
+const frequencyLabels: Record<string, string> = {
+  DAILY: 'Daily',
+  TWICE_DAILY: 'Twice daily',
+  THREE_TIMES_DAILY: '3x daily',
+  FOUR_TIMES_DAILY: '4x daily',
+  WEEKLY: 'Weekly',
+  AS_NEEDED: 'As needed',
+  OTHER: 'Other',
+};
+
+const formLabels: Record<string, string> = {
+  TABLET: 'Tablet',
+  CAPSULE: 'Capsule',
+  LIQUID: 'Liquid',
+  INJECTION: 'Injection',
+  PATCH: 'Patch',
+  CREAM: 'Cream',
+  INHALER: 'Inhaler',
+  DROPS: 'Drops',
+  OTHER: 'Other',
+};
+
 // Group schedule items by time of day
 function groupScheduleByTimeOfDay(items: ApiScheduleItem[]): { time: string; label: string; items: MedicationScheduleItem[] }[] {
   const morning: MedicationScheduleItem[] = [];
@@ -321,7 +344,7 @@ export default function MedicationsPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <h4 className="font-semibold text-text-primary">{med.name}</h4>
-                            <Badge size="sm">{med.frequency}</Badge>
+                            <Badge size="sm">{frequencyLabels[med.frequency] || med.frequency}</Badge>
                           </div>
                           <p className="text-sm text-text-secondary">{med.dosage}</p>
                           {med.instructions && (

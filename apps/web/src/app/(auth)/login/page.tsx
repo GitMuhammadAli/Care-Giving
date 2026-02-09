@@ -211,7 +211,7 @@ function LoginContent() {
               transition={{ delay: 0.3, duration: 0.3 }}
             >
               <Label htmlFor="email" className="text-sm font-medium">
-                Email Address
+                Email Address <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="email"
@@ -233,7 +233,7 @@ function LoginContent() {
             >
               <div className="flex items-center justify-between">
                 <Label htmlFor="password" className="text-sm font-medium">
-                  Password
+                  Password <span className="text-destructive">*</span>
                 </Label>
                 <Link
                   href="/forgot-password"

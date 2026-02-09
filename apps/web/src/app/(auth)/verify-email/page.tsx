@@ -256,7 +256,7 @@ function VerifyEmailContent() {
               {!showOtpInput && (
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-sm font-medium">
-                    Email Address
+                    Email Address <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="email"
@@ -338,9 +338,16 @@ function VerifyEmailContent() {
                   </Button>
 
                   <div className="text-center space-y-2">
-                    <p className="text-sm text-muted-foreground">
-                      Don&apos;t have a code yet?
-                    </p>
+                    {resendCooldown > 0 ? (
+                      <p className="text-sm text-destructive font-medium">
+                        Code sent! You can request another in{' '}
+                        <span className="font-bold tabular-nums">{resendCooldown}s</span>
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Don&apos;t have a code yet?
+                      </p>
+                    )}
                     <button
                       type="button"
                       onClick={async () => {

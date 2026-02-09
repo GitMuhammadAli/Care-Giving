@@ -16,28 +16,28 @@ interface Props {
   careRecipientId: string;
 }
 
+// Must match Prisma MedicationFrequency enum exactly
 const FREQUENCIES = [
-  { value: 'once_daily', label: 'Once daily' },
-  { value: 'twice_daily', label: 'Twice daily' },
-  { value: 'three_times_daily', label: 'Three times daily' },
-  { value: 'four_times_daily', label: 'Four times daily' },
-  { value: 'every_other_day', label: 'Every other day' },
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'as_needed', label: 'As needed' },
-  { value: 'custom', label: 'Custom schedule' },
+  { value: 'DAILY', label: 'Once daily' },
+  { value: 'TWICE_DAILY', label: 'Twice daily' },
+  { value: 'THREE_TIMES_DAILY', label: 'Three times daily' },
+  { value: 'FOUR_TIMES_DAILY', label: 'Four times daily' },
+  { value: 'WEEKLY', label: 'Weekly' },
+  { value: 'AS_NEEDED', label: 'As needed' },
+  { value: 'OTHER', label: 'Other / Custom' },
 ];
 
+// Must match Prisma MedicationForm enum exactly
 const FORMS = [
-  'Tablet',
-  'Capsule',
-  'Liquid',
-  'Injection',
-  'Patch',
-  'Cream',
-  'Inhaler',
-  'Drops',
-  'Suppository',
-  'Other',
+  { value: 'TABLET', label: 'Tablet' },
+  { value: 'CAPSULE', label: 'Capsule' },
+  { value: 'LIQUID', label: 'Liquid' },
+  { value: 'INJECTION', label: 'Injection' },
+  { value: 'PATCH', label: 'Patch' },
+  { value: 'CREAM', label: 'Cream' },
+  { value: 'INHALER', label: 'Inhaler' },
+  { value: 'DROPS', label: 'Drops' },
+  { value: 'OTHER', label: 'Other' },
 ];
 
 export function EditMedicationModal({ isOpen, onClose, medication, careRecipientId }: Props) {
@@ -45,8 +45,8 @@ export function EditMedicationModal({ isOpen, onClose, medication, careRecipient
   const [formData, setFormData] = useState({
     name: '',
     dosage: '',
-    form: 'Tablet',
-    frequency: 'once_daily',
+    form: 'TABLET',
+    frequency: 'DAILY',
     scheduledTimes: ['08:00'],
     instructions: '',
     prescribedBy: '',
@@ -62,8 +62,8 @@ export function EditMedicationModal({ isOpen, onClose, medication, careRecipient
       setFormData({
         name: medication.name || '',
         dosage: medication.dosage || '',
-        form: medication.form || 'Tablet',
-        frequency: medication.frequency || 'once_daily',
+        form: medication.form || 'TABLET',
+        frequency: medication.frequency || 'DAILY',
         scheduledTimes: medication.scheduledTimes?.length > 0 ? medication.scheduledTimes : ['08:00'],
         instructions: medication.instructions || '',
         prescribedBy: medication.prescribedBy || '',
@@ -84,8 +84,9 @@ export function EditMedicationModal({ isOpen, onClose, medication, careRecipient
       toast.success('Medication updated successfully');
       onClose();
     },
-    onError: () => {
-      toast.error('Failed to update medication');
+    onError: (error: any) => {
+      const message = error?.message || error?.response?.data?.message || 'Failed to update medication';
+      toast.error(typeof message === 'string' ? message : 'Failed to update medication. Please check all required fields.');
     },
   });
 
@@ -129,14 +130,14 @@ export function EditMedicationModal({ isOpen, onClose, medication, careRecipient
         {/* Basic Info */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
-            label="Medication Name"
+            label="Medication Name *"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             placeholder="e.g., Metformin"
             required
           />
           <Input
-            label="Dosage"
+            label="Dosage *"
             value={formData.dosage}
             onChange={(e) => setFormData({ ...formData, dosage: e.target.value })}
             placeholder="e.g., 500mg"
@@ -147,15 +148,16 @@ export function EditMedicationModal({ isOpen, onClose, medication, careRecipient
         {/* Form */}
         <div>
           <label className="block text-sm font-medium text-text-primary mb-2">
-            Form
+            Form <span className="text-destructive">*</span>
           </label>
           <select
             value={formData.form}
             onChange={(e) => setFormData({ ...formData, form: e.target.value })}
             className="w-full px-4 py-3 rounded-lg border border-border bg-bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 focus:border-accent-primary"
+            required
           >
-            {FORMS.map((form) => (
-              <option key={form} value={form}>{form}</option>
+            {FORMS.map((f) => (
+              <option key={f.value} value={f.value}>{f.label}</option>
             ))}
           </select>
         </div>
@@ -163,12 +165,13 @@ export function EditMedicationModal({ isOpen, onClose, medication, careRecipient
         {/* Frequency */}
         <div>
           <label className="block text-sm font-medium text-text-primary mb-2">
-            Frequency
+            Frequency <span className="text-destructive">*</span>
           </label>
           <select
             value={formData.frequency}
             onChange={(e) => setFormData({ ...formData, frequency: e.target.value })}
             className="w-full px-4 py-3 rounded-lg border border-border bg-bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 focus:border-accent-primary"
+            required
           >
             {FREQUENCIES.map((freq) => (
               <option key={freq.value} value={freq.value}>{freq.label}</option>
@@ -260,7 +263,7 @@ export function EditMedicationModal({ isOpen, onClose, medication, careRecipient
         {/* Date Range */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
-            label="Start Date"
+            label="Start Date *"
             type="date"
             value={formData.startDate}
             onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}

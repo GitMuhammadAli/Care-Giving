@@ -202,7 +202,7 @@ export function UploadDocumentModal({ isOpen, onClose, familyId }: Props) {
 
         {/* Title */}
         <Input
-          label="Document Title"
+          label="Document Title *"
           value={formData.title}
           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
           placeholder="e.g., Lab Results - January 2025"

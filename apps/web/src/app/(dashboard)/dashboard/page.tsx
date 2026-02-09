@@ -495,7 +495,7 @@ const Dashboard = () => {
               </DialogHeader>
               <form onSubmit={handleAddTask} className="space-y-4 mt-4">
                 <div>
-                  <label className="text-sm font-medium text-foreground block mb-2">Task Title</label>
+                  <label className="text-sm font-medium text-foreground block mb-2">Task Title <span className="text-destructive">*</span></label>
                   <Input
                     value={newTask.title}
                     onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
@@ -504,7 +504,7 @@ const Dashboard = () => {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-foreground block mb-2">Time</label>
+                  <label className="text-sm font-medium text-foreground block mb-2">Time <span className="text-destructive">*</span></label>
                   <Input
                     type="time"
                     value={newTask.time}

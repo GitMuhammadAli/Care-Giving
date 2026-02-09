@@ -123,7 +123,7 @@ export default function ForgotPasswordPage() {
           )}
 
           <Input
-            label="Email"
+            label="Email *"
             type="email"
             placeholder="you@example.com"
             value={email}

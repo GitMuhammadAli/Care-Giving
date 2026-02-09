@@ -273,7 +273,7 @@ function ResetPasswordForm() {
           {/* New Password */}
           <div className="space-y-2">
             <Label htmlFor="password" className="text-sm font-medium">
-              New Password
+              New Password <span className="text-destructive">*</span>
             </Label>
             <div className="relative">
               <Input
@@ -317,7 +317,7 @@ function ResetPasswordForm() {
           {/* Confirm Password */}
           <div className="space-y-2">
             <Label htmlFor="confirmPassword" className="text-sm font-medium">
-              Confirm Password
+              Confirm Password <span className="text-destructive">*</span>
             </Label>
             <div className="relative">
               <Input

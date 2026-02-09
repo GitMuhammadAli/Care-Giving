@@ -112,7 +112,7 @@ export function EditCareRecipientModal({ isOpen, onClose, careRecipient }: Props
         {/* Basic Info */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
-            label="Full Name"
+            label="Full Name *"
             value={formData.fullName}
             onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
             required
@@ -125,7 +125,7 @@ export function EditCareRecipientModal({ isOpen, onClose, careRecipient }: Props
             placeholder="e.g., Grandma Maggie"
           />
           <Input
-            label="Date of Birth"
+            label="Date of Birth *"
             type="date"
             value={formData.dateOfBirth}
             onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
