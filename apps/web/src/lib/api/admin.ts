@@ -545,7 +545,17 @@ export const adminApi = {
         params.append(key, String(value));
       }
     });
-    return api.get(`/admin/logs?${params.toString()}`);
+    // Backend returns { logs, total, page, totalPages } — normalize to PaginatedResponse
+    const raw: any = await api.get(`/admin/logs?${params.toString()}`);
+    return {
+      data: raw.data || raw.logs || [],
+      pagination: raw.pagination || {
+        page: raw.page || 1,
+        limit: filter.limit || 50,
+        total: raw.total || 0,
+        totalPages: raw.totalPages || 1,
+      },
+    };
   },
 
   getLogStats: async (hours: number = 24): Promise<LogStats> => {
