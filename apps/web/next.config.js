@@ -97,7 +97,39 @@ const nextConfig = {
         source: '/(.*)',
         headers: securityHeaders,
       },
-      // Cache static assets aggressively
+      // ── HTML pages: never cache ────────────────────────────────────
+      // Ensures users always get the latest deploy, not a stale page.
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
+          },
+        ],
+        // Only apply to HTML (page) responses, not static assets
+        has: [
+          {
+            type: 'header',
+            key: 'Accept',
+            value: '(.*text/html.*)',
+          },
+        ],
+      },
+      // ── Service worker: never cache ────────────────────────────────
+      // The sw.js file itself must always be fetched fresh so the
+      // browser detects version changes and triggers the install event.
+      {
+        source: '/sw.js',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
+          },
+        ],
+      },
+      // ── Next.js hashed static assets: cache forever ────────────────
+      // These have content hashes in filenames, so immutable is safe.
       {
         source: '/_next/static/(.*)',
         headers: [

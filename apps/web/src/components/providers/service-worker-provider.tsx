@@ -54,10 +54,10 @@ export function ServiceWorkerProvider({ children }: { children: React.ReactNode 
       .then((registration) => {
         console.log('[App] Service Worker registered:', registration.scope);
 
-        // Check for updates periodically (store ref for cleanup)
+        // Check for updates frequently so deploys propagate fast
         updateIntervalRef.current = setInterval(() => {
           registration.update();
-        }, 60 * 60 * 1000); // Check every hour
+        }, 5 * 60 * 1000); // Check every 5 minutes
       })
       .catch((error) => {
         console.error('[App] Service Worker registration failed:', error);

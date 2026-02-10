@@ -1,10 +1,14 @@
 // CareCircle Service Worker
-const CACHE_NAME = 'carecircle-v1';
+// ─────────────────────────────────────────────────────────────────────────────
+// IMPORTANT: Bump CACHE_VERSION on every deploy so returning users get fresh
+// assets. The activate handler automatically purges older caches.
+// ─────────────────────────────────────────────────────────────────────────────
+const CACHE_VERSION = 2;
+const CACHE_NAME = `carecircle-v${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline';
 
-// Files to cache for offline use
-const STATIC_ASSETS = [
-  '/',
+// Only truly static assets that rarely change (images, icons, manifest)
+const PRECACHE_ASSETS = [
   '/offline',
   '/manifest.json',
   '/icons/icon-192x192.png',
@@ -13,92 +17,119 @@ const STATIC_ASSETS = [
   '/icons/apple-touch-icon.png',
 ];
 
-// Install event - cache static assets
+// Install event - cache only the minimal offline shell
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[SW] Caching static assets');
-      return cache.addAll(STATIC_ASSETS);
+      console.log('[SW] Caching offline shell assets');
+      return cache.addAll(PRECACHE_ASSETS);
     })
   );
+  // Activate immediately — don't wait for old tabs to close
   self.skipWaiting();
 });
 
-// Activate event - clean old caches
+// Activate event - purge ALL old caches so users get fresh code
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
-          .filter((cacheName) => cacheName !== CACHE_NAME)
-          .map((cacheName) => {
-            console.log('[SW] Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
+          .filter((name) => name !== CACHE_NAME)
+          .map((name) => {
+            console.log('[SW] Purging old cache:', name);
+            return caches.delete(name);
           })
       );
     })
   );
+  // Take control of ALL open tabs immediately
   self.clients.claim();
 });
 
-// Fetch event - serve from cache, fallback to network
+// ─── Fetch strategies ─────────────────────────────────────────────────────────
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip cross-origin requests
+  // Only handle same-origin requests
   if (url.origin !== location.origin) {
     return;
   }
 
-  // API requests - network first, cache fallback for GET
-  if (url.pathname.startsWith('/api/')) {
-    if (request.method === 'GET') {
-      event.respondWith(
-        fetch(request)
-          .then((response) => {
-            // Clone and cache successful responses
-            if (response.ok) {
-              const responseClone = response.clone();
-              caches.open(CACHE_NAME).then((cache) => {
-                cache.put(request, responseClone);
-              });
-            }
-            return response;
-          })
-          .catch(() => {
-            return caches.match(request);
-          })
-      );
-    }
+  // Skip non-GET requests entirely (POST, PUT, DELETE go straight to network)
+  if (request.method !== 'GET') {
     return;
   }
 
-  // Static assets - cache first
-  event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
+  // ── Strategy 1: NETWORK-ONLY for API requests ──────────────────────────
+  // Never cache API calls — we always want live data
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(
+      fetch(request).catch(() => {
+        return caches.match(request) || new Response('Offline', { status: 503 });
+      })
+    );
+    return;
+  }
 
-      return fetch(request)
+  // ── Strategy 2: NETWORK-FIRST for pages & JS/CSS bundles ───────────────
+  // Always try the network first so users get the latest deploy.
+  // Only fall back to cache when offline.
+  if (
+    request.mode === 'navigate' ||                     // HTML page navigations
+    url.pathname.startsWith('/_next/') ||               // Next.js JS/CSS chunks
+    url.pathname.endsWith('.js') ||
+    url.pathname.endsWith('.css') ||
+    url.pathname.endsWith('.html')
+  ) {
+    event.respondWith(
+      fetch(request)
         .then((response) => {
-          // Cache new requests
-          if (response.ok && request.method === 'GET') {
-            const responseClone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(request, responseClone);
-            });
+          // Cache a copy for offline fallback
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
           }
           return response;
         })
         .catch(() => {
-          // Return offline page for navigation requests
+          return caches.match(request).then((cached) => {
+            if (cached) return cached;
+            // Offline fallback for navigation
+            if (request.mode === 'navigate') {
+              return caches.match(OFFLINE_URL);
+            }
+            return new Response('Offline', { status: 503 });
+          });
+        })
+    );
+    return;
+  }
+
+  // ── Strategy 3: STALE-WHILE-REVALIDATE for images & other static files ─
+  // Serve from cache instantly, but update the cache in the background.
+  event.respondWith(
+    caches.match(request).then((cachedResponse) => {
+      const networkFetch = fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => {
+          // If offline and no cache, return a graceful error
           if (request.mode === 'navigate') {
             return caches.match(OFFLINE_URL);
           }
           return new Response('Offline', { status: 503 });
         });
+
+      // Return cached version immediately if available, otherwise wait for network
+      return cachedResponse || networkFetch;
     })
   );
 });
