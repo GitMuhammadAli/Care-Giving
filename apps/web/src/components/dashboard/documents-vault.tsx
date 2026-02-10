@@ -96,7 +96,7 @@ export const DocumentsVault = ({ familyId }: DocumentsVaultProps) => {
       documentsApi.upload(familyId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents', familyId] });
-      toast.success('Document upload started! Processing in background...');
+      toast.success('Document uploaded successfully');
     },
     onError: () => {
       toast.error('Failed to upload document');

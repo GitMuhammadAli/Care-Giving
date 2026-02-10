@@ -29,36 +29,8 @@ export class DocumentsService {
   }
 
   /**
-   * Create a document record with PROCESSING status (for async upload)
-   */
-  async createPending(
-    familyId: string,
-    userId: string,
-    dto: { name: string; type?: string; notes?: string; expiresAt?: string; mimeType: string; sizeBytes: number },
-  ) {
-    const membership = await this.verifyFamilyAccess(familyId, userId);
-
-    if (membership.role === 'VIEWER') {
-      throw new ForbiddenException('Viewers cannot upload documents');
-    }
-
-    return this.prisma.document.create({
-      data: {
-        familyId,
-        uploadedById: userId,
-        name: dto.name,
-        type: (dto.type as any) || 'OTHER',
-        status: 'PROCESSING',
-        mimeType: dto.mimeType,
-        sizeBytes: dto.sizeBytes,
-        expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : undefined,
-        notes: dto.notes,
-      },
-    });
-  }
-
-  /**
-   * Create a document with file already uploaded (sync mode)
+   * Create a document record with the file already uploaded to storage.
+   * The controller uploads to Cloudinary first, then calls this with the URL.
    */
   async create(
     familyId: string,
@@ -382,99 +354,6 @@ export class DocumentsService {
     return grouped;
   }
 
-  /**
-   * Process document upload synchronously (used when BullMQ worker is not available)
-   * This does the same thing as DocumentsProcessor but inline
-   */
-  async processUploadSync(
-    documentId: string,
-    familyId: string,
-    userId: string,
-    file: Express.Multer.File,
-  ) {
-    this.logger.log(`Processing document upload synchronously: ${documentId}`);
-
-    try {
-      // Determine resource type based on mimeType
-      let resourceType: 'image' | 'raw' | 'video' | 'auto' = 'raw';
-      if (file.mimetype.startsWith('image/')) {
-        resourceType = 'image';
-      } else if (file.mimetype.startsWith('video/')) {
-        resourceType = 'video';
-      }
-
-      // Upload file to Cloudinary
-      const uploadResult = await this.storageService.upload(file, {
-        folder: `carecircle/documents/${familyId}`,
-        resourceType,
-      });
-
-      // Get uploader info
-      const uploader = await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: { fullName: true },
-      });
-
-      // Update the document record with the storage info
-      const document = await this.prisma.document.update({
-        where: { id: documentId },
-        data: {
-          s3Key: uploadResult.key,
-          url: uploadResult.url,
-          status: 'READY',
-        },
-      });
-
-      this.logger.log(`Document upload complete (sync): ${documentId}`);
-
-      // Publish event for real-time sync
-      try {
-        await this.eventPublisher.publish(
-          ROUTING_KEYS.DOCUMENT_UPLOADED,
-          {
-            documentId: document.id,
-            documentName: document.name,
-            documentType: document.type,
-            familyId,
-            uploadedById: userId,
-            uploadedByName: uploader?.fullName || 'Unknown',
-          },
-          { aggregateType: 'Document', aggregateId: document.id },
-          { familyId, causedBy: userId },
-        );
-      } catch (error) {
-        this.logger.warn(`Failed to publish document.uploaded event: ${error.message}`);
-      }
-
-      // Also emit internal event for local WebSocket broadcast
-      this.eventEmitter.emit('document.uploaded', {
-        document,
-        uploadedBy: uploader,
-        familyId,
-      });
-
-      return document;
-    } catch (error) {
-      this.logger.error(`Document upload failed (sync): ${documentId}`, error);
-
-      // Update document status to failed
-      await this.prisma.document.update({
-        where: { id: documentId },
-        data: {
-          status: 'FAILED',
-        },
-      });
-
-      // Emit failure event
-      this.eventEmitter.emit('document.upload.failed', {
-        documentId,
-        familyId,
-        error: error.message,
-      });
-
-      throw error;
-    }
-  }
 }
 
 

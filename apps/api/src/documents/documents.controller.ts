@@ -12,20 +12,15 @@ import {
   UploadedFile,
   BadRequestException,
   UseGuards,
-  Optional,
   Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
-import { InjectQueue } from '@nestjs/bull';
-import { Queue } from 'bull';
-import { ConfigService } from '@nestjs/config';
 import { FamilyRole } from '@prisma/client';
 import { DocumentsService } from './documents.service';
 import { UpdateDocumentDto } from './dto/update-document.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { StorageService } from '../system/module/storage/storage.service';
-import { DocumentUploadJob } from './documents.processor';
 import { FamilyAccessGuard } from '../system/guard/family-access.guard';
 import { FamilyAccess } from '../system/decorator/family-access.decorator';
 
@@ -41,19 +36,11 @@ interface CurrentUserPayload {
 @Controller('families/:familyId/documents')
 export class DocumentsController {
   private readonly logger = new Logger(DocumentsController.name);
-  private readonly useQueues: boolean;
 
   constructor(
     private readonly documentsService: DocumentsService,
     private readonly storageService: StorageService,
-    private readonly configService: ConfigService,
-    @Optional() @InjectQueue('document-upload') private documentQueue?: Queue<DocumentUploadJob>,
-  ) {
-    this.useQueues = this.configService.get('app.enableQueues', true) && !!this.documentQueue;
-    if (!this.useQueues) {
-      this.logger.log('Document uploads will be processed synchronously (queue not available)');
-    }
-  }
+  ) {}
 
   @Post()
   @FamilyAccess({ param: 'familyId', roles: [FamilyRole.ADMIN, FamilyRole.CAREGIVER] })
@@ -70,57 +57,30 @@ export class DocumentsController {
       throw new BadRequestException('File is required');
     }
 
-    // Create a pending document record first
-    const document = await this.documentsService.createPending(familyId, user.id, {
+    // 1. Upload file to Cloudinary synchronously (2-5 seconds)
+    const resourceType = this.getResourceType(file.mimetype);
+
+    this.logger.log(
+      `Uploading document to Cloudinary: ${file.originalname} (${(file.size / 1024).toFixed(1)}KB, ${resourceType})`,
+    );
+
+    const uploadResult = await this.storageService.upload(file, {
+      folder: `carecircle/documents/${familyId}`,
+      resourceType,
+    });
+
+    // 2. Create document record with status READY and URL already set
+    return this.documentsService.create(familyId, user.id, {
       name: dto.name || file.originalname.replace(/\.[^/.]+$/, ''),
       type: dto.type,
       notes: dto.notes,
       expiresAt: dto.expiresAt,
+    }, {
+      s3Key: uploadResult.key,
+      url: uploadResult.url,
       mimeType: file.mimetype,
       sizeBytes: file.size,
     });
-
-    // Try async queue first, fall back to sync if anything goes wrong
-    if (this.useQueues && this.documentQueue) {
-      try {
-        await this.documentQueue.add(
-          'upload',
-          {
-            documentId: document.id,
-            familyId,
-            userId: user.id,
-            file: {
-              buffer: file.buffer.toString('base64'),
-              originalname: file.originalname,
-              mimetype: file.mimetype,
-              size: file.size,
-            },
-          },
-          {
-            attempts: 3,
-            backoff: {
-              type: 'exponential',
-              delay: 2000,
-            },
-            removeOnComplete: true,
-            removeOnFail: false,
-          },
-        );
-
-        // Return immediately with the pending document
-        return document;
-      } catch (queueError) {
-        // Queue failed (Redis down, payload too large, etc.) — fall back to sync
-        this.logger.warn(
-          `Queue add failed for document ${document.id}, falling back to sync upload: ${queueError.message}`,
-        );
-        return this.documentsService.processUploadSync(document.id, familyId, user.id, file);
-      }
-    }
-
-    // No queue available — process synchronously
-    this.logger.log(`Processing document upload synchronously for ${document.id}`);
-    return this.documentsService.processUploadSync(document.id, familyId, user.id, file);
   }
 
   @Get()
@@ -190,5 +150,12 @@ export class DocumentsController {
     @CurrentUser() user: CurrentUserPayload,
   ) {
     return this.documentsService.delete(id, user.id);
+  }
+
+  /** Map MIME type to Cloudinary resource type */
+  private getResourceType(mimeType: string): 'image' | 'raw' | 'video' {
+    if (mimeType.startsWith('image/')) return 'image';
+    if (mimeType.startsWith('video/')) return 'video';
+    return 'raw';
   }
 }
