@@ -24,10 +24,43 @@ interface Props {
 
 type FieldErrors = Record<string, string>;
 
-// ─── Client-side validation ───────────────────────────────────────────────────
+// ─── Enum normalization ───────────────────────────────────────────────────────
+// Build lookup maps so we can convert any variation (label, lowercase, value)
+// back to the correct Prisma enum value the API expects.
 
-const VALID_FORMS: string[] = FORMS.map((f) => f.value);
-const VALID_FREQUENCIES: string[] = FREQUENCIES.map((f) => f.value);
+const FORM_VALUE_SET = new Set(FORMS.map((f) => f.value));
+const FORM_LOOKUP: Record<string, string> = {};
+for (const f of FORMS) {
+  FORM_LOOKUP[f.value] = f.value;                        // "LIQUID" -> "LIQUID"
+  FORM_LOOKUP[f.value.toLowerCase()] = f.value;          // "liquid" -> "LIQUID"
+  FORM_LOOKUP[f.label] = f.value;                        // "Liquid" -> "LIQUID"
+  FORM_LOOKUP[f.label.toLowerCase()] = f.value;          // "liquid" -> "LIQUID"
+  FORM_LOOKUP[f.label.toUpperCase()] = f.value;          // "LIQUID" -> "LIQUID"
+}
+
+const FREQ_VALUE_SET = new Set(FREQUENCIES.map((f) => f.value));
+const FREQ_LOOKUP: Record<string, string> = {};
+for (const f of FREQUENCIES) {
+  FREQ_LOOKUP[f.value] = f.value;                        // "DAILY" -> "DAILY"
+  FREQ_LOOKUP[f.value.toLowerCase()] = f.value;          // "daily" -> "DAILY"
+  FREQ_LOOKUP[f.label] = f.value;                        // "Once daily" -> "DAILY"
+  FREQ_LOOKUP[f.label.toLowerCase()] = f.value;          // "once daily" -> "DAILY"
+  FREQ_LOOKUP[f.label.toUpperCase()] = f.value;          // "ONCE DAILY" -> "DAILY"
+}
+
+/** Resolve a form value to the correct Prisma enum, or return null if invalid */
+function resolveForm(raw: unknown): string | null {
+  if (!raw || typeof raw !== 'string') return null;
+  return FORM_LOOKUP[raw] || FORM_LOOKUP[raw.trim()] || null;
+}
+
+/** Resolve a frequency value to the correct Prisma enum, or return null if invalid */
+function resolveFrequency(raw: unknown): string | null {
+  if (!raw || typeof raw !== 'string') return null;
+  return FREQ_LOOKUP[raw] || FREQ_LOOKUP[raw.trim()] || null;
+}
+
+// ─── Client-side validation ───────────────────────────────────────────────────
 
 function validateMedication(data: Record<string, unknown>): FieldErrors {
   const errors: FieldErrors = {};
@@ -43,11 +76,11 @@ function validateMedication(data: Record<string, unknown>): FieldErrors {
     errors.dosage = 'Dosage is required (e.g., 500mg, 10ml)';
   }
 
-  if (!data.form || !VALID_FORMS.includes(data.form as string)) {
+  if (!resolveForm(data.form)) {
     errors.form = 'Please select a valid medication form';
   }
 
-  if (!data.frequency || !VALID_FREQUENCIES.includes(data.frequency as string)) {
+  if (!resolveFrequency(data.frequency)) {
     errors.frequency = 'Please select a valid frequency';
   }
 
@@ -207,12 +240,17 @@ export function AddMedicationModal({ isOpen, onClose, careRecipientId }: Props) 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Normalize enum values — resolve labels/lowercase back to Prisma enum values.
+    // This protects against browser quirks or cached old builds sending wrong values.
+    const normalizedForm = resolveForm(formData.form) || formData.form;
+    const normalizedFreq = resolveFrequency(formData.frequency) || formData.frequency;
+
     // Build a clean payload – only include optional fields when they have values.
     const payload: Record<string, unknown> = {
       name: formData.name.trim(),
       dosage: formData.dosage.trim(),
-      form: formData.form,
-      frequency: formData.frequency,
+      form: normalizedForm,
+      frequency: normalizedFreq,
     };
 
     if (formData.scheduledTimes.length > 0) {

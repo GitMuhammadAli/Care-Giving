@@ -15,6 +15,22 @@ import {
   DEFAULT_MEDICATION_FREQUENCY,
 } from '@/lib/constants';
 
+// ─── Enum normalization (label/lowercase → Prisma enum) ──────────────────────
+const FORM_LOOKUP: Record<string, string> = {};
+for (const f of FORMS) {
+  FORM_LOOKUP[f.value] = f.value;
+  FORM_LOOKUP[f.value.toLowerCase()] = f.value;
+  FORM_LOOKUP[f.label] = f.value;
+  FORM_LOOKUP[f.label.toLowerCase()] = f.value;
+}
+const FREQ_LOOKUP: Record<string, string> = {};
+for (const f of FREQUENCIES) {
+  FREQ_LOOKUP[f.value] = f.value;
+  FREQ_LOOKUP[f.value.toLowerCase()] = f.value;
+  FREQ_LOOKUP[f.label] = f.value;
+  FREQ_LOOKUP[f.label.toLowerCase()] = f.value;
+}
+
 interface Props {
   isOpen: boolean;
   onClose: () => void;
@@ -95,10 +111,10 @@ export function EditMedicationModal({ isOpen, onClose, medication, careRecipient
     if (!medication) return;
 
     const payload: Record<string, unknown> = {
-      name: formData.name,
-      dosage: formData.dosage,
-      form: formData.form,
-      frequency: formData.frequency,
+      name: formData.name.trim(),
+      dosage: formData.dosage.trim(),
+      form: FORM_LOOKUP[formData.form] || FORM_LOOKUP[formData.form.toLowerCase()] || formData.form,
+      frequency: FREQ_LOOKUP[formData.frequency] || FREQ_LOOKUP[formData.frequency.toLowerCase()] || formData.frequency,
     };
 
     if (formData.scheduledTimes.length > 0) {
