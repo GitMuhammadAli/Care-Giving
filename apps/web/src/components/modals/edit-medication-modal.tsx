@@ -67,14 +67,26 @@ export function EditMedicationModal({ isOpen, onClose, medication, careRecipient
       onClose();
     },
     onError: (error: any) => {
-      const fieldErrors = error?.data?.errors;
-      if (fieldErrors && typeof fieldErrors === 'object') {
-        const firstError = Object.values(fieldErrors).flat()[0];
-        toast.error(typeof firstError === 'string' ? firstError : 'Validation failed. Please check all fields.');
-        return;
+      console.error('[EditMedication] API error:', JSON.stringify(error?.data || error, null, 2));
+
+      const apiErrors = error?.data?.errors;
+      if (apiErrors && typeof apiErrors === 'object' && Object.keys(apiErrors).length > 0) {
+        const errorLines = Object.entries(apiErrors)
+          .map(([field, msgs]) => `• ${field}: ${Array.isArray(msgs) ? (msgs as string[]).join('; ') : msgs}`)
+          .filter(Boolean);
+        if (errorLines.length > 0) {
+          toast.error(
+            `Validation errors:\n${errorLines.join('\n')}`,
+            { duration: 8000, style: { whiteSpace: 'pre-line', textAlign: 'left' } },
+          );
+          return;
+        }
       }
-      const message = error?.data?.message || error?.message || 'Failed to update medication';
-      toast.error(typeof message === 'string' ? message : 'Failed to update medication. Please check all required fields.');
+      const apiMessage = error?.data?.message || error?.message;
+      const message = typeof apiMessage === 'string' && apiMessage !== 'Validation failed'
+        ? apiMessage
+        : 'Failed to update medication. Please check all fields are filled correctly.';
+      toast.error(message, { duration: 6000 });
     },
   });
 
