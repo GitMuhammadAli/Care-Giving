@@ -365,7 +365,14 @@ export function AddMedicationModal({ isOpen, onClose, careRecipientId }: Props) 
           </label>
           <select
             value={formData.form}
-            onChange={(e) => { setFormData({ ...formData, form: e.target.value }); clearFieldError('form'); }}
+            onChange={(e) => {
+              // Normalize immediately — browser autocomplete can inject labels/lowercase
+              const raw = e.target.value;
+              const normalized = resolveForm(raw) || raw;
+              setFormData({ ...formData, form: normalized });
+              clearFieldError('form');
+            }}
+            autoComplete="off"
             className={cn(
               'w-full px-4 py-3 rounded-lg border bg-bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 focus:border-accent-primary',
               errors.form ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-border',
@@ -385,7 +392,14 @@ export function AddMedicationModal({ isOpen, onClose, careRecipientId }: Props) 
           </label>
           <select
             value={formData.frequency}
-            onChange={(e) => { setFormData({ ...formData, frequency: e.target.value }); clearFieldError('frequency'); }}
+            onChange={(e) => {
+              // Normalize immediately — browser autocomplete can inject labels/lowercase
+              const raw = e.target.value;
+              const normalized = resolveFrequency(raw) || raw;
+              setFormData({ ...formData, frequency: normalized });
+              clearFieldError('frequency');
+            }}
+            autoComplete="off"
             className={cn(
               'w-full px-4 py-3 rounded-lg border bg-bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 focus:border-accent-primary',
               errors.frequency ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-border',

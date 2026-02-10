@@ -195,7 +195,11 @@ export function EditMedicationModal({ isOpen, onClose, medication, careRecipient
           </label>
           <select
             value={formData.form}
-            onChange={(e) => setFormData({ ...formData, form: e.target.value })}
+            onChange={(e) => {
+              const raw = e.target.value;
+              setFormData({ ...formData, form: FORM_LOOKUP[raw] || FORM_LOOKUP[raw.toLowerCase()] || raw });
+            }}
+            autoComplete="off"
             className="w-full px-4 py-3 rounded-lg border border-border bg-bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 focus:border-accent-primary"
             required
           >
@@ -212,7 +216,11 @@ export function EditMedicationModal({ isOpen, onClose, medication, careRecipient
           </label>
           <select
             value={formData.frequency}
-            onChange={(e) => setFormData({ ...formData, frequency: e.target.value })}
+            onChange={(e) => {
+              const raw = e.target.value;
+              setFormData({ ...formData, frequency: FREQ_LOOKUP[raw] || FREQ_LOOKUP[raw.toLowerCase()] || raw });
+            }}
+            autoComplete="off"
             className="w-full px-4 py-3 rounded-lg border border-border bg-bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 focus:border-accent-primary"
             required
           >
