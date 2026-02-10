@@ -80,40 +80,47 @@ export class DocumentsController {
       sizeBytes: file.size,
     });
 
-    // Check if we should use async queue or sync processing
+    // Try async queue first, fall back to sync if anything goes wrong
     if (this.useQueues && this.documentQueue) {
-      // Add upload job to queue (processed in background by worker)
-      await this.documentQueue.add(
-        'upload',
-        {
-          documentId: document.id,
-          familyId,
-          userId: user.id,
-          file: {
-            buffer: file.buffer.toString('base64'),
-            originalname: file.originalname,
-            mimetype: file.mimetype,
-            size: file.size,
+      try {
+        await this.documentQueue.add(
+          'upload',
+          {
+            documentId: document.id,
+            familyId,
+            userId: user.id,
+            file: {
+              buffer: file.buffer.toString('base64'),
+              originalname: file.originalname,
+              mimetype: file.mimetype,
+              size: file.size,
+            },
           },
-        },
-        {
-          attempts: 3,
-          backoff: {
-            type: 'exponential',
-            delay: 2000,
+          {
+            attempts: 3,
+            backoff: {
+              type: 'exponential',
+              delay: 2000,
+            },
+            removeOnComplete: true,
+            removeOnFail: false,
           },
-          removeOnComplete: true,
-          removeOnFail: false,
-        },
-      );
+        );
 
-      // Return immediately with the pending document
-      return document;
-    } else {
-      // Process upload synchronously (when worker is not available)
-      this.logger.log(`Processing document upload synchronously for ${document.id}`);
-      return this.documentsService.processUploadSync(document.id, familyId, user.id, file);
+        // Return immediately with the pending document
+        return document;
+      } catch (queueError) {
+        // Queue failed (Redis down, payload too large, etc.) — fall back to sync
+        this.logger.warn(
+          `Queue add failed for document ${document.id}, falling back to sync upload: ${queueError.message}`,
+        );
+        return this.documentsService.processUploadSync(document.id, familyId, user.id, file);
+      }
     }
+
+    // No queue available — process synchronously
+    this.logger.log(`Processing document upload synchronously for ${document.id}`);
+    return this.documentsService.processUploadSync(document.id, familyId, user.id, file);
   }
 
   @Get()
