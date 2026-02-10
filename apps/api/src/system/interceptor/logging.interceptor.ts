@@ -32,8 +32,23 @@ export class LoggingInterceptor implements NestInterceptor {
   constructor(private readonly loggingService: LoggingService) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    // Only intercept HTTP requests — skip WebSocket / microservice contexts
+    const contextType = context.getType();
+    if (contextType !== 'http') {
+      return next.handle();
+    }
+
     const request = context.switchToHttp().getRequest();
-    const { method, url, body, user } = request;
+
+    // Guard: request may be undefined in edge cases (e.g. hybrid apps)
+    if (!request || !request.headers) {
+      return next.handle();
+    }
+
+    const method = request.method || 'UNKNOWN';
+    const url = request.url || '/';
+    const body = request.body;
+    const user = request.user;
     const startTime = Date.now();
     const requestId = request.headers['x-request-id'] || uuid();
     const controller = context.getClass().name;
@@ -50,7 +65,8 @@ export class LoggingInterceptor implements NestInterceptor {
     return next.handle().pipe(
       tap(async () => {
         const duration = Date.now() - startTime;
-        const statusCode = context.switchToHttp().getResponse().statusCode;
+        const response = context.switchToHttp().getResponse();
+        const statusCode = response?.statusCode || 200;
 
         // Log slow requests as warnings
         const level = duration > 3000 ? LogLevel.WARN : LogLevel.INFO;
@@ -67,8 +83,8 @@ export class LoggingInterceptor implements NestInterceptor {
             url,
             statusCode,
             duration,
-            userAgent: request.headers['user-agent'],
-            ip: request.ip || request.headers['x-forwarded-for'],
+            userAgent: request.headers?.['user-agent'],
+            ip: request.ip || request.headers?.['x-forwarded-for'],
           },
         });
 
@@ -91,20 +107,24 @@ export class LoggingInterceptor implements NestInterceptor {
           duration,
           errorName: error.name,
           errorCode: statusCode,
-          userAgent: request.headers['user-agent'],
-          ip: request.ip || request.headers['x-forwarded-for'],
+          userAgent: request.headers?.['user-agent'],
+          ip: request.ip || request.headers?.['x-forwarded-for'],
         };
 
         // Include sanitized request body for debugging (especially validation errors)
-        if (method !== 'GET' && body && Object.keys(body).length > 0) {
+        if (method !== 'GET' && body && typeof body === 'object' && Object.keys(body).length > 0) {
           metadata.requestBody = sanitizeBody(body);
         }
 
         // Include validation error details if available
-        if (isValidationError) {
-          const errorResponse = typeof error.getResponse === 'function' ? error.getResponse() : null;
-          if (errorResponse && typeof errorResponse === 'object') {
-            metadata.validationErrors = (errorResponse as any).message || (errorResponse as any).errors;
+        if (isValidationError && typeof error.getResponse === 'function') {
+          try {
+            const errorResponse = error.getResponse();
+            if (errorResponse && typeof errorResponse === 'object') {
+              metadata.validationErrors = (errorResponse as any).message || (errorResponse as any).errors;
+            }
+          } catch {
+            // Ignore if getResponse fails
           }
         }
 
