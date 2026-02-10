@@ -26,8 +26,8 @@ type FieldErrors = Record<string, string>;
 
 // ─── Client-side validation ───────────────────────────────────────────────────
 
-const VALID_FORMS = FORMS.map((f) => f.value);
-const VALID_FREQUENCIES = FREQUENCIES.map((f) => f.value);
+const VALID_FORMS: string[] = FORMS.map((f) => f.value);
+const VALID_FREQUENCIES: string[] = FREQUENCIES.map((f) => f.value);
 
 function validateMedication(data: Record<string, unknown>): FieldErrors {
   const errors: FieldErrors = {};
