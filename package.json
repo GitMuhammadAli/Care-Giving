@@ -11,6 +11,8 @@
     "build": "turbo build",
     "build:render": "pnpm db:generate && pnpm db:push && turbo build --filter=@carecircle/api",
     "test": "turbo test",
+    "test:e2e": "jest --config test/jest-e2e.json --runInBand",
+    "test:e2e:api": "pnpm --filter @carecircle/api test:e2e",
     "test:workers": "pnpm --filter @carecircle/workers test",
     "db:migrate": "pnpm --filter @carecircle/database migrate:deploy",
     "db:migrate:dev": "pnpm --filter @carecircle/database migrate",

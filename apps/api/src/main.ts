@@ -8,6 +8,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { Request, Response } from 'express';
+import * as Sentry from '@sentry/node';
 
 import { AppModule } from './app.module';
 import { setupSwagger } from './swagger';
@@ -17,6 +18,17 @@ import { LoggingService } from './system/module/logging';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
+
+  // Initialize Sentry for error monitoring (only when SENTRY_DSN is configured)
+  if (process.env.SENTRY_DSN) {
+    Sentry.init({
+      dsn: process.env.SENTRY_DSN,
+      environment: process.env.NODE_ENV || 'development',
+      tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.2 : 1.0,
+      enabled: !!process.env.SENTRY_DSN,
+    });
+    logger.log('Sentry initialized for error monitoring');
+  }
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     // Reduce logging in production for better performance

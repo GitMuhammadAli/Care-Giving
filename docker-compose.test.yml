@@ -1,15 +1,18 @@
 # =============================================================================
-# CareCircle - CI/CD Testing Configuration
+# CareCircle - Local Test Environment
 # =============================================================================
-# Use this for running tests in CI/CD pipelines:
+# For running tests locally with isolated services on different ports.
+# NOTE: CI/CD uses GitHub Actions services (see .github/workflows/ci.yml).
+#
+# Usage:
 #   docker-compose -f docker-compose.test.yml up -d
 #   pnpm test
 #   docker-compose -f docker-compose.test.yml down -v
 #
 # Features:
-# - Isolated test network
+# - Isolated test network (different ports to avoid conflicts with dev)
 # - No persistent volumes (clean slate each run)
-# - Optimized for fast startup
+# - Optimized for fast startup with tmpfs
 # =============================================================================
 
 services:

@@ -9,8 +9,10 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { OnEvent } from '@nestjs/event-emitter';
-import { Logger } from '@nestjs/common';
+import { Inject, forwardRef, Logger } from '@nestjs/common';
 import { optionalString, isDevelopment } from '../config/env.helpers';
+import { AuthService } from '../auth/service/auth.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 interface BroadcastPayload {
   event: string;
@@ -36,35 +38,105 @@ export class CareCircleGateway implements OnGatewayConnection, OnGatewayDisconne
   private readonly logger = new Logger(CareCircleGateway.name);
   private userSocketMap = new Map<string, Set<string>>();
 
-  handleConnection(client: Socket) {
-    this.logger.log(`Client connected: ${client.id}`);
+  constructor(
+    @Inject(forwardRef(() => AuthService))
+    private authService: AuthService,
+    private prisma: PrismaService,
+  ) {}
+
+  /**
+   * SECURITY: Authenticate every WebSocket connection via JWT.
+   * Unauthenticated clients are immediately disconnected.
+   */
+  async handleConnection(client: Socket) {
+    try {
+      const token =
+        client.handshake.auth.token ||
+        client.handshake.headers.authorization?.replace('Bearer ', '');
+
+      if (!token) {
+        this.logger.debug(
+          `Client ${client.id} rejected - no auth token provided`,
+        );
+        client.disconnect();
+        return;
+      }
+
+      const user = await this.authService.validateToken(token);
+
+      if (!user) {
+        this.logger.debug(
+          `Client ${client.id} rejected - invalid token`,
+        );
+        client.disconnect();
+        return;
+      }
+
+      // Store authenticated user data on the socket
+      client.data.userId = user.id;
+      client.data.email = user.email;
+      client.data.systemRole = user.systemRole;
+
+      // Join user-specific room
+      client.join(`user:${user.id}`);
+
+      this.logger.log(`Client connected: ${client.id} (user: ${user.id})`);
+    } catch (error) {
+      this.logger.debug(`Client ${client.id} connection failed: ${error}`);
+      client.disconnect();
+    }
   }
 
   handleDisconnect(client: Socket) {
+    const userId = client.data?.userId;
     this.logger.log(`Client disconnected: ${client.id}`);
     // Remove from user map
-    this.userSocketMap.forEach((sockets, userId) => {
-      sockets.delete(client.id);
-      if (sockets.size === 0) {
-        this.userSocketMap.delete(userId);
+    if (userId) {
+      const sockets = this.userSocketMap.get(userId);
+      if (sockets) {
+        sockets.delete(client.id);
+        if (sockets.size === 0) {
+          this.userSocketMap.delete(userId);
+        }
       }
-    });
+    }
   }
 
   @SubscribeMessage('join_family')
-  handleJoinFamily(
+  async handleJoinFamily(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { familyId: string; userId: string },
+    @MessageBody() data: { familyId: string },
   ) {
-    client.join(`family:${data.familyId}`);
-    
-    // Track user's sockets
-    if (!this.userSocketMap.has(data.userId)) {
-      this.userSocketMap.set(data.userId, new Set());
+    const userId = client.data?.userId;
+
+    // SECURITY: Require authentication
+    if (!userId) {
+      this.logger.warn(`Unauthorized join_family attempt from ${client.id}`);
+      return { success: false, error: 'Unauthorized' };
     }
-    this.userSocketMap.get(data.userId)?.add(client.id);
-    
-    this.logger.log(`User ${data.userId} joined family ${data.familyId}`);
+
+    // SECURITY: Verify family membership server-side
+    const membership = await this.prisma.familyMember.findFirst({
+      where: { userId, familyId: data.familyId, isActive: true },
+    });
+
+    if (!membership) {
+      this.logger.warn(
+        `User ${userId} attempted to join family ${data.familyId} without membership`,
+      );
+      return { success: false, error: 'Not a member of this family' };
+    }
+
+    client.join(`family:${data.familyId}`);
+
+    // Track user's sockets
+    if (!this.userSocketMap.has(userId)) {
+      this.userSocketMap.set(userId, new Set());
+    }
+    this.userSocketMap.get(userId)?.add(client.id);
+
+    this.logger.log(`User ${userId} joined family ${data.familyId}`);
+    return { success: true };
   }
 
   @SubscribeMessage('leave_family')
@@ -74,26 +146,59 @@ export class CareCircleGateway implements OnGatewayConnection, OnGatewayDisconne
   ) {
     client.leave(`family:${data.familyId}`);
     this.logger.log(`Client left family ${data.familyId}`);
+    return { success: true };
   }
 
-  // Admin monitoring room - only for admin users
+  /**
+   * SECURITY: Admin monitoring room - validates admin role SERVER-SIDE.
+   * Never trust client-provided isAdmin flag.
+   */
   @SubscribeMessage('join_admin_monitoring')
-  handleJoinAdminMonitoring(
+  async handleJoinAdminMonitoring(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { userId: string; isAdmin: boolean },
   ) {
-    if (data.isAdmin) {
-      client.join('admin:monitoring');
-      this.logger.log(`Admin ${data.userId} joined monitoring room`);
-      // Send initial stats
-      this.emitAdminStats();
+    const userId = client.data?.userId;
+    const systemRole = client.data?.systemRole;
+
+    // SECURITY: Require authentication
+    if (!userId) {
+      this.logger.warn(
+        `Unauthorized join_admin_monitoring attempt from ${client.id}`,
+      );
+      return { success: false, error: 'Unauthorized' };
     }
+
+    // SECURITY: Validate admin role server-side (never trust client)
+    if (systemRole !== 'ADMIN' && systemRole !== 'SUPER_ADMIN') {
+      // Double-check from database in case role changed since connection
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { systemRole: true },
+      });
+
+      if (
+        !user ||
+        (user.systemRole !== 'ADMIN' && user.systemRole !== 'SUPER_ADMIN')
+      ) {
+        this.logger.warn(
+          `Non-admin user ${userId} attempted to join admin monitoring`,
+        );
+        return { success: false, error: 'Admin access required' };
+      }
+    }
+
+    client.join('admin:monitoring');
+    this.logger.log(`Admin ${userId} joined monitoring room`);
+    // Send initial stats
+    this.emitAdminStats();
+    return { success: true };
   }
 
   @SubscribeMessage('leave_admin_monitoring')
   handleLeaveAdminMonitoring(@ConnectedSocket() client: Socket) {
     client.leave('admin:monitoring');
     this.logger.log('Client left admin monitoring room');
+    return { success: true };
   }
 
   // Emit realtime stats to admin dashboard
@@ -151,7 +256,6 @@ export class CareCircleGateway implements OnGatewayConnection, OnGatewayDisconne
 
   @OnEvent('emergency.alert.created')
   handleEmergencyAlert(payload: { alert: any; familyId: string; notifiedUserIds: string[] }) {
-    // Emergency alerts go to everyone in the family immediately
     this.server.to(`family:${payload.familyId}`).emit('emergency_alert', {
       id: payload.alert.id,
       type: payload.alert.type,
@@ -211,41 +315,24 @@ export class CareCircleGateway implements OnGatewayConnection, OnGatewayDisconne
 
   // ============================================================================
   // RABBITMQ EVENT HANDLERS
-  // These events come from the WebSocketConsumer which listens to RabbitMQ
   // ============================================================================
 
-  /**
-   * Handle broadcast events from RabbitMQ (via WebSocketConsumer)
-   * This is the main handler for all domain events that need WebSocket broadcasting
-   */
   @OnEvent('ws.broadcast')
   handleBroadcast(payload: BroadcastPayload) {
     const { event, data, rooms } = payload;
-    
     this.logger.debug(`Broadcasting event ${event} to rooms: ${rooms.join(', ')}`);
-    
     for (const room of rooms) {
       this.server.to(room).emit(event, data);
     }
   }
 
-  /**
-   * Handle emergency events from RabbitMQ (via WebSocketConsumer)
-   * These are high-priority and need immediate delivery
-   */
   @OnEvent('ws.emergency')
   handleEmergencyBroadcast(payload: BroadcastPayload) {
     const { event, data, rooms } = payload;
-    
-    this.logger.warn(`🚨 EMERGENCY BROADCAST: ${event} to rooms: ${rooms.join(', ')}`);
-    
-    // Emergency events are broadcast with volatile (fire-and-forget for performance)
-    // but also with acknowledgment request for critical updates
+    this.logger.warn(`EMERGENCY BROADCAST: ${event} to rooms: ${rooms.join(', ')}`);
     for (const room of rooms) {
       this.server.to(room).volatile.emit(event, data);
     }
-    
-    // Also emit to all connected clients as a fallback
     this.server.emit('emergency_notification', {
       event,
       data,
@@ -255,12 +342,10 @@ export class CareCircleGateway implements OnGatewayConnection, OnGatewayDisconne
 
   // ============================================================================
   // ADMIN ACTION EVENT HANDLERS
-  // These events need special handling (e.g., notifying specific users)
   // ============================================================================
 
   @OnEvent('family.member.removed')
   handleFamilyMemberRemoved(payload: any) {
-    // Notify the family room
     if (payload.familyId) {
       this.server.to(`family:${payload.familyId}`).emit('family_member_removed', {
         memberId: payload.memberId,
@@ -268,8 +353,6 @@ export class CareCircleGateway implements OnGatewayConnection, OnGatewayDisconne
         removedBy: payload.removedByName,
       });
     }
-
-    // Also directly notify the removed user
     if (payload.removedUserId) {
       this.sendToUser(payload.removedUserId, 'you_were_removed', {
         familyId: payload.familyId,
@@ -281,7 +364,6 @@ export class CareCircleGateway implements OnGatewayConnection, OnGatewayDisconne
 
   @OnEvent('family.member.role_updated')
   handleFamilyMemberRoleUpdated(payload: any) {
-    // Notify the family room
     if (payload.familyId) {
       this.server.to(`family:${payload.familyId}`).emit('family_member_role_updated', {
         memberId: payload.memberId,
@@ -291,8 +373,6 @@ export class CareCircleGateway implements OnGatewayConnection, OnGatewayDisconne
         updatedBy: payload.updatedByName,
       });
     }
-
-    // Directly notify the affected user
     if (payload.memberUserId) {
       this.sendToUser(payload.memberUserId, 'your_role_changed', {
         familyId: payload.familyId,
@@ -305,7 +385,6 @@ export class CareCircleGateway implements OnGatewayConnection, OnGatewayDisconne
 
   @OnEvent('family.deleted')
   handleFamilyDeleted(payload: any) {
-    // Emit to family room before it's gone
     if (payload.familyId) {
       this.server.to(`family:${payload.familyId}`).emit('family_deleted', {
         familyId: payload.familyId,
@@ -406,4 +485,3 @@ export class CareCircleGateway implements OnGatewayConnection, OnGatewayDisconne
     this.server.to(`family:${familyId}`).emit(event, data);
   }
 }
-

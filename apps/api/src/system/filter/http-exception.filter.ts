@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Response, Request } from 'express';
 import { I18nContext, I18nService } from 'nestjs-i18n';
+import * as Sentry from '@sentry/node';
 
 interface ErrorResponse {
   statusCode: number;
@@ -53,6 +54,26 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         `Unhandled exception: ${exception.message}`,
         exception.stack,
       );
+    }
+
+    // Send 5xx errors to Sentry when configured
+    if (status >= 500 && Sentry.isInitialized()) {
+      Sentry.captureException(exception, {
+        tags: {
+          method: request.method,
+          url: request.url,
+          statusCode: String(status),
+        },
+        user: {
+          id: (request as any).user?.id,
+          email: (request as any).user?.email,
+        },
+        extra: {
+          body: request.body,
+          query: request.query,
+          params: request.params,
+        },
+      });
     }
 
     // Translate message if it's a translation key
