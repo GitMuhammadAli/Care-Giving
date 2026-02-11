@@ -9,6 +9,7 @@ import { NotificationProvider } from '@/components/providers/notification-provid
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { FamilySpaceProvider, useFamilySpace } from '@/contexts/family-space-context';
 import { useAuthContext } from '@/components/providers/auth-provider';
+import { AnimatedBackground } from '@/components/ui/animated-background';
 
 export default function DashboardLayout({
   children,
@@ -61,9 +62,12 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <NotificationProvider>
       <RealtimeProvider familyId={selectedFamilyId ?? undefined}>
-        <div className="min-h-screen bg-background flex flex-col texture-paper">
+        <div className="min-h-screen bg-background flex flex-col texture-paper relative">
+          {/* Subtle leaf decorations */}
+          <AnimatedBackground variant="subtle" />
+
           <DashboardHeader />
-          <main className="flex-1 pt-24 pb-12 md:pb-20">
+          <main className="flex-1 pt-24 pb-12 md:pb-20 relative z-[1]">
             {children}
           </main>
           <Footer />

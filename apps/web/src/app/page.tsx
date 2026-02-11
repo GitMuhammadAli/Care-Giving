@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
@@ -121,14 +120,6 @@ const testimonials = [
 
 export default function LandingPage() {
   const { isAuthenticated, isInitialized, user } = useAuthContext();
-  const router = useRouter();
-
-  // Auto-redirect authenticated users to dashboard
-  useEffect(() => {
-    if (isInitialized && isAuthenticated && user) {
-      router.push('/dashboard');
-    }
-  }, [isInitialized, isAuthenticated, user, router]);
 
   // Memoize the CTA component
   const MainCTA = useMemo(() => {

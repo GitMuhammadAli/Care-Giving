@@ -174,19 +174,20 @@ export default function CalendarPage() {
             </div>
 
             {/* Day Headers */}
-            <div className="grid grid-cols-7 gap-1 mb-2">
-              {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
+            <div className="grid grid-cols-7 gap-0.5 sm:gap-1 mb-1 sm:mb-2">
+              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
                 <div
-                  key={day}
-                  className="text-center text-xs font-medium text-text-tertiary py-2"
+                  key={`${day}-${i}`}
+                  className="text-center text-[10px] sm:text-xs font-medium text-text-tertiary py-1 sm:py-2"
                 >
-                  {day}
+                  <span className="sm:hidden">{day}</span>
+                  <span className="hidden sm:inline">{['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'][i]}</span>
                 </div>
               ))}
             </div>
 
             {/* Calendar Grid */}
-            <div className="grid grid-cols-7 gap-1">
+            <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
               {calendarDays.map((day) => {
                 const dayAppointments = getDayAppointments(day);
                 const isSelected = isSameDay(day, selectedDate);
@@ -198,26 +199,27 @@ export default function CalendarPage() {
                     key={day.toISOString()}
                     onClick={() => setSelectedDate(day)}
                     className={cn(
-                      'relative aspect-square flex flex-col items-center justify-center rounded-lg transition-all touch-target',
+                      'relative aspect-square flex flex-col items-center justify-center rounded-md sm:rounded-lg transition-all',
+                      'min-h-[36px] sm:min-h-[44px]',
                       isSelected
                         ? 'bg-accent-primary text-text-inverse'
                         : isCurrentDay
-                        ? 'bg-accent-primary-light text-accent-primary ring-2 ring-accent-primary'
+                        ? 'bg-accent-primary-light text-accent-primary ring-1 sm:ring-2 ring-accent-primary'
                         : isCurrentMonth
                         ? 'hover:bg-bg-muted text-text-primary'
                         : 'text-text-disabled'
                     )}
                   >
-                    <span className={cn('text-sm font-medium', !isCurrentMonth && 'opacity-40')}>
+                    <span className={cn('text-xs sm:text-sm font-medium', !isCurrentMonth && 'opacity-40')}>
                       {format(day, 'd')}
                     </span>
                     {dayAppointments.length > 0 && (
-                      <div className="flex gap-0.5 mt-1">
+                      <div className="flex gap-0.5 mt-0.5">
                         {dayAppointments.slice(0, 3).map((apt, i) => (
                           <div
                             key={i}
                             className={cn(
-                              'w-1.5 h-1.5 rounded-full',
+                              'w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full',
                               isSelected ? 'bg-text-inverse' : 'bg-accent-primary'
                             )}
                           />
@@ -270,23 +272,24 @@ export default function CalendarPage() {
                     transition={{ delay: index * 0.1 }}
                   >
                     <Card variant="interactive">
-                      <div className="flex gap-4">
-                        <div className={cn('w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0', colors.bg)}>
-                          <CalendarIcon className={cn('w-7 h-7', colors.text)} />
+                      <div className="flex gap-3 sm:gap-4">
+                        <div className={cn('w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center flex-shrink-0', colors.bg)}>
+                          <CalendarIcon className={cn('w-5 h-5 sm:w-7 sm:h-7', colors.text)} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <h4 className="font-semibold text-text-primary">{apt.title}</h4>
-                              <p className="text-sm text-text-secondary mt-0.5">
+                            <div className="min-w-0">
+                              <h4 className="font-semibold text-text-primary text-sm sm:text-base truncate">{apt.title}</h4>
+                              <p className="text-xs sm:text-sm text-text-secondary mt-0.5">
                                 {format(startTime, 'h:mm a')}
                                 {endTime && ` - ${format(endTime, 'h:mm a')}`}
                               </p>
                             </div>
                             {apt.recurrence && (
-                              <Badge size="sm" variant="default">
+                              <Badge size="sm" variant="default" className="flex-shrink-0">
                                 <Repeat className="w-3 h-3 mr-1" />
-                                {apt.recurrence}
+                                <span className="hidden sm:inline">{apt.recurrence}</span>
+                                <span className="sm:hidden">R</span>
                               </Badge>
                             )}
                           </div>

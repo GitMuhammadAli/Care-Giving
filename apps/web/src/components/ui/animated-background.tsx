@@ -240,53 +240,76 @@ function useAnimationPause() {
   return { containerRef, isPaused: isPaused || prefersReducedMotion, prefersReducedMotion };
 }
 
-export const AnimatedBackground = memo(function AnimatedBackground() {
+/**
+ * variant="full"   – auth / marketing pages (default, many spheres + 12 leaves + care points)
+ * variant="subtle"  – app / dashboard pages (2 spheres + 4 leaves, very low opacity)
+ */
+export const AnimatedBackground = memo(function AnimatedBackground({
+  variant = 'full',
+}: {
+  variant?: 'full' | 'subtle';
+}) {
   const { containerRef, isPaused, prefersReducedMotion } = useAnimationPause();
 
+  const isSubtle = variant === 'subtle';
+
   // Sphere configurations - soft, warm colors
-  const spheres = [
-    // Large background spheres
-    { color: 'rgba(168, 181, 160, 0.4)', size: '55vw', position: { top: '-20%', left: '-15%' }, delay: 0, duration: 25, blur: 60 },
-    { color: 'rgba(139, 154, 126, 0.35)', size: '45vw', position: { bottom: '-10%', right: '-10%' }, delay: -8, duration: 30, blur: 55 },
-    { color: 'rgba(153, 107, 77, 0.2)', size: '35vw', position: { top: '30%', left: '50%' }, delay: -15, duration: 28, blur: 50 },
-    
-    // Medium accent spheres
-    { color: 'rgba(168, 181, 160, 0.3)', size: '25vw', position: { top: '60%', left: '10%' }, delay: -5, duration: 22, blur: 45 },
-    { color: 'rgba(139, 154, 126, 0.25)', size: '20vw', position: { top: '15%', right: '15%' }, delay: -12, duration: 26, blur: 40 },
-    
-    // Small detail spheres
-    { color: 'rgba(153, 107, 77, 0.15)', size: '15vw', position: { bottom: '25%', left: '35%' }, delay: -18, duration: 20, blur: 35 },
-    { color: 'rgba(168, 181, 160, 0.2)', size: '12vw', position: { top: '45%', right: '25%' }, delay: -10, duration: 24, blur: 30 },
-  ];
+  const spheres = isSubtle
+    ? [
+        { color: 'rgba(168, 181, 160, 0.15)', size: '40vw', position: { top: '-15%', left: '-10%' }, delay: 0, duration: 35, blur: 70 },
+        { color: 'rgba(139, 154, 126, 0.12)', size: '30vw', position: { bottom: '-5%', right: '-5%' }, delay: -10, duration: 40, blur: 65 },
+      ]
+    : [
+        // Large background spheres
+        { color: 'rgba(168, 181, 160, 0.4)', size: '55vw', position: { top: '-20%', left: '-15%' }, delay: 0, duration: 25, blur: 60 },
+        { color: 'rgba(139, 154, 126, 0.35)', size: '45vw', position: { bottom: '-10%', right: '-10%' }, delay: -8, duration: 30, blur: 55 },
+        { color: 'rgba(153, 107, 77, 0.2)', size: '35vw', position: { top: '30%', left: '50%' }, delay: -15, duration: 28, blur: 50 },
+        // Medium accent spheres
+        { color: 'rgba(168, 181, 160, 0.3)', size: '25vw', position: { top: '60%', left: '10%' }, delay: -5, duration: 22, blur: 45 },
+        { color: 'rgba(139, 154, 126, 0.25)', size: '20vw', position: { top: '15%', right: '15%' }, delay: -12, duration: 26, blur: 40 },
+        // Small detail spheres
+        { color: 'rgba(153, 107, 77, 0.15)', size: '15vw', position: { bottom: '25%', left: '35%' }, delay: -18, duration: 20, blur: 35 },
+        { color: 'rgba(168, 181, 160, 0.2)', size: '12vw', position: { top: '45%', right: '25%' }, delay: -10, duration: 24, blur: 30 },
+      ];
 
-  // Leaf configurations
-  const leaves = [
-    { delay: 0, duration: 16, startX: 8, size: 26, color: '#8B9A7E', drift: 1 },
-    { delay: 2, duration: 19, startX: 18, size: 30, color: '#6B7A5E', drift: -1 },
-    { delay: 4, duration: 15, startX: 32, size: 24, color: '#9AAA8D', drift: 1 },
-    { delay: 1, duration: 18, startX: 45, size: 28, color: '#525E48', drift: -1 },
-    { delay: 3, duration: 17, startX: 58, size: 32, color: '#A8B5A0', drift: 1 },
-    { delay: 5, duration: 20, startX: 72, size: 26, color: '#996B4D', drift: -1 },
-    { delay: 1.5, duration: 16, startX: 85, size: 30, color: '#8B9A7E', drift: 1 },
-    { delay: 6, duration: 18, startX: 95, size: 24, color: '#6B7A5E', drift: -1 },
-    // Second wave
-    { delay: 7, duration: 17, startX: 12, size: 28, color: '#9AAA8D', drift: -1 },
-    { delay: 8, duration: 19, startX: 38, size: 26, color: '#525E48', drift: 1 },
-    { delay: 9, duration: 15, startX: 62, size: 30, color: '#A8B5A0', drift: -1 },
-    { delay: 10, duration: 20, startX: 78, size: 24, color: '#996B4D', drift: 1 },
-  ];
+  // Leaf configurations – subtle variant uses just 4 leaves with longer durations
+  const leaves = isSubtle
+    ? [
+        { delay: 0, duration: 24, startX: 15, size: 22, color: '#8B9A7E', drift: 1 },
+        { delay: 6, duration: 28, startX: 50, size: 20, color: '#9AAA8D', drift: -1 },
+        { delay: 12, duration: 26, startX: 75, size: 24, color: '#A8B5A0', drift: 1 },
+        { delay: 18, duration: 22, startX: 90, size: 18, color: '#6B7A5E', drift: -1 },
+      ]
+    : [
+        { delay: 0, duration: 16, startX: 8, size: 26, color: '#8B9A7E', drift: 1 },
+        { delay: 2, duration: 19, startX: 18, size: 30, color: '#6B7A5E', drift: -1 },
+        { delay: 4, duration: 15, startX: 32, size: 24, color: '#9AAA8D', drift: 1 },
+        { delay: 1, duration: 18, startX: 45, size: 28, color: '#525E48', drift: -1 },
+        { delay: 3, duration: 17, startX: 58, size: 32, color: '#A8B5A0', drift: 1 },
+        { delay: 5, duration: 20, startX: 72, size: 26, color: '#996B4D', drift: -1 },
+        { delay: 1.5, duration: 16, startX: 85, size: 30, color: '#8B9A7E', drift: 1 },
+        { delay: 6, duration: 18, startX: 95, size: 24, color: '#6B7A5E', drift: -1 },
+        // Second wave
+        { delay: 7, duration: 17, startX: 12, size: 28, color: '#9AAA8D', drift: -1 },
+        { delay: 8, duration: 19, startX: 38, size: 26, color: '#525E48', drift: 1 },
+        { delay: 9, duration: 15, startX: 62, size: 30, color: '#A8B5A0', drift: -1 },
+        { delay: 10, duration: 20, startX: 78, size: 24, color: '#996B4D', drift: 1 },
+      ];
 
-  // Care points - subtle indicators
-  const carePoints = [
-    { x: '15%', y: '22%', delay: 0 },
-    { x: '82%', y: '35%', delay: 2 },
-    { x: '45%', y: '68%', delay: 4 },
-    { x: '28%', y: '48%', delay: 6 },
-    { x: '70%', y: '78%', delay: 3 },
-  ];
+  // Care points - subtle indicators (skip in subtle mode)
+  const carePoints = isSubtle
+    ? []
+    : [
+        { x: '15%', y: '22%', delay: 0 },
+        { x: '82%', y: '35%', delay: 2 },
+        { x: '45%', y: '68%', delay: 4 },
+        { x: '28%', y: '48%', delay: 6 },
+        { x: '70%', y: '78%', delay: 3 },
+      ];
 
-  // If user prefers reduced motion, show static gradient only
+  // If user prefers reduced motion, show static gradient only (full variant only)
   if (prefersReducedMotion) {
+    if (isSubtle) return null; // Don't show anything for subtle when no motion
     return (
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <GradientBase />
@@ -301,10 +324,12 @@ export const AnimatedBackground = memo(function AnimatedBackground() {
       style={{ 
         isolation: 'isolate',
         contain: 'layout style paint',
+        opacity: isSubtle ? 0.6 : 1,
+        zIndex: 0,
       }}
     >
-      {/* Base gradient */}
-      <GradientBase />
+      {/* Base gradient - only for full variant */}
+      {!isSubtle && <GradientBase />}
 
       {/* Floating spheres - soft and calming */}
       {spheres.map((sphere, i) => (

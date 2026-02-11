@@ -197,18 +197,18 @@ export default function SettingsPage() {
 
       <div className="px-4 sm:px-6 py-6">
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+        <div className="flex gap-1.5 sm:gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0 ${
                 activeTab === tab.id
                   ? 'bg-sage-700 text-cream'
                   : 'bg-bg-muted text-text-secondary hover:bg-bg-subtle'
               }`}
             >
-              <tab.icon className="w-4 h-4" />
+              <tab.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               {tab.label}
             </button>
           ))}
@@ -612,17 +612,17 @@ function NotificationToggle({
 }: NotificationToggleProps) {
   return (
     <div
-      className={`flex items-center justify-between py-3 ${
+      className={`flex items-center justify-between gap-3 py-3 ${
         !isLast ? 'border-b border-border' : ''
       }`}
     >
-      <div>
-        <p className="font-medium text-text-primary">{label}</p>
-        <p className="text-sm text-text-secondary">{description}</p>
+      <div className="min-w-0 flex-1">
+        <p className="font-medium text-text-primary text-sm sm:text-base">{label}</p>
+        <p className="text-xs sm:text-sm text-text-secondary line-clamp-2">{description}</p>
       </div>
       <button
         onClick={onToggle}
-        className={`w-12 h-6 rounded-full transition-colors ${
+        className={`w-11 sm:w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
           enabled ? 'bg-sage-700' : 'bg-bg-subtle'
         } ${locked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:opacity-90'}`}
         disabled={locked}
@@ -630,7 +630,7 @@ function NotificationToggle({
       >
         <div
           className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${
-            enabled ? 'translate-x-6' : 'translate-x-0.5'
+            enabled ? 'translate-x-[22px]' : 'translate-x-0.5'
           }`}
         />
       </button>

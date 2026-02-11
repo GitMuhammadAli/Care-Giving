@@ -54,28 +54,28 @@ export function PageHeader({
         className
       )}
     >
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-2 sm:gap-4">
         <div className="flex-1 min-w-0">
           {greeting ? (
             <>
-              <h1 className="font-serif text-2xl sm:text-3xl text-foreground truncate">
+              <h1 className="font-serif text-xl sm:text-2xl md:text-3xl text-foreground truncate">
                 {greeting}
               </h1>
-              <p className="text-sm text-muted-foreground mt-0.5">{dateString}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 truncate">{dateString}</p>
             </>
           ) : title ? (
             <>
-              <h1 className="font-serif text-2xl sm:text-3xl text-foreground truncate">
+              <h1 className="font-serif text-xl sm:text-2xl md:text-3xl text-foreground truncate">
                 {title}
               </h1>
               {subtitle && (
-                <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">{subtitle}</p>
               )}
             </>
           ) : null}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           {actions}
 
           {showNotifications && (

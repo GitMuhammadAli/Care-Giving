@@ -1,7 +1,13 @@
 /* CareCircle Chat - Sage Theme
    ============================================
    Force sage theme with high specificity to
-   override Stream Chat defaults
+   override Stream Chat defaults.
+
+   Class reference (Stream Chat React v11+):
+   - .str-chat__message-inner   = wrapper around bubble + metadata
+   - .str-chat__channel-header  = channel header bar
+   - .str-chat__message--me     = own messages
+   - .str-chat__message--other  = other people's messages
    ============================================ */
 
 /* ============================================
@@ -45,11 +51,13 @@
 }
 
 /* ============================================
-   HEADER
+   HEADER  (correct class: .str-chat__channel-header)
    ============================================ */
+.str-chat__channel-header,
+.str-chat .str-chat__channel-header,
 .str-chat__header-livestream,
 .str-chat .str-chat__header-livestream {
-  padding: 16px !important;
+  padding: 12px 16px !important;
   background: hsl(var(--card)) !important;
   border-bottom: 1px solid hsl(var(--border)) !important;
   flex-shrink: 0;
@@ -58,22 +66,37 @@
   gap: 12px;
 }
 
+.str-chat__channel-header .str-chat__avatar,
+.str-chat__header-livestream .str-chat__avatar {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 12px !important;
+}
+
+/* Channel name */
+.str-chat__channel-header-info,
 .str-chat__header-livestream-left {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
 }
 
+.str-chat__channel-header-title,
 .str-chat__header-livestream-left--title {
   font-weight: 600;
-  font-size: 1.125rem;
+  font-size: 1.05rem;
   color: hsl(var(--foreground)) !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
+.str-chat__channel-header-subtitle,
 .str-chat__header-livestream-left--members {
   font-size: 0.75rem;
   color: hsl(var(--muted-foreground)) !important;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 /* ============================================
@@ -87,6 +110,7 @@
   padding: 16px !important;
   background: hsl(var(--background)) !important;
   min-height: 0;
+  -webkit-overflow-scrolling: touch;
 }
 
 .str-chat__ul {
@@ -105,10 +129,12 @@
 }
 
 /* ============================================
-   MESSAGE WRAPPER & ALIGNMENT
+   MESSAGE ROW & INNER WRAPPER
    ============================================ */
 .str-chat__message-simple,
-.str-chat .str-chat__message-simple {
+.str-chat .str-chat__message-simple,
+.str-chat__message,
+.str-chat .str-chat__message {
   display: flex !important;
   align-items: flex-start !important;
   gap: 10px !important;
@@ -117,13 +143,20 @@
   box-sizing: border-box !important;
 }
 
+/* The INNER wrapper around bubble + name + timestamp.
+   This is the element that must be width-constrained so
+   it doesn't push into the avatar column. */
+.str-chat__message-inner,
+.str-chat .str-chat__message-inner,
 .str-chat__message-simple-wrapper {
   display: flex;
   flex-direction: column;
   max-width: 75%;
-  min-width: 100px; /* Prevent collapse - minimum readable width */
+  min-width: 80px;
   flex: 0 1 auto;
   box-sizing: border-box;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* Own messages - align right */
@@ -132,11 +165,13 @@
   flex-direction: row-reverse !important;
 }
 
+.str-chat__message--me .str-chat__message-inner,
 .str-chat__message--me .str-chat__message-simple-wrapper {
   align-items: flex-end;
 }
 
 /* Other messages - align left */
+.str-chat__message--other .str-chat__message-inner,
 .str-chat__message--other .str-chat__message-simple-wrapper {
   align-items: flex-start;
 }
@@ -151,6 +186,7 @@
   overflow-wrap: anywhere;
   word-break: break-word;
   min-width: 0;
+  max-width: 100%;
   position: relative;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
 }
@@ -204,7 +240,7 @@
 }
 
 /* ============================================
-   SENDER NAME - With Avatar Inline
+   SENDER NAME
    ============================================ */
 .str-chat__message-simple-name,
 .str-chat .str-chat__message-simple-name {
@@ -248,10 +284,12 @@
    ============================================ */
 .str-chat__avatar,
 .str-chat .str-chat__avatar {
-  width: 38px !important;
-  height: 38px !important;
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
   border-radius: 12px !important;
-  flex-shrink: 0;
+  flex-shrink: 0 !important;
   background: linear-gradient(145deg, hsl(92 14% 45%), hsl(92 14% 32%)) !important;
   display: flex !important;
   align-items: center !important;
@@ -259,13 +297,6 @@
   overflow: hidden;
   border: 2px solid hsl(92 15% 90%) !important;
   box-shadow: 0 2px 8px rgba(82, 94, 72, 0.2) !important;
-}
-
-/* Header avatar slightly larger */
-.str-chat__header-livestream .str-chat__avatar {
-  width: 44px !important;
-  height: 44px !important;
-  border-radius: 14px !important;
 }
 
 .str-chat__avatar-image,
@@ -281,7 +312,7 @@
 .str-chat .str-chat__avatar-fallback,
 .str-chat__avatar--fallback,
 .str-chat .str-chat__avatar--fallback {
-  font-size: 1rem !important;
+  font-size: 0.9rem !important;
   font-weight: 800 !important;
   color: #FFFFFF !important;
   text-transform: uppercase !important;
@@ -315,7 +346,7 @@
    ============================================ */
 .str-chat__message-input,
 .str-chat .str-chat__message-input {
-  padding: 16px !important;
+  padding: 12px 16px !important;
   background: hsl(var(--card)) !important;
   border-top: 1px solid hsl(var(--border)) !important;
   flex-shrink: 0 !important;
@@ -326,10 +357,10 @@
 .str-chat .str-chat__input-flat {
   display: flex !important;
   align-items: center !important;
-  gap: 12px !important;
+  gap: 10px !important;
   background: hsl(var(--background)) !important;
   border-radius: 24px !important;
-  padding: 10px 18px !important;
+  padding: 8px 14px !important;
   border: 2px solid hsl(var(--border)) !important;
   transition: all 0.2s ease !important;
 }
@@ -344,10 +375,12 @@
   align-items: center;
   flex: 1;
   gap: 8px;
+  min-width: 0;
 }
 
 .str-chat__textarea {
   flex: 1;
+  min-width: 0;
 }
 
 .str-chat__textarea textarea,
@@ -356,7 +389,7 @@
   border: none !important;
   outline: none !important;
   resize: none !important;
-  font-size: 0.9375rem !important;
+  font-size: 16px !important; /* Prevents iOS zoom */
   color: hsl(var(--foreground)) !important;
   min-height: 24px !important;
   max-height: 120px !important;
@@ -376,8 +409,10 @@
   color: #FFFFFF !important;
   border: none !important;
   border-radius: 50% !important;
-  width: 42px !important;
-  height: 42px !important;
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -407,8 +442,8 @@
 
 .str-chat__send-button svg,
 .str-chat .str-chat__send-button svg {
-  width: 20px !important;
-  height: 20px !important;
+  width: 18px !important;
+  height: 18px !important;
   color: #FFFFFF !important;
   fill: #FFFFFF !important;
   stroke: #FFFFFF !important;
@@ -441,9 +476,10 @@
 .str-chat .str-chat__input-flat-emojiselect {
   color: hsl(var(--muted-foreground)) !important;
   cursor: pointer;
-  padding: 8px !important;
+  padding: 6px !important;
   border-radius: 50% !important;
   transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 .str-chat__fileupload-wrapper:hover,
@@ -460,7 +496,7 @@
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  padding: 24px 0 !important;
+  padding: 20px 0 !important;
 }
 
 .str-chat__date-separator-date,
@@ -468,7 +504,7 @@
   background: hsl(92 15% 92%) !important;
   color: hsl(92 14% 40%) !important;
   font-size: 0.7rem !important;
-  padding: 8px 16px !important;
+  padding: 6px 14px !important;
   border-radius: 20px !important;
   font-weight: 600 !important;
   text-transform: uppercase !important;
@@ -496,6 +532,7 @@
   display: flex;
   gap: 4px;
   margin-top: 6px;
+  flex-wrap: wrap;
 }
 
 .str-chat__message-reactions-list-item {
@@ -535,7 +572,7 @@
   background: linear-gradient(135deg, hsl(92 14% 38%), hsl(92 14% 28%)) !important;
   color: #FFFFFF !important;
   border-radius: 24px !important;
-  padding: 12px 24px !important;
+  padding: 10px 20px !important;
   font-size: 0.85rem !important;
   font-weight: 600 !important;
   box-shadow: 0 4px 16px rgba(82, 94, 72, 0.35) !important;
@@ -582,64 +619,82 @@
 }
 
 /* ============================================
-   MOBILE - Comprehensive responsive fixes
+   ATTACHMENTS
+   ============================================ */
+.str-chat__message-attachment,
+.str-chat .str-chat__message-attachment {
+  max-width: 100% !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+}
+
+.str-chat__message-attachment--image img {
+  max-width: 100% !important;
+  height: auto !important;
+  border-radius: 12px !important;
+}
+
+.str-chat__message-attachment--file {
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* ============================================
+   MOBILE  (max-width: 640px)
    ============================================ */
 @media (max-width: 640px) {
-  /* Root container - full height on mobile */
+  /* Root - ensure full height */
   .str-chat,
   .str-chat.str-chat__theme-light {
     height: 100% !important;
     max-height: 100% !important;
   }
 
-  /* Message row - proper flex layout */
+  /* Message row */
   .str-chat__message-simple,
-  .str-chat .str-chat__message-simple {
-    display: flex !important;
-    align-items: flex-start !important;
+  .str-chat .str-chat__message-simple,
+  .str-chat__message,
+  .str-chat .str-chat__message {
     gap: 8px !important;
-    width: 100% !important;
-    padding: 4px 0 !important;
+    padding: 3px 0 !important;
   }
 
-  /* Message wrapper - prevent collapse with min-width floor */
+  /* Message inner - constrain width so it never overlaps avatar */
+  .str-chat__message-inner,
+  .str-chat .str-chat__message-inner,
   .str-chat__message-simple-wrapper {
-    max-width: 80% !important;
-    min-width: 80px !important; /* Prevents squeeze to near-zero */
-    flex: 0 1 auto !important;
-    width: auto !important;
-  }
-
-  /* Other messages wrapper - ensure proper sizing */
-  .str-chat__message--other .str-chat__message-simple-wrapper {
-    min-width: 80px !important;
-    max-width: 78% !important; /* Account for avatar space */
-  }
-
-  /* Own messages wrapper */
-  .str-chat__message--me .str-chat__message-simple-wrapper {
+    max-width: 78% !important;
     min-width: 60px !important;
-    max-width: 80% !important;
+    flex: 0 1 auto !important;
+    overflow: hidden !important;
   }
 
-  /* Message bubble - proper sizing with floor */
+  .str-chat__message--other .str-chat__message-inner,
+  .str-chat__message--other .str-chat__message-simple-wrapper {
+    max-width: 76% !important;
+  }
+
+  .str-chat__message--me .str-chat__message-inner,
+  .str-chat__message--me .str-chat__message-simple-wrapper {
+    max-width: 82% !important;
+  }
+
+  /* Bubble - compact padding */
   .str-chat__message-bubble,
   .str-chat .str-chat__message-bubble {
-    min-width: 60px !important;
-    max-width: 100% !important;
     padding: 10px 14px !important;
-    box-sizing: border-box !important;
+    min-width: 50px !important;
+    max-width: 100% !important;
   }
 
-  /* Message text - proper wrapping */
+  /* Text - proper wrapping, no overflow */
   .str-chat__message-text,
   .str-chat .str-chat__message-text {
     min-width: 0 !important;
     max-width: 100% !important;
     white-space: pre-wrap !important;
-    word-wrap: break-word !important;
-    overflow-wrap: break-word !important;
-    word-break: normal !important; /* Don't break mid-word unless necessary */
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
     font-size: 0.9rem !important;
     line-height: 1.45 !important;
   }
@@ -647,14 +702,10 @@
   .str-chat__message-text p {
     margin: 0 !important;
     min-width: 0 !important;
-    max-width: 100% !important;
-    white-space: pre-wrap !important;
-    word-wrap: break-word !important;
-    overflow-wrap: break-word !important;
-    word-break: normal !important;
+    overflow-wrap: anywhere !important;
   }
 
-  /* Avatars - smaller on mobile but still visible */
+  /* Avatars - smaller on mobile, never collapse */
   .str-chat__avatar,
   .str-chat .str-chat__avatar {
     width: 28px !important;
@@ -666,93 +717,98 @@
   }
 
   .str-chat__avatar-fallback {
-    font-size: 0.75rem !important;
+    font-size: 0.7rem !important;
   }
 
   /* Header - compact */
+  .str-chat__channel-header,
+  .str-chat .str-chat__channel-header,
   .str-chat__header-livestream {
-    padding: 12px !important;
+    padding: 10px 12px !important;
+    gap: 10px !important;
   }
 
+  .str-chat__channel-header .str-chat__avatar,
   .str-chat__header-livestream .str-chat__avatar {
-    width: 36px !important;
-    height: 36px !important;
-    min-width: 36px !important;
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
   }
 
+  .str-chat__channel-header-title,
   .str-chat__header-livestream-left--title {
-    font-size: 1rem !important;
+    font-size: 0.95rem !important;
   }
 
+  .str-chat__channel-header-subtitle,
   .str-chat__header-livestream-left--members {
     font-size: 0.7rem !important;
   }
 
-  /* Message list - proper padding */
+  /* Message list */
   .str-chat__list,
   .str-chat .str-chat__list {
-    padding: 12px 10px !important;
+    padding: 10px !important;
   }
 
-  /* Input area - touch friendly */
+  /* Input area - safe area for notch phones */
   .str-chat__message-input,
   .str-chat .str-chat__message-input {
-    padding: 10px 12px !important;
-    padding-bottom: max(10px, env(safe-area-inset-bottom)) !important;
+    padding: 8px 10px !important;
+    padding-bottom: max(8px, env(safe-area-inset-bottom)) !important;
   }
 
   .str-chat__input-flat,
   .str-chat .str-chat__input-flat {
-    padding: 8px 14px !important;
-    gap: 10px !important;
+    padding: 6px 12px !important;
+    gap: 8px !important;
   }
 
-  .str-chat__textarea textarea {
-    font-size: 16px !important; /* Prevents iOS zoom on focus */
-    min-height: 22px !important;
-  }
-
-  /* Send button - touch target 44px minimum */
+  /* Send button - 44px touch target */
   .str-chat__send-button,
   .str-chat .str-chat__send-button {
-    width: 44px !important;
-    height: 44px !important;
-    min-width: 44px !important;
-    min-height: 44px !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
   }
 
   .str-chat__send-button svg {
-    width: 18px !important;
-    height: 18px !important;
+    width: 16px !important;
+    height: 16px !important;
   }
 
-  /* Attachment & emoji buttons - touch friendly */
+  /* Attachment & emoji - touch friendly */
   .str-chat__fileupload-wrapper,
   .str-chat__input-flat-emojiselect {
-    min-width: 40px !important;
-    min-height: 40px !important;
-    padding: 10px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    padding: 8px !important;
   }
 
-  /* Date separator - smaller */
+  /* Date separator */
   .str-chat__date-separator-date {
-    font-size: 0.65rem !important;
-    padding: 6px 12px !important;
+    font-size: 0.6rem !important;
+    padding: 5px 10px !important;
   }
 
-  /* Sender name - compact */
+  .str-chat__date-separator {
+    padding: 14px 0 !important;
+  }
+
+  /* Sender name */
   .str-chat__message-simple-name {
     font-size: 0.7rem !important;
-    margin-bottom: 4px !important;
+    margin-bottom: 3px !important;
   }
 
-  /* Timestamp - smaller */
+  /* Timestamp */
   .str-chat__message-simple-timestamp {
     font-size: 0.6rem !important;
     margin-top: 3px !important;
   }
 
-  /* Reactions - smaller */
+  /* Reactions */
   .str-chat__message-reactions-list-item {
     padding: 3px 8px !important;
     font-size: 0.7rem;
@@ -760,36 +816,34 @@
 
   /* Scroll notification */
   .str-chat__message-notification {
-    padding: 10px 18px !important;
+    padding: 8px 16px !important;
     font-size: 0.8rem !important;
   }
-}
 
-/* ============================================
-   OVERRIDE ALL STREAM CHAT BLUE COLORS
-   ============================================ */
-.str-chat *[style*="background-color: rgb(0, 95, 255)"],
-.str-chat *[style*="background: rgb(0, 95, 255)"] {
-  background: linear-gradient(135deg, hsl(92 14% 38%), hsl(92 14% 28%)) !important;
-}
-
-/* Force override any remaining blue buttons */
-.str-chat button[style*="background"],
-.str-chat .str-chat__send-button[style] {
-  background: linear-gradient(135deg, hsl(92 14% 38%), hsl(92 14% 28%)) !important;
-}
-
-/* ============================================
-   EXTRA SMALL SCREENS (< 380px)
-   ============================================ */
-@media (max-width: 380px) {
-  .str-chat__message-simple-wrapper {
-    max-width: 85% !important;
-    min-width: 70px !important;
+  /* Attachments - fit screen */
+  .str-chat__message-attachment--image img {
+    max-width: 200px !important;
   }
 
-  .str-chat__message--other .str-chat__message-simple-wrapper {
+  .str-chat__message-attachment--file {
+    max-width: 220px !important;
+    font-size: 0.8rem;
+  }
+}
+
+/* ============================================
+   EXTRA SMALL  (max-width: 380px)
+   ============================================ */
+@media (max-width: 380px) {
+  .str-chat__message-inner,
+  .str-chat__message-simple-wrapper {
     max-width: 82% !important;
+    min-width: 50px !important;
+  }
+
+  .str-chat__message--other .str-chat__message-inner,
+  .str-chat__message--other .str-chat__message-simple-wrapper {
+    max-width: 80% !important;
   }
 
   .str-chat__avatar,
@@ -802,12 +856,12 @@
   }
 
   .str-chat__avatar-fallback {
-    font-size: 0.65rem !important;
+    font-size: 0.6rem !important;
   }
 
   .str-chat__message-bubble {
-    padding: 8px 12px !important;
-    min-width: 50px !important;
+    padding: 8px 10px !important;
+    min-width: 40px !important;
   }
 
   .str-chat__message-text {
@@ -815,49 +869,65 @@
   }
 
   .str-chat__list {
-    padding: 10px 8px !important;
+    padding: 8px !important;
   }
 
   .str-chat__send-button {
-    width: 40px !important;
-    height: 40px !important;
-    min-width: 40px !important;
-    min-height: 40px !important;
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    min-height: 34px !important;
   }
 
   .str-chat__input-flat {
-    padding: 6px 10px !important;
-    gap: 8px !important;
+    padding: 5px 8px !important;
+    gap: 6px !important;
   }
 
+  .str-chat__channel-header,
   .str-chat__header-livestream {
-    padding: 10px !important;
+    padding: 8px 10px !important;
   }
 
+  .str-chat__channel-header .str-chat__avatar,
   .str-chat__header-livestream .str-chat__avatar {
-    width: 32px !important;
-    height: 32px !important;
-    min-width: 32px !important;
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
   }
 }
 
 /* ============================================
-   LANDSCAPE MODE FIXES
+   LANDSCAPE MODE
    ============================================ */
 @media (max-height: 500px) and (orientation: landscape) {
+  .str-chat__channel-header,
   .str-chat__header-livestream {
-    padding: 8px 12px !important;
+    padding: 6px 12px !important;
   }
 
   .str-chat__message-input {
-    padding: 8px 12px !important;
+    padding: 6px 12px !important;
   }
 
   .str-chat__list {
-    padding: 8px 12px !important;
+    padding: 6px 10px !important;
   }
 
   .str-chat__date-separator {
-    padding: 12px 0 !important;
+    padding: 8px 0 !important;
   }
+}
+
+/* ============================================
+   OVERRIDE STREAM CHAT BLUE COLORS
+   ============================================ */
+.str-chat *[style*="background-color: rgb(0, 95, 255)"],
+.str-chat *[style*="background: rgb(0, 95, 255)"] {
+  background: linear-gradient(135deg, hsl(92 14% 38%), hsl(92 14% 28%)) !important;
+}
+
+.str-chat button[style*="background"],
+.str-chat .str-chat__send-button[style] {
+  background: linear-gradient(135deg, hsl(92 14% 38%), hsl(92 14% 28%)) !important;
 }

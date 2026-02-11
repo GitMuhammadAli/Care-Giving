@@ -3,6 +3,7 @@
 import { cn } from '@/lib/utils';
 import { DashboardHeader } from './dashboard-header';
 import { MobileNav } from './mobile-nav';
+import { AnimatedBackground } from '@/components/ui/animated-background';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -15,13 +16,17 @@ interface AppShellProps {
 
 export function AppShell({ children, currentUser }: AppShellProps) {
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
+    <div className="min-h-screen bg-background overflow-x-hidden relative">
+      {/* Subtle leaf decorations */}
+      <AnimatedBackground variant="subtle" />
+
       {/* Header */}
       <DashboardHeader currentUser={currentUser} />
 
       {/* Main Content */}
       <main
         className={cn(
+          'relative z-[1]', // Above the background decoration
           'h-[calc(100vh-4rem)]', // Full height minus header (64px)
           'mt-16', // Push below fixed header
           'pb-20 sm:pb-0', // Padding for mobile nav only
