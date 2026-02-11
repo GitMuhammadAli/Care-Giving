@@ -217,29 +217,29 @@ export default function MedicationsPage() {
         <FamilySpaceSelector />
 
         {/* View Toggle */}
-        <div className="flex gap-2 mb-6 p-1 bg-bg-muted rounded-lg w-fit">
+        <div className="flex gap-1.5 sm:gap-2 mb-6 p-1 bg-bg-muted rounded-lg w-full sm:w-fit overflow-x-auto">
           <button
             onClick={() => setView('schedule')}
             className={cn(
-              'px-4 py-2 rounded-md text-sm font-medium transition-all',
+              'flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all whitespace-nowrap',
               view === 'schedule'
                 ? 'bg-bg-surface text-text-primary shadow-sm'
                 : 'text-text-secondary hover:text-text-primary'
             )}
           >
-            <Clock className="w-4 h-4 inline-block mr-2" />
-            Today's Schedule
+            <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 inline-block mr-1.5 sm:mr-2" />
+            Today&apos;s Schedule
           </button>
           <button
             onClick={() => setView('all')}
             className={cn(
-              'px-4 py-2 rounded-md text-sm font-medium transition-all',
+              'flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all whitespace-nowrap',
               view === 'all'
                 ? 'bg-bg-surface text-text-primary shadow-sm'
                 : 'text-text-secondary hover:text-text-primary'
             )}
           >
-            <Pill className="w-4 h-4 inline-block mr-2" />
+            <Pill className="w-3.5 h-3.5 sm:w-4 sm:h-4 inline-block mr-1.5 sm:mr-2" />
             All Medications
           </button>
         </div>
@@ -315,28 +315,28 @@ export default function MedicationsPage() {
                     transition={{ delay: index * 0.05 }}
                   >
                     <Card variant={med.lowSupply ? 'highlighted' : 'interactive'}>
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-wrap sm:flex-nowrap">
                         <div className={cn(
-                          'w-12 h-12 rounded-xl flex items-center justify-center text-2xl',
+                          'w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center text-xl sm:text-2xl flex-shrink-0',
                           med.lowSupply ? 'bg-warning-light' : 'bg-accent-primary-light'
                         )}>
                           💊
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-semibold text-text-primary">{med.name}</h4>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-semibold text-text-primary text-sm sm:text-base truncate">{med.name}</h4>
                             <Badge size="sm">{frequencyLabels[med.frequency] || med.frequency}</Badge>
                           </div>
-                          <p className="text-sm text-text-secondary">{med.dosage}</p>
+                          <p className="text-xs sm:text-sm text-text-secondary">{med.dosage}</p>
                           {med.instructions && (
-                            <p className="text-xs text-text-tertiary mt-1">{med.instructions}</p>
+                            <p className="text-xs text-text-tertiary mt-1 line-clamp-1">{med.instructions}</p>
                           )}
                         </div>
                         {med.currentSupply !== undefined && (
-                          <div className="text-right mr-2">
-                            <div className="flex items-center gap-1 text-sm">
+                          <div className="text-right flex-shrink-0">
+                            <div className="flex items-center gap-1 text-xs sm:text-sm">
                               <Package className={cn(
-                                'w-4 h-4',
+                                'w-3.5 h-3.5 sm:w-4 sm:h-4',
                                 med.lowSupply ? 'text-warning' : 'text-text-tertiary'
                               )} />
                               <span className={med.lowSupply ? 'text-warning font-medium' : 'text-text-secondary'}>
@@ -344,31 +344,31 @@ export default function MedicationsPage() {
                               </span>
                             </div>
                             {med.daysLeft !== undefined && (
-                              <p className="text-xs text-text-tertiary mt-0.5">
+                              <p className="text-[10px] sm:text-xs text-text-tertiary mt-0.5">
                                 ~{med.daysLeft} days
                               </p>
                             )}
                           </div>
                         )}
                         {(canEdit || canDelete) && (
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
                             {canEdit && (
                               <button
                                 onClick={() => handleEditMedication(med)}
-                                className="p-2 rounded-lg text-text-tertiary hover:text-primary hover:bg-primary/10 transition-colors"
+                                className="p-1.5 sm:p-2 rounded-lg text-text-tertiary hover:text-primary hover:bg-primary/10 transition-colors"
                                 title="Edit"
                               >
-                                <Pencil className="w-4 h-4" />
+                                <Pencil className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                               </button>
                             )}
                             {canDelete && (
                               <button
                                 onClick={() => handleDeleteMedication(med)}
                                 disabled={deleteMedicationMutation.isPending}
-                                className="p-2 rounded-lg text-text-tertiary hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                className="p-1.5 sm:p-2 rounded-lg text-text-tertiary hover:text-destructive hover:bg-destructive/10 transition-colors"
                                 title="Delete"
                               >
-                                <Trash2 className="w-4 h-4" />
+                                <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                               </button>
                             )}
                           </div>

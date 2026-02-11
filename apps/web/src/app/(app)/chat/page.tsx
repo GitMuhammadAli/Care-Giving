@@ -113,9 +113,9 @@ export default function ChatPage() {
       </header>
 
       {/* Chat Container - fills remaining space */}
-      <div className="flex-1 min-h-0 overflow-hidden p-1.5 sm:p-4">
+      <div className="flex-1 min-h-0 overflow-hidden p-0 sm:p-4">
         {selectedFamilyId ? (
-          <div className="h-full w-full rounded-lg sm:rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+          <div className="h-full w-full sm:rounded-xl border-0 sm:border border-border bg-card overflow-hidden sm:shadow-sm">
             <FamilyChat familyId={selectedFamilyId} />
           </div>
         ) : (

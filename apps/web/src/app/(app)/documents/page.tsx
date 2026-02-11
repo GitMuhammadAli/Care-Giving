@@ -275,15 +275,15 @@ export default function DocumentsPage() {
                 >
                   <Card variant="interactive" className="h-full">
                     <div className="flex items-start gap-3">
-                      <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0', config.bgColor)}>
-                        <Icon className={cn('w-6 h-6', config.color)} />
+                      <div className={cn('w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0', config.bgColor)}>
+                        <Icon className={cn('w-5 h-5 sm:w-6 sm:h-6', config.color)} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-text-primary truncate">{doc.name}</h4>
-                        <p className="text-sm text-text-secondary mt-0.5">
-                          {formatFileSize(doc.sizeBytes)} • {doc.mimeType.split('/')[1]?.toUpperCase() || 'FILE'}
+                        <h4 className="font-medium text-text-primary text-sm sm:text-base truncate">{doc.name}</h4>
+                        <p className="text-xs sm:text-sm text-text-secondary mt-0.5">
+                          {formatFileSize(doc.sizeBytes)} &bull; {doc.mimeType.split('/')[1]?.toUpperCase() || 'FILE'}
                         </p>
-                        <p className="text-xs text-text-tertiary mt-1">
+                        <p className="text-[10px] sm:text-xs text-text-tertiary mt-1">
                           Uploaded {formatRelativeTime(doc.createdAt)}
                         </p>
                       </div>
@@ -296,12 +296,12 @@ export default function DocumentsPage() {
                       </div>
                     )}
 
-                    <div className="flex gap-2 mt-4 pt-4 border-t border-border-subtle">
+                    <div className="flex gap-1.5 sm:gap-2 mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-border-subtle">
                       <Button
                         variant="ghost"
                         size="sm"
-                        leftIcon={<Eye className="w-4 h-4" />}
-                        className="flex-1"
+                        leftIcon={<Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                        className="flex-1 text-xs sm:text-sm px-2 sm:px-3"
                         onClick={() => handleViewDocument(doc.id)}
                       >
                         View
@@ -309,15 +309,15 @@ export default function DocumentsPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        leftIcon={<Download className="w-4 h-4" />}
-                        className="flex-1"
+                        leftIcon={<Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                        className="flex-1 text-xs sm:text-sm px-2 sm:px-3"
                         onClick={() => handleDownloadDocument(doc.id, doc.name)}
                       >
                         Download
                       </Button>
                       {canDelete && (
                         <button
-                          className="p-2 rounded-lg text-text-tertiary hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          className="p-1.5 sm:p-2 rounded-lg text-text-tertiary hover:text-destructive hover:bg-destructive/10 transition-colors flex-shrink-0"
                           onClick={() => {
                             if (confirm('Are you sure you want to delete this document?')) {
                               deleteDocumentMutation.mutate(doc.id);
@@ -325,7 +325,7 @@ export default function DocumentsPage() {
                           }}
                           disabled={deleteDocumentMutation.isPending}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         </button>
                       )}
                     </div>
@@ -338,16 +338,16 @@ export default function DocumentsPage() {
 
         {/* Storage Info */}
         <Card>
-          <CardContent className="flex items-center justify-between">
+          <CardContent className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <Shield className="w-5 h-5 text-success" />
+              <Shield className="w-5 h-5 text-success flex-shrink-0" />
               <div>
                 <p className="text-sm font-medium text-text-primary">End-to-end encrypted</p>
                 <p className="text-xs text-text-secondary">Your documents are securely stored</p>
               </div>
             </div>
-            <p className="text-sm text-text-secondary">
-              {documents.length} document{documents.length !== 1 ? 's' : ''} • {formatFileSize(totalSize)} used
+            <p className="text-xs sm:text-sm text-text-secondary flex-shrink-0">
+              {documents.length} doc{documents.length !== 1 ? 's' : ''} &bull; {formatFileSize(totalSize)}
             </p>
           </CardContent>
         </Card>

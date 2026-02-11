@@ -417,13 +417,13 @@ const Dashboard = () => {
       <FamilySpaceSelector onAddCareRecipient={() => setAddCareRecipientOpen(true)} />
 
       {/* Welcome Header - Enhanced */}
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8 animate-fade">
-        <div className="space-y-1">
-          <p className="label-caps text-muted-foreground">Care Dashboard</p>
-          <h1 className="font-serif text-3xl md:text-4xl lg:text-5xl text-foreground tracking-tight">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 sm:gap-4 mb-6 sm:mb-8 animate-fade">
+        <div className="space-y-0.5 sm:space-y-1 min-w-0">
+          <p className="label-caps text-muted-foreground text-[10px] sm:text-xs">Care Dashboard</p>
+          <h1 className="font-serif text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-foreground tracking-tight truncate">
             {getGreeting()}, {user?.fullName?.split(' ')[0] || 'there'}
           </h1>
-          <p className="text-muted-foreground text-lg">{currentDate}</p>
+          <p className="text-muted-foreground text-sm sm:text-lg truncate">{currentDate}</p>
         </div>
         <div className="flex items-center gap-2 md:gap-3">
           <div className="relative">
@@ -522,7 +522,7 @@ const Dashboard = () => {
       </div>
 
       {/* Navigation Tabs - Enhanced */}
-      <div className="flex gap-1 mb-8 overflow-x-auto pb-1">
+      <div className="flex gap-1 mb-6 sm:mb-8 overflow-x-auto pb-1 scrollbar-hide -mx-1 px-1">
         {[
           { id: 'overview', label: 'Overview', icon: Heart },
           { id: 'medications', label: 'Medications', icon: Pill },
@@ -532,13 +532,13 @@ const Dashboard = () => {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as typeof activeTab)}
-            className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium whitespace-nowrap transition-all duration-200 rounded-xl ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-200 rounded-xl flex-shrink-0 ${
               activeTab === tab.id
                 ? 'bg-primary/15 text-primary shadow-sm'
                 : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
             }`}
           >
-            <tab.icon className="w-4 h-4" />
+            <tab.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             {tab.label}
           </button>
         ))}
