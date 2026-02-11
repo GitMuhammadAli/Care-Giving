@@ -19,7 +19,12 @@ import {
   Activity,
   MessageCircle,
   Users,
-  AlertTriangle
+  AlertTriangle,
+  Globe,
+  Info,
+  BookOpen,
+  DollarSign,
+  Mail,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
@@ -74,6 +79,14 @@ export function DashboardHeader({ className, currentUser }: DashboardHeaderProps
     { label: 'Account', href: '/settings', icon: Settings },
   ];
 
+  const exploreLinks = [
+    { label: 'Home', href: '/', icon: Globe },
+    { label: 'About', href: '/about', icon: Info },
+    { label: 'How It Works', href: '/how-it-works', icon: BookOpen },
+    { label: 'Pricing', href: '/pricing', icon: DollarSign },
+    { label: 'Contact', href: '/contact', icon: Mail },
+  ];
+
   return (
     <header className={cn(
       "fixed top-0 left-0 right-0 z-50 bg-background backdrop-blur-sm border-b border-border shadow-sm",
@@ -81,8 +94,8 @@ export function DashboardHeader({ className, currentUser }: DashboardHeaderProps
     )}>
       <div className="container max-w-7xl mx-auto">
         <div className="flex items-center justify-between h-16 px-4 md:px-6 gap-2 md:gap-4">
-          {/* Logo */}
-          <Link href="/dashboard" className="font-serif text-xl font-bold tracking-tight text-primary hover:opacity-80 transition-opacity shrink-0">
+          {/* Logo - links to landing page so logged-in users can explore */}
+          <Link href="/" className="font-serif text-xl font-bold tracking-tight text-primary hover:opacity-80 transition-opacity shrink-0">
             CareCircle
           </Link>
 
@@ -177,6 +190,23 @@ export function DashboardHeader({ className, currentUser }: DashboardHeaderProps
                       <User className="w-4 h-4" />
                       Profile
                     </Link>
+
+                    {/* Explore links */}
+                    <div className="border-t border-border my-1.5" />
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 py-1">Explore</p>
+                    {exploreLinks.map((link) => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-accent hover:text-primary transition-colors"
+                      >
+                        <link.icon className="w-4 h-4" />
+                        {link.label}
+                      </Link>
+                    ))}
+
+                    <div className="border-t border-border my-1.5" />
                     <button
                       onClick={handleLogout}
                       className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-destructive hover:bg-destructive/10 transition-colors w-full font-semibold"
@@ -260,6 +290,24 @@ export function DashboardHeader({ className, currentUser }: DashboardHeaderProps
                   </Link>
                 );
               })}
+            </nav>
+
+            {/* Explore / Marketing Pages (Mobile) */}
+            <nav className="flex flex-col gap-1 mb-4 pt-4 border-t border-border">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">
+                Explore
+              </p>
+              {exploreLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-3 rounded-lg text-foreground hover:bg-accent/50 transition-colors"
+                >
+                  <link.icon className="w-5 h-5" strokeWidth={1.5} />
+                  {link.label}
+                </Link>
+              ))}
             </nav>
 
             {/* Emergency Button (Mobile) */}
