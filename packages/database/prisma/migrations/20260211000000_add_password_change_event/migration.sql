@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "AuthEvent" ADD VALUE 'PASSWORD_CHANGE';

@@ -20,6 +20,9 @@ COPY apps/web ./apps/web
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
+# Enable standalone output for Docker builds (consumed by next.config.js)
+ENV DOCKER_BUILD=true
+
 # Build
 RUN pnpm --filter @carecircle/web build
 
