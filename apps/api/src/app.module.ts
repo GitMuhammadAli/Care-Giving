@@ -26,6 +26,7 @@ import { LoggingInterceptor } from './system/interceptor/logging.interceptor';
 import { GlobalExceptionFilter } from './system/filter/http-exception.filter';
 import { ValidationExceptionFilter } from './system/filter/validation-exception.filter';
 import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
+import { SentryExceptionFilter } from './common/filters/sentry-exception.filter';
 
 // Feature Modules
 import { AuthModule } from './auth/auth.module';
@@ -205,6 +206,10 @@ import { AdminModule } from './admin/admin.module';
     {
       provide: APP_FILTER,
       useClass: PrismaExceptionFilter,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: SentryExceptionFilter,
     },
   ],
 })

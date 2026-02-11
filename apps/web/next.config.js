@@ -27,8 +27,10 @@ const isProduction = process.env.NODE_ENV === 'production';
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // NOTE: Standalone output is disabled - Vercel handles bundling automatically
-  // Enable only for Docker deployments: output: 'standalone',
+  // Enable standalone output for Docker deployments only
+  // Vercel ignores this setting and handles bundling automatically
+  // On Windows, standalone requires admin privileges for symlinks
+  ...(process.env.DOCKER_BUILD === 'true' ? { output: 'standalone' } : {}),
   
   // Production optimizations
   poweredByHeader: false, // Remove X-Powered-By header for security

@@ -7,26 +7,14 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import * as Sentry from '@sentry/node';
 
 /**
- * Global exception filter with Sentry integration
+ * Global exception filter with Sentry integration.
  *
- * To enable Sentry:
- * 1. Install: npm install @sentry/node @sentry/profiling-node
- * 2. Add SENTRY_DSN to environment variables
- * 3. Initialize Sentry in main.ts:
- *
- * import * as Sentry from '@sentry/node';
- *
- * Sentry.init({
- *   dsn: process.env.SENTRY_DSN,
- *   environment: process.env.NODE_ENV,
- *   tracesSampleRate: 1.0,
- * });
- *
- * 4. Uncomment the Sentry.captureException() calls below
+ * Captures all 5xx errors and sends them to Sentry when SENTRY_DSN is configured.
+ * Non-5xx errors (client errors) are logged locally but not sent to Sentry.
  */
-
 @Catch()
 export class SentryExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(SentryExceptionFilter.name);
@@ -52,25 +40,24 @@ export class SentryExceptionFilter implements ExceptionFilter {
       exception instanceof Error ? exception.stack : String(exception),
     );
 
-    // Send to Sentry for non-4xx errors (uncomment when Sentry is configured)
-    if (status >= 500) {
-      // import * as Sentry from '@sentry/node';
-      // Sentry.captureException(exception, {
-      //   tags: {
-      //     method: request.method,
-      //     url: request.url,
-      //     statusCode: status,
-      //   },
-      //   user: {
-      //     id: request.user?.id,
-      //     email: request.user?.email,
-      //   },
-      //   extra: {
-      //     body: request.body,
-      //     query: request.query,
-      //     params: request.params,
-      //   },
-      // });
+    // Send to Sentry for server errors (5xx) when configured
+    if (status >= 500 && Sentry.isInitialized()) {
+      Sentry.captureException(exception, {
+        tags: {
+          method: request.method,
+          url: request.url,
+          statusCode: String(status),
+        },
+        user: {
+          id: (request as any).user?.id,
+          email: (request as any).user?.email,
+        },
+        extra: {
+          body: request.body,
+          query: request.query,
+          params: request.params,
+        },
+      });
     }
 
     // Send response
@@ -79,9 +66,13 @@ export class SentryExceptionFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
       path: request.url,
       method: request.method,
-      message: typeof message === 'string' ? message : (message as any).message || 'Error occurred',
+      message:
+        typeof message === 'string'
+          ? message
+          : (message as any).message || 'Error occurred',
       ...(process.env.NODE_ENV === 'development' && {
-        error: exception instanceof Error ? exception.message : String(exception),
+        error:
+          exception instanceof Error ? exception.message : String(exception),
         stack: exception instanceof Error ? exception.stack : undefined,
       }),
     });

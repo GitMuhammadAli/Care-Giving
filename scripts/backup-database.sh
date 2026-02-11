@@ -179,7 +179,7 @@ main() {
   "environment": "${ENVIRONMENT}",
   "backup_file": "${BACKUP_FILE_GZ}",
   "size": "${COMPRESSED_SIZE}",
-  "database_url": "${DATABASE_URL%%\?*}",
+  "database_host": "$(echo $DATABASE_URL | sed -E 's/.*@([^:/]+).*/\1/')",
   "bucket": "${BACKUP_BUCKET}",
   "retention_days": ${BACKUP_RETENTION}
 }

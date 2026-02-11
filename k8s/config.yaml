@@ -5,8 +5,7 @@ metadata:
   namespace: carecircle
 data:
   NODE_ENV: "production"
-  S3_BUCKET: "carecircle-documents"
-  S3_REGION: "us-east-1"
+  STORAGE_PROVIDER: "cloudinary"
 ---
 apiVersion: v1
 kind: Secret
@@ -22,7 +21,6 @@ stringData:
   JWT_SECRET: "your-jwt-secret-here"
   JWT_REFRESH_SECRET: "your-refresh-secret-here"
   ENCRYPTION_KEY: "your-32-char-encryption-key-here"
-  S3_ACCESS_KEY: "your-s3-access-key"
-  S3_SECRET_KEY: "your-s3-secret-key"
-  FIREBASE_SERVICE_ACCOUNT: '{"type":"service_account"...}'
+  CLOUDINARY_URL: "cloudinary://api_key:api_secret@cloud_name"
+  SENTRY_DSN: "https://your-sentry-dsn"
 

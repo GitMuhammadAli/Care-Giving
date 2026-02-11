@@ -168,14 +168,21 @@ Now all protected endpoints will use this token automatically.
     type: ErrorResponseDto,
   })
   @HttpCode(HttpStatus.OK)
-  async login(@Body() dto: LoginDto, @Res() res: Response) {
-    const result = await this.authService.login(dto);
+  async login(
+    @Body() dto: LoginDto,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const ip = req.ip || (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim();
+    const userAgent = req.headers['user-agent'];
+    const result = await this.authService.login(dto, ip, userAgent);
     this.setTokenCookies(res, result.tokens, dto.rememberMe);
     return res.json(result);
   }
 
   @Post("refresh")
   @Public()
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({
     summary: "Refresh access token",
     description:

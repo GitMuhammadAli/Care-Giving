@@ -1,0 +1,222 @@
+# =============================================================================
+# CareCircle - Staging Docker Compose
+# =============================================================================
+# Used by the deploy-staging.yml GitHub Actions workflow.
+# Images are pulled from GHCR (built and pushed by CI).
+#
+# Usage (on staging server):
+#   docker-compose -f docker-compose.staging.yml up -d --no-build
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # NGINX REVERSE PROXY
+  # ===========================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: carecircle-staging-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_started
+    networks:
+      - carecircle-staging
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ===========================================================================
+  # API BACKEND (pulled from GHCR)
+  # ===========================================================================
+  api:
+    image: ${IMAGE_PREFIX:-ghcr.io/your-org/care-giving}/api:staging-latest
+    container_name: carecircle-staging-api
+    env_file:
+      - .env.staging
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+    expose:
+      - "4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - carecircle-staging
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+
+  # ===========================================================================
+  # WEB FRONTEND (pulled from GHCR)
+  # ===========================================================================
+  web:
+    image: ${IMAGE_PREFIX:-ghcr.io/your-org/care-giving}/web:staging-latest
+    container_name: carecircle-staging-web
+    env_file:
+      - .env.staging
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+    expose:
+      - "3000"
+    networks:
+      - carecircle-staging
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+
+  # ===========================================================================
+  # BACKGROUND WORKERS (pulled from GHCR)
+  # ===========================================================================
+  workers:
+    image: ${IMAGE_PREFIX:-ghcr.io/your-org/care-giving}/workers:staging-latest
+    container_name: carecircle-staging-workers
+    env_file:
+      - .env.staging
+    environment:
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - carecircle-staging
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  # ===========================================================================
+  # POSTGRESQL DATABASE
+  # ===========================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: carecircle-staging-postgres
+    env_file:
+      - .env.staging
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_DATABASE:-carecircle_staging}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - staging-postgres-data:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    networks:
+      - carecircle-staging
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_DATABASE:-carecircle_staging}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ===========================================================================
+  # REDIS CACHE
+  # ===========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: carecircle-staging-redis
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --requirepass ${REDIS_PASSWORD:-}
+    volumes:
+      - staging-redis-data:/data
+    expose:
+      - "6379"
+    networks:
+      - carecircle-staging
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # ===========================================================================
+  # RABBITMQ MESSAGE BROKER
+  # ===========================================================================
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: carecircle-staging-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${AMQP_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${AMQP_PASSWORD:-guest}
+      RABBITMQ_DEFAULT_VHOST: ${AMQP_VHOST:-/}
+    volumes:
+      - staging-rabbitmq-data:/var/lib/rabbitmq
+    expose:
+      - "5672"
+      - "15672"
+    networks:
+      - carecircle-staging
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+# =============================================================================
+# NETWORKS
+# =============================================================================
+networks:
+  carecircle-staging:
+    driver: bridge
+
+# =============================================================================
+# VOLUMES
+# =============================================================================
+volumes:
+  staging-postgres-data:
+    driver: local
+  staging-redis-data:
+    driver: local
+  staging-rabbitmq-data:
+    driver: local

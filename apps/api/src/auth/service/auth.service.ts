@@ -9,7 +9,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-import { randomBytes } from 'crypto';
+import { randomBytes, timingSafeEqual } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MailService } from '../../system/module/mail/mail.service';
 import { CacheService, CACHE_KEYS, CACHE_TTL } from '../../system/module/cache';
@@ -117,11 +117,35 @@ export class AuthService {
   }
 
   async login(dto: LoginDto, ipAddress?: string, userAgent?: string) {
+    const normalizedEmail = dto.email.toLowerCase();
+    const lockoutKey = `login_lockout:${normalizedEmail}`;
+    const attemptKey = `login_attempts:${normalizedEmail}`;
+    const maxAttempts = this.configService.get<number>('security.maxLoginAttempts') || 5;
+    const lockoutDuration = this.configService.get<number>('security.lockoutDuration') || 1800;
+
+    // SECURITY: Check if account is locked out
+    const isLockedOut = await this.cacheService.get<boolean>(lockoutKey);
+    if (isLockedOut) {
+      await this.logAuthEvent(
+        AuthEvent.LOGIN_FAILED,
+        normalizedEmail,
+        undefined,
+        ipAddress,
+        userAgent,
+        { reason: 'account_locked' },
+      );
+      throw new UnauthorizedException(
+        'Account temporarily locked due to too many failed login attempts. Please try again later.',
+      );
+    }
+
     const user = await this.prisma.user.findUnique({
-      where: { email: dto.email.toLowerCase() },
+      where: { email: normalizedEmail },
     });
 
     if (!user) {
+      // Increment failed attempts even for non-existent emails (prevent user enumeration)
+      await this.incrementLoginAttempts(attemptKey, lockoutKey, maxAttempts, lockoutDuration);
       // Log failed login attempt
       await this.logAuthEvent(
         AuthEvent.LOGIN_FAILED, 
@@ -161,6 +185,8 @@ export class AuthService {
 
     const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!isPasswordValid) {
+      // SECURITY: Increment failed login attempts and lock out if threshold exceeded
+      await this.incrementLoginAttempts(attemptKey, lockoutKey, maxAttempts, lockoutDuration);
       await this.logAuthEvent(
         AuthEvent.LOGIN_FAILED, 
         dto.email, 
@@ -172,8 +198,11 @@ export class AuthService {
       throw new UnauthorizedException(AUTH_MESSAGES.INVALID_PASSWORD);
     }
 
+    // SECURITY: Clear failed login attempts on successful login
+    await this.cacheService.del([attemptKey, lockoutKey]);
+
     const tokens = await this.generateTokens(user.id, user.email);
-    await this.createSession(user.id, tokens.refreshToken);
+    await this.createSession(user.id, tokens.refreshToken, undefined, ipAddress, userAgent);
 
     // Update last login
     await this.prisma.user.update({
@@ -409,10 +438,17 @@ export class AuthService {
       },
     });
 
+    // SECURITY: Invalidate all sessions after password change
+    await this.prisma.session.updateMany({
+      where: { userId },
+      data: { isActive: false },
+    });
+
     // Invalidate user cache
     await this.invalidateUserCache(userId);
 
     await this.logAudit(userId, 'PASSWORD_CHANGE', 'user', userId);
+    await this.logAuthEvent(AuthEvent.PASSWORD_CHANGE, user.email, userId);
 
     return { message: AUTH_MESSAGES.PASSWORD_CHANGE_SUCCESS };
   }
@@ -580,7 +616,14 @@ export class AuthService {
       throw new BadRequestException(AUTH_MESSAGES.VERIFICATION_CODE_EXPIRED);
     }
 
-    if (user.emailVerificationCode !== otp) {
+    // SECURITY: Use constant-time comparison to prevent timing attacks
+    const codeBuffer = Buffer.from(user.emailVerificationCode, 'utf8');
+    const otpBuffer = Buffer.from(otp, 'utf8');
+    const isOtpValid =
+      codeBuffer.length === otpBuffer.length &&
+      timingSafeEqual(codeBuffer, otpBuffer);
+
+    if (!isOtpValid) {
       // Increment failed attempt counter (expires after 15 minutes)
       await this.cacheService.set(attemptKey, currentAttempts + 1, 900);
       throw new BadRequestException(AUTH_MESSAGES.VERIFICATION_CODE_INVALID);
@@ -728,12 +771,42 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  private async createSession(userId: string, refreshToken: string, deviceInfo?: string) {
+  /**
+   * SECURITY: Track failed login attempts and enforce account lockout.
+   */
+  private async incrementLoginAttempts(
+    attemptKey: string,
+    lockoutKey: string,
+    maxAttempts: number,
+    lockoutDuration: number,
+  ): Promise<void> {
+    const currentAttempts = (await this.cacheService.get<number>(attemptKey)) || 0;
+    const newAttempts = currentAttempts + 1;
+
+    // Store attempts with TTL equal to lockout duration
+    await this.cacheService.set(attemptKey, newAttempts, lockoutDuration);
+
+    if (newAttempts >= maxAttempts) {
+      // Lock the account
+      await this.cacheService.set(lockoutKey, true, lockoutDuration);
+      this.logger.warn(`Account locked after ${newAttempts} failed login attempts (key: ${attemptKey})`);
+    }
+  }
+
+  private async createSession(
+    userId: string,
+    refreshToken: string,
+    deviceInfo?: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
     await this.prisma.session.create({
       data: {
         userId,
         refreshToken,
         deviceInfo,
+        ipAddress,
+        userAgent,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
     });

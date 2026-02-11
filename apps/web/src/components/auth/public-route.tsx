@@ -50,8 +50,15 @@ function PublicRouteInner({
   // Redirect to dashboard/returnUrl if already authenticated (unless allowAuthenticated)
   useEffect(() => {
     if (isInitialized && !isLoading && isAuthenticated && !allowAuthenticated) {
-      // Use returnUrl if provided, otherwise use default redirectTo
-      const destination = returnUrl ? decodeURIComponent(returnUrl) : redirectTo;
+      // SECURITY: Only allow same-origin redirects to prevent open redirect attacks
+      let destination = redirectTo;
+      if (returnUrl) {
+        const decoded = decodeURIComponent(returnUrl);
+        // Only allow relative paths (starting with /) and block protocol-relative URLs (//)
+        if (decoded.startsWith('/') && !decoded.startsWith('//')) {
+          destination = decoded;
+        }
+      }
       router.replace(destination);
     }
   }, [isInitialized, isLoading, isAuthenticated, router, returnUrl, redirectTo, allowAuthenticated]);
