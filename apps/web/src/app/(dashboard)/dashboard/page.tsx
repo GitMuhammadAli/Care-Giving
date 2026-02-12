@@ -33,7 +33,6 @@ import {
   CheckCircle2,
   ChevronRight,
   ChevronDown,
-  Camera,
   Settings,
   RefreshCw,
   X,
@@ -43,6 +42,7 @@ import {
   Home,
   Check,
   Sparkles,
+  Wand2,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -70,13 +70,16 @@ import { careRecipientsApi, CareRecipient } from '@/lib/api';
 import { useFamilySpace } from '@/contexts/family-space-context';
 import { CareSummaryCard } from '@/components/ai/care-summary-card';
 import { AskAiPanel } from '@/components/ai/ask-ai-panel';
+import { SmartEntryInput } from '@/components/ai/smart-entry-input';
+import type { ParsedTimelineEntry } from '@/lib/api/ai';
+import { CreateTimelineEntryInput } from '@/lib/api';
 
 // Quick actions with proper theme colors
 const quickActions = [
   { icon: Pill, label: 'Log Medication', action: 'medication', bgClass: 'bg-primary/15', textClass: 'text-primary', comingSoon: false },
   { icon: Calendar, label: 'Add Appointment', action: 'appointment', bgClass: 'bg-secondary/20', textClass: 'text-secondary-foreground', comingSoon: false },
   { icon: MessageCircle, label: 'Post Update', action: 'update', bgClass: 'bg-muted/20', textClass: 'text-muted-foreground', comingSoon: false },
-  { icon: Camera, label: 'Share Photo', action: 'photo', bgClass: 'bg-accent', textClass: 'text-accent-foreground', comingSoon: true },
+  { icon: Wand2, label: 'Smart Entry', action: 'smart-entry', bgClass: 'bg-emerald-500/15', textClass: 'text-emerald-700', comingSoon: false },
 ];
 
 const Dashboard = () => {
@@ -157,6 +160,7 @@ const Dashboard = () => {
   const [addCareRecipientOpen, setAddCareRecipientOpen] = useState(false);
   const [editCareRecipientOpen, setEditCareRecipientOpen] = useState(false);
   const [askAiOpen, setAskAiOpen] = useState(false);
+  const [showSmartEntry, setShowSmartEntry] = useState(false);
 
   // Form states
   const [newTask, setNewTask] = useState({ title: '', time: '', type: 'appointment' });
@@ -325,6 +329,33 @@ const Dashboard = () => {
     }
   };
 
+  const handleSmartEntryConfirm = (parsed: ParsedTimelineEntry) => {
+    if (!careRecipientId) return;
+
+    const entryData: CreateTimelineEntryInput = {
+      type: parsed.type,
+      title: parsed.title,
+      description: parsed.description,
+      severity: parsed.severity as any,
+    };
+
+    if (parsed.vitals) {
+      entryData.vitals = {
+        bloodPressure:
+          parsed.vitals.bloodPressureSystolic && parsed.vitals.bloodPressureDiastolic
+            ? `${parsed.vitals.bloodPressureSystolic}/${parsed.vitals.bloodPressureDiastolic}`
+            : undefined,
+        heartRate: parsed.vitals.heartRate,
+        temperature: parsed.vitals.temperature,
+        oxygenLevel: parsed.vitals.oxygenLevel,
+        bloodSugar: parsed.vitals.bloodSugar,
+      };
+    }
+
+    createTimelineEntry.mutate(entryData);
+    setShowSmartEntry(false);
+  };
+
   const handleQuickAction = (action: string) => {
     switch (action) {
       case 'medication':
@@ -336,8 +367,8 @@ const Dashboard = () => {
       case 'update':
         setPostUpdateOpen(true);
         break;
-      case 'photo':
-        toast('Photo sharing is coming soon! Stay tuned.', { icon: '📸', duration: 3000 });
+      case 'smart-entry':
+        setShowSmartEntry(true);
         break;
     }
   };
@@ -736,6 +767,16 @@ const Dashboard = () => {
                 )}
               </div>
             </div>
+
+            {/* Smart Entry (AI) */}
+            {showSmartEntry && careRecipientId && (
+              <div className="animate-fade-delay-3">
+                <SmartEntryInput
+                  onConfirm={handleSmartEntryConfirm}
+                  onCancel={() => setShowSmartEntry(false)}
+                />
+              </div>
+            )}
 
             {/* Recent Updates - Enhanced */}
             <div className="dashboard-card animate-fade-delay-3">
