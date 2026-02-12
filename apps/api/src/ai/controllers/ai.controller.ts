@@ -14,7 +14,6 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CareSummaryService } from '../services/care-summary.service';
 import { SmartEntryService, ParsedTimelineEntry } from '../services/smart-entry.service';
 import { RagService, RagAnswer } from '../services/rag.service';
-import { FamilyAccessGuard } from '../../system/guard/family-access.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
 

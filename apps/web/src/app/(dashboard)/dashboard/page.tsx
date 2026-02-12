@@ -198,14 +198,19 @@ const Dashboard = () => {
   // Map timeline entries to recent updates
   const recentUpdates = useMemo(() => {
     if (!timelineData?.pages) return [];
-    const entries = timelineData.pages.flat();
-    return entries.slice(0, 5).map((entry: any) => ({
-      id: entry.id,
-      author: entry.createdBy?.fullName || 'Unknown',
-      message: entry.description || entry.title || 'Update',
-      time: new Date(entry.createdAt).toLocaleString(),
-      type: entry.type === 'MEDICAL_APPOINTMENT' || entry.type === 'VITAL_SIGN' ? 'medical' : 'update',
-    }));
+    const entries = timelineData.pages
+      .filter((page): page is any[] => Array.isArray(page))
+      .flat();
+    return entries
+      .filter((entry) => !!entry)
+      .slice(0, 5)
+      .map((entry: any) => ({
+        id: entry.id,
+        author: entry.createdBy?.fullName || 'Unknown',
+        message: entry.description || entry.title || 'Update',
+        time: new Date(entry.createdAt).toLocaleString(),
+        type: entry.type === 'MEDICAL_APPOINTMENT' || entry.type === 'VITAL_SIGN' ? 'medical' : 'update',
+      }));
   }, [timelineData]);
 
   // Map appointments to tasks

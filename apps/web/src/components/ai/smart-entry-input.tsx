@@ -168,7 +168,7 @@ export function SmartEntryInput({ onConfirm, onCancel }: SmartEntryInputProps) {
           </p>
 
           {/* Vitals */}
-          {parsedEntry.vitals && Object.keys(parsedEntry.vitals).length > 0 && (
+          {parsedEntry.vitals && typeof parsedEntry.vitals === 'object' && Object.keys(parsedEntry.vitals).length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
               {parsedEntry.vitals.bloodPressureSystolic && parsedEntry.vitals.bloodPressureDiastolic && (
                 <VitalCard
