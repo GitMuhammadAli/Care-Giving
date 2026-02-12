@@ -67,12 +67,12 @@ export const Footer = memo(function Footer() {
   const currentYear = useMemo(() => new Date().getFullYear(), []);
 
   return (
-    <footer className="py-16 bg-background border-t border-border">
-      <div className="container mx-auto px-6">
-        <div className="grid md:grid-cols-12 gap-12">
+    <footer className="py-10 sm:py-16 bg-background border-t border-border">
+      <div className="container mx-auto px-4 sm:px-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-12 gap-8 sm:gap-10 md:gap-12">
           {/* Brand */}
-          <div className="md:col-span-4">
-            <Link href="/" className="font-editorial text-xl text-foreground mb-4 block">
+          <div className="col-span-2 sm:col-span-4 md:col-span-4">
+            <Link href="/" className="font-editorial text-xl text-foreground mb-3 sm:mb-4 block">
               CareCircle
             </Link>
             <p className="text-muted-foreground text-sm leading-relaxed max-w-xs">
@@ -80,26 +80,26 @@ export const Footer = memo(function Footer() {
             </p>
           </div>
 
-          {/* Links */}
-          <div className="md:col-span-2 md:col-start-7">
+          {/* Links - 3-column grid on mobile, spread on desktop */}
+          <div className="col-span-1 sm:col-span-1 md:col-span-2 md:col-start-7">
             <LinkSection title="Product" links={footerLinks.product} />
           </div>
 
-          <div className="md:col-span-2">
+          <div className="col-span-1 sm:col-span-1 md:col-span-2">
             <LinkSection title="Company" links={footerLinks.company} />
           </div>
 
-          <div className="md:col-span-2">
+          <div className="col-span-2 sm:col-span-1 md:col-span-2">
             <LinkSection title="Legal" links={footerLinks.legal} />
           </div>
         </div>
 
         {/* Bottom */}
-        <div className="mt-16 pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground">
+        <div className="mt-10 sm:mt-16 pt-6 sm:pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-3 sm:gap-4">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             © {currentYear} CareCircle. All rights reserved.
           </p>
-          <p className="text-sm text-muted-foreground">Made with care, for caregivers.</p>
+          <p className="text-xs sm:text-sm text-muted-foreground">Made with care, for caregivers.</p>
         </div>
       </div>
     </footer>

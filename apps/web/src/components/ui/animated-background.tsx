@@ -250,17 +250,36 @@ export const AnimatedBackground = memo(function AnimatedBackground({
   variant?: 'full' | 'subtle';
 }) {
   const { containerRef, isPaused, prefersReducedMotion } = useAnimationPause();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const isSubtle = variant === 'subtle';
 
+  // On mobile, scale up leaf sizes for better visibility
+  const leafScale = isMobile ? 1.4 : 1;
+
   // Sphere configurations - soft, warm colors
+  // On mobile, use fewer and larger spheres to avoid clutter
   const spheres = isSubtle
     ? [
         { color: 'rgba(168, 181, 160, 0.15)', size: '40vw', position: { top: '-15%', left: '-10%' }, delay: 0, duration: 35, blur: 70 },
         { color: 'rgba(139, 154, 126, 0.12)', size: '30vw', position: { bottom: '-5%', right: '-5%' }, delay: -10, duration: 40, blur: 65 },
       ]
+    : isMobile
+    ? [
+        // Mobile: fewer, larger spheres that fill the viewport nicely
+        { color: 'rgba(168, 181, 160, 0.35)', size: '70vw', position: { top: '-15%', left: '-20%' }, delay: 0, duration: 25, blur: 50 },
+        { color: 'rgba(139, 154, 126, 0.3)', size: '60vw', position: { bottom: '-10%', right: '-15%' }, delay: -8, duration: 30, blur: 45 },
+        { color: 'rgba(153, 107, 77, 0.18)', size: '50vw', position: { top: '40%', left: '30%' }, delay: -15, duration: 28, blur: 40 },
+      ]
     : [
-        // Large background spheres
+        // Desktop: full set of spheres
         { color: 'rgba(168, 181, 160, 0.4)', size: '55vw', position: { top: '-20%', left: '-15%' }, delay: 0, duration: 25, blur: 60 },
         { color: 'rgba(139, 154, 126, 0.35)', size: '45vw', position: { bottom: '-10%', right: '-10%' }, delay: -8, duration: 30, blur: 55 },
         { color: 'rgba(153, 107, 77, 0.2)', size: '35vw', position: { top: '30%', left: '50%' }, delay: -15, duration: 28, blur: 50 },
@@ -273,27 +292,28 @@ export const AnimatedBackground = memo(function AnimatedBackground({
       ];
 
   // Leaf configurations – subtle variant uses just 4 leaves with longer durations
+  // On mobile, leaves are scaled up via leafScale for better visibility
   const leaves = isSubtle
     ? [
-        { delay: 0, duration: 24, startX: 15, size: 22, color: '#8B9A7E', drift: 1 },
-        { delay: 6, duration: 28, startX: 50, size: 20, color: '#9AAA8D', drift: -1 },
-        { delay: 12, duration: 26, startX: 75, size: 24, color: '#A8B5A0', drift: 1 },
-        { delay: 18, duration: 22, startX: 90, size: 18, color: '#6B7A5E', drift: -1 },
+        { delay: 0, duration: 24, startX: 15, size: Math.round(22 * leafScale), color: '#8B9A7E', drift: 1 },
+        { delay: 6, duration: 28, startX: 50, size: Math.round(20 * leafScale), color: '#9AAA8D', drift: -1 },
+        { delay: 12, duration: 26, startX: 75, size: Math.round(24 * leafScale), color: '#A8B5A0', drift: 1 },
+        { delay: 18, duration: 22, startX: 90, size: Math.round(18 * leafScale), color: '#6B7A5E', drift: -1 },
       ]
     : [
-        { delay: 0, duration: 16, startX: 8, size: 26, color: '#8B9A7E', drift: 1 },
-        { delay: 2, duration: 19, startX: 18, size: 30, color: '#6B7A5E', drift: -1 },
-        { delay: 4, duration: 15, startX: 32, size: 24, color: '#9AAA8D', drift: 1 },
-        { delay: 1, duration: 18, startX: 45, size: 28, color: '#525E48', drift: -1 },
-        { delay: 3, duration: 17, startX: 58, size: 32, color: '#A8B5A0', drift: 1 },
-        { delay: 5, duration: 20, startX: 72, size: 26, color: '#996B4D', drift: -1 },
-        { delay: 1.5, duration: 16, startX: 85, size: 30, color: '#8B9A7E', drift: 1 },
-        { delay: 6, duration: 18, startX: 95, size: 24, color: '#6B7A5E', drift: -1 },
+        { delay: 0, duration: 16, startX: 8, size: Math.round(26 * leafScale), color: '#8B9A7E', drift: 1 },
+        { delay: 2, duration: 19, startX: 18, size: Math.round(30 * leafScale), color: '#6B7A5E', drift: -1 },
+        { delay: 4, duration: 15, startX: 32, size: Math.round(24 * leafScale), color: '#9AAA8D', drift: 1 },
+        { delay: 1, duration: 18, startX: 45, size: Math.round(28 * leafScale), color: '#525E48', drift: -1 },
+        { delay: 3, duration: 17, startX: 58, size: Math.round(32 * leafScale), color: '#A8B5A0', drift: 1 },
+        { delay: 5, duration: 20, startX: 72, size: Math.round(26 * leafScale), color: '#996B4D', drift: -1 },
+        { delay: 1.5, duration: 16, startX: 85, size: Math.round(30 * leafScale), color: '#8B9A7E', drift: 1 },
+        { delay: 6, duration: 18, startX: 95, size: Math.round(24 * leafScale), color: '#6B7A5E', drift: -1 },
         // Second wave
-        { delay: 7, duration: 17, startX: 12, size: 28, color: '#9AAA8D', drift: -1 },
-        { delay: 8, duration: 19, startX: 38, size: 26, color: '#525E48', drift: 1 },
-        { delay: 9, duration: 15, startX: 62, size: 30, color: '#A8B5A0', drift: -1 },
-        { delay: 10, duration: 20, startX: 78, size: 24, color: '#996B4D', drift: 1 },
+        { delay: 7, duration: 17, startX: 12, size: Math.round(28 * leafScale), color: '#9AAA8D', drift: -1 },
+        { delay: 8, duration: 19, startX: 38, size: Math.round(26 * leafScale), color: '#525E48', drift: 1 },
+        { delay: 9, duration: 15, startX: 62, size: Math.round(30 * leafScale), color: '#A8B5A0', drift: -1 },
+        { delay: 10, duration: 20, startX: 78, size: Math.round(24 * leafScale), color: '#996B4D', drift: 1 },
       ];
 
   // Care points - subtle indicators (skip in subtle mode)

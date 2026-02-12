@@ -97,13 +97,13 @@ export const Header = memo(function Header() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border/50">
       <div className="container mx-auto">
-        <div className="flex items-center justify-between h-16 px-6">
-          <Link href="/" className="flex items-center gap-2 font-serif text-xl tracking-tight text-foreground">
+        <div className="flex items-center justify-between h-14 sm:h-16 px-4 sm:px-6">
+          <Link href="/" className="flex items-center gap-1.5 sm:gap-2 font-serif text-lg sm:text-xl tracking-tight text-foreground">
             CareCircle
             <BetaBadge size="sm" showIcon={false} />
           </Link>
 
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden md:flex items-center gap-6 lg:gap-8">
             {navLinks.map((link) => (
               <NavLink
                 key={link.href}
@@ -114,7 +114,7 @@ export const Header = memo(function Header() {
             ))}
           </nav>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {/* Show different buttons based on auth state */}
             {isLoggedIn ? (
               // Authenticated user - show dashboard link
@@ -140,7 +140,7 @@ export const Header = memo(function Header() {
               </>
             )}
             <button
-              className="md:hidden p-2"
+              className="md:hidden p-2 -mr-2"
               onClick={toggleMenu}
               aria-label="Toggle menu"
             >
@@ -151,8 +151,8 @@ export const Header = memo(function Header() {
 
         {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-border py-4 px-6">
-            <nav className="flex flex-col gap-4">
+          <div className="md:hidden border-t border-border py-4 px-4 sm:px-6 animate-fade-in" style={{ animationDuration: '0.15s' }}>
+            <nav className="flex flex-col gap-3">
               {navLinks.map((link) => (
                 <MobileNavLink
                   key={link.href}
