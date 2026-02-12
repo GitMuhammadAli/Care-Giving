@@ -45,6 +45,7 @@ import { HealthModule } from './health/health.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { EventsModule } from './events/events.module';
 import { AdminModule } from './admin/admin.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -169,6 +170,8 @@ import { AdminModule } from './admin/admin.module';
     GatewayModule,
     // Admin Dashboard
     AdminModule,
+    // AI Features (Gemini)
+    AiModule,
   ],
   providers: [
     // Global Guards

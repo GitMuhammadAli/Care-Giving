@@ -108,6 +108,8 @@ export const QUEUE_NAMES = {
   NOTIFICATIONS: 'notifications',
   REFILL_ALERTS: 'refill-alerts',
   DEAD_LETTER: 'dead-letter-queue', // New: DLQ
+  AI_SUMMARIES: 'ai-summaries',
+  AI_EMBEDDINGS: 'ai-embeddings',
 } as const;
 
 // ============================================================================

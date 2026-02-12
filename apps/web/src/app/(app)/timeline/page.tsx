@@ -27,7 +27,10 @@ import {
   Smile,
   Activity,
   Search,
+  Wand2,
 } from 'lucide-react';
+import { SmartEntryInput } from '@/components/ai/smart-entry-input';
+import type { ParsedTimelineEntry } from '@/lib/api/ai';
 
 const filterOptions = [
   { value: 'all', label: 'All', icon: Activity },
@@ -55,6 +58,7 @@ export default function TimelinePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedEntryType, setSelectedEntryType] = useState<string | null>(null);
+  const [showSmartEntry, setShowSmartEntry] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -150,6 +154,33 @@ export default function TimelinePage() {
     createEntryMutation.mutate(entryData);
   };
 
+  const handleSmartEntryConfirm = (parsed: ParsedTimelineEntry) => {
+    if (!careRecipientId) return;
+
+    const entryData: CreateTimelineEntryInput = {
+      type: parsed.type,
+      title: parsed.title,
+      description: parsed.description,
+      severity: parsed.severity as any,
+    };
+
+    if (parsed.vitals) {
+      entryData.vitals = {
+        bloodPressure:
+          parsed.vitals.bloodPressureSystolic && parsed.vitals.bloodPressureDiastolic
+            ? `${parsed.vitals.bloodPressureSystolic}/${parsed.vitals.bloodPressureDiastolic}`
+            : undefined,
+        heartRate: parsed.vitals.heartRate,
+        temperature: parsed.vitals.temperature,
+        oxygenLevel: parsed.vitals.oxygenLevel,
+        bloodSugar: parsed.vitals.bloodSugar,
+      };
+    }
+
+    createEntryMutation.mutate(entryData);
+    setShowSmartEntry(false);
+  };
+
   if (!careRecipientId) {
     return (
       <div className="pb-6">
@@ -200,6 +231,24 @@ export default function TimelinePage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             leftIcon={<Search className="w-5 h-5" />}
           />
+        </div>
+
+        {/* Smart Entry Toggle */}
+        <div className="mb-4">
+          {!showSmartEntry ? (
+            <button
+              onClick={() => setShowSmartEntry(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sage/10 hover:bg-sage/20 text-sage-700 text-sm font-medium transition-colors border border-sage/20"
+            >
+              <Wand2 className="w-4 h-4" />
+              Smart Entry — type naturally, AI parses it
+            </button>
+          ) : (
+            <SmartEntryInput
+              onConfirm={handleSmartEntryConfirm}
+              onCancel={() => setShowSmartEntry(false)}
+            />
+          )}
         </div>
 
         {/* Filters */}

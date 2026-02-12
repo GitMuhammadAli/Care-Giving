@@ -42,6 +42,7 @@ import {
   UserPlus,
   Home,
   Check,
+  Sparkles,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -67,6 +68,8 @@ import { useUpcomingAppointments, useCreateAppointment } from '@/hooks/use-appoi
 import { useQuery } from '@tanstack/react-query';
 import { careRecipientsApi, CareRecipient } from '@/lib/api';
 import { useFamilySpace } from '@/contexts/family-space-context';
+import { CareSummaryCard } from '@/components/ai/care-summary-card';
+import { AskAiPanel } from '@/components/ai/ask-ai-panel';
 
 // Quick actions with proper theme colors
 const quickActions = [
@@ -153,6 +156,7 @@ const Dashboard = () => {
   const [postUpdateOpen, setPostUpdateOpen] = useState(false);
   const [addCareRecipientOpen, setAddCareRecipientOpen] = useState(false);
   const [editCareRecipientOpen, setEditCareRecipientOpen] = useState(false);
+  const [askAiOpen, setAskAiOpen] = useState(false);
 
   // Form states
   const [newTask, setNewTask] = useState({ title: '', time: '', type: 'appointment' });
@@ -475,6 +479,18 @@ const Dashboard = () => {
               </div>
             )}
           </div>
+
+          {careRecipientId && (
+            <Button
+              variant="outline"
+              size="icon"
+              className="border-sage/30 hover:bg-sage/10 hover:border-sage/50 rounded-xl h-11 w-11"
+              onClick={() => setAskAiOpen(true)}
+              title="Ask CareCircle AI"
+            >
+              <Sparkles className="w-5 h-5 text-sage" />
+            </Button>
+          )}
 
           <Link href="/settings">
             <Button variant="outline" size="icon" className="border-border/60 hover:bg-accent hover:border-border rounded-xl h-11 w-11">
@@ -803,6 +819,14 @@ const Dashboard = () => {
 
           {/* Right Sidebar */}
           <div className="space-y-6">
+            {/* AI Care Summary */}
+            {careRecipientId && (
+              <CareSummaryCard
+                careRecipientId={careRecipientId}
+                careRecipientName={careRecipient?.preferredName || careRecipient?.fullName}
+              />
+            )}
+
             {/* Emergency Contacts */}
             <EmergencyContacts careRecipientId={careRecipientId} />
 
@@ -1024,6 +1048,16 @@ const Dashboard = () => {
           isOpen={editCareRecipientOpen}
           onClose={() => setEditCareRecipientOpen(false)}
           careRecipient={careRecipient}
+        />
+      )}
+
+      {/* Ask AI Panel */}
+      {careRecipientId && (
+        <AskAiPanel
+          careRecipientId={careRecipientId}
+          careRecipientName={careRecipient?.preferredName || careRecipient?.fullName}
+          isOpen={askAiOpen}
+          onClose={() => setAskAiOpen(false)}
         />
       )}
     </div>
