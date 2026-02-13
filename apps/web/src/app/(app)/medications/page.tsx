@@ -205,8 +205,10 @@ export default function MedicationsPage() {
               size="default"
               leftIcon={<Plus className="w-4 h-4" />}
               onClick={() => setIsAddModalOpen(true)}
+              className="text-xs sm:text-sm"
             >
-              Add Medication
+              <span className="hidden sm:inline">Add Medication</span>
+              <span className="sm:hidden">Add</span>
             </Button>
           ) : null
         }
@@ -288,9 +290,9 @@ export default function MedicationsPage() {
             {/* Low Supply Alert */}
             {medicationsWithSupply.some((m) => m.lowSupply) && (
               <Card variant="urgent" className="mb-6">
-                <CardContent className="flex items-center gap-3">
-                  <AlertCircle className="w-5 h-5 text-emergency" />
-                  <p className="text-sm text-text-primary">
+                <CardContent className="flex items-start sm:items-center gap-3">
+                  <AlertCircle className="w-5 h-5 text-emergency flex-shrink-0 mt-0.5 sm:mt-0" />
+                  <p className="text-xs sm:text-sm text-text-primary">
                     <strong>Refill needed:</strong> Some medications are running low on supply.
                   </p>
                 </CardContent>

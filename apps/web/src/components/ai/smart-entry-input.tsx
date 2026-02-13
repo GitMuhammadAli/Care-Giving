@@ -73,7 +73,7 @@ export function SmartEntryInput({ onConfirm, onCancel }: SmartEntryInputProps) {
     <div className="bg-card border border-border rounded-2xl overflow-hidden">
       {/* Input Mode */}
       {!parsedEntry ? (
-        <div className="p-4">
+        <div className="p-3 sm:p-4">
           <div className="flex items-center gap-2 mb-3">
             <Wand2 className="w-4 h-4 text-sage" />
             <span className="text-sm font-medium text-foreground">Smart Entry</span>
@@ -86,11 +86,11 @@ export function SmartEntryInput({ onConfirm, onCancel }: SmartEntryInputProps) {
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Type naturally, e.g. 'Mom had breakfast at 8am, blood pressure was 130/85, she seemed tired and didn't want to walk today'"
-            className="w-full h-24 resize-none bg-muted/50 rounded-xl px-4 py-3 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-sage/30 border border-border transition-colors"
+            className="w-full h-24 resize-none bg-muted/50 rounded-xl px-3 sm:px-4 py-3 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-sage/30 border border-border transition-colors"
             maxLength={2000}
           />
 
-          <div className="flex items-center justify-between mt-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
             <span className="text-[11px] text-muted-foreground">
               {text.length}/2000
             </span>
@@ -129,11 +129,11 @@ export function SmartEntryInput({ onConfirm, onCancel }: SmartEntryInputProps) {
         </div>
       ) : (
         /* Preview Mode */
-        <div className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Edit3 className="w-4 h-4 text-sage" />
-              <span className="text-sm font-medium text-foreground">Parsed Entry Preview</span>
+        <div className="p-3 sm:p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <Edit3 className="w-4 h-4 text-sage flex-shrink-0" />
+              <span className="text-sm font-medium text-foreground truncate">Parsed Entry Preview</span>
             </div>
             <button
               onClick={handleReset}
@@ -144,7 +144,7 @@ export function SmartEntryInput({ onConfirm, onCancel }: SmartEntryInputProps) {
           </div>
 
           {/* Type & Severity badges */}
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex flex-wrap items-center gap-2 mb-3">
             <span
               className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
                 TYPE_COLORS[parsedEntry.type] || TYPE_COLORS.NOTE
@@ -222,7 +222,7 @@ export function SmartEntryInput({ onConfirm, onCancel }: SmartEntryInputProps) {
           )}
 
           {/* Actions */}
-          <div className="flex items-center gap-2 pt-3 border-t border-border">
+          <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-border">
             <Button
               size="sm"
               onClick={handleConfirm}
@@ -254,11 +254,11 @@ function VitalCard({
   unit: string;
 }) {
   return (
-    <div className="bg-muted/50 rounded-xl px-3 py-2 flex items-center gap-2">
-      <span className="text-sage">{icon}</span>
-      <div>
-        <p className="text-[10px] text-muted-foreground">{label}</p>
-        <p className="text-xs font-medium text-foreground">
+    <div className="bg-muted/50 rounded-xl px-3 py-2 flex items-center gap-2 min-w-0 overflow-hidden">
+      <span className="text-sage flex-shrink-0">{icon}</span>
+      <div className="min-w-0">
+        <p className="text-[10px] text-muted-foreground truncate">{label}</p>
+        <p className="text-xs font-medium text-foreground truncate">
           {value} <span className="text-muted-foreground font-normal">{unit}</span>
         </p>
       </div>

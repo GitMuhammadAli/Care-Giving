@@ -16,7 +16,7 @@ export class GeminiService implements OnModuleInit {
 
   constructor(private readonly configService: ConfigService) {
     this.embeddingModelName =
-      this.configService.get<string>('ai.embeddingModel') || 'text-embedding-004';
+      this.configService.get<string>('ai.embeddingModel') || 'gemini-embedding-001';
   }
 
   onModuleInit() {
@@ -89,7 +89,7 @@ export class GeminiService implements OnModuleInit {
 
   /**
    * Generate an embedding vector for a single text.
-   * Returns a 768-dimensional float array (text-embedding-004).
+   * Returns a 768-dimensional float array (gemini-embedding-001).
    */
   async generateEmbedding(text: string): Promise<number[]> {
     if (!this.genAI || !this.isEnabled) {

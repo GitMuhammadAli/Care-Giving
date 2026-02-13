@@ -212,8 +212,10 @@ export default function TimelinePage() {
             size="default"
             leftIcon={<Plus className="w-4 h-4" />}
             onClick={() => setIsAddModalOpen(true)}
+            className="text-xs sm:text-sm"
           >
-            Add Entry
+            <span className="hidden sm:inline">Add Entry</span>
+            <span className="sm:hidden">Add</span>
           </Button>
         }
       />
@@ -238,10 +240,11 @@ export default function TimelinePage() {
           {!showSmartEntry ? (
             <button
               onClick={() => setShowSmartEntry(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sage/10 hover:bg-sage/20 text-sage-700 text-sm font-medium transition-colors border border-sage/20"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl bg-sage/10 hover:bg-sage/20 text-sage-700 text-xs sm:text-sm font-medium transition-colors border border-sage/20"
             >
-              <Wand2 className="w-4 h-4" />
-              Smart Entry — type naturally, AI parses it
+              <Wand2 className="w-4 h-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Smart Entry — type naturally, AI parses it</span>
+              <span className="sm:hidden">Smart Entry — AI powered</span>
             </button>
           ) : (
             <SmartEntryInput
@@ -252,7 +255,7 @@ export default function TimelinePage() {
         </div>
 
         {/* Filters */}
-        <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide mb-4">
+        <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide mb-4 -mx-1 px-1">
           {filterOptions.map((option) => {
             const Icon = option.icon;
             const isActive = filter === option.value;
@@ -280,7 +283,7 @@ export default function TimelinePage() {
         {isLoading ? (
           <div className="space-y-6">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="relative pl-12">
+              <div key={i} className="relative pl-10 sm:pl-12">
                 <Card>
                   <div className="space-y-3">
                     <Skeleton className="h-5 w-32" />
@@ -304,7 +307,7 @@ export default function TimelinePage() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="relative pl-12"
+                  className="relative pl-10 sm:pl-12"
                 >
                   <TimelineEntry
                     entry={entry}

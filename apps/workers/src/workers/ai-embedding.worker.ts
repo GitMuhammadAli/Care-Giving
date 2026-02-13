@@ -2,7 +2,7 @@
  * AI Embedding Worker
  *
  * Processes embedding jobs from the queue:
- * - Generates text embeddings via Gemini text-embedding-004
+ * - Generates text embeddings via Gemini gemini-embedding-001
  * - Stores embeddings in PostgreSQL (pgvector)
  * - Handles upsert and delete operations
  */
@@ -37,7 +37,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
   const ai = getGenAI();
   if (!ai) throw new Error('GEMINI_API_KEY not configured');
 
-  const model = ai.getGenerativeModel({ model: 'text-embedding-004' });
+  const model = ai.getGenerativeModel({ model: 'gemini-embedding-001' });
   const result = await model.embedContent(text);
   return result.embedding.values;
 }

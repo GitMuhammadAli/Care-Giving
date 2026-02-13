@@ -84,9 +84,9 @@ export function CareSummaryCard({ careRecipientId, careRecipientName }: CareSumm
 
           {/* Medication stats */}
           {data.medications && data.medications.total > 0 && (
-            <div className="flex items-center gap-4 bg-sage/5 rounded-xl px-4 py-3">
+            <div className="flex items-center gap-3 sm:gap-4 bg-sage/5 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3">
               <Pill className="w-4 h-4 text-sage flex-shrink-0" />
-              <div className="flex gap-4 text-xs">
+              <div className="flex flex-wrap gap-2 sm:gap-4 text-xs">
                 <span className="text-sage-700 font-medium">
                   {data.medications.given}/{data.medications.total} given
                 </span>
