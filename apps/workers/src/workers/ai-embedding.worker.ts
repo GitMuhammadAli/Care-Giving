@@ -57,7 +57,7 @@ async function processJob(job: Job<AiEmbeddingJob>): Promise<void> {
       'Deleting embeddings',
     );
     await prisma.$executeRawUnsafe(
-      `DELETE FROM ai_embeddings WHERE resource_type = $1 AND resource_id = $2`,
+      `DELETE FROM "public"."ai_embeddings" WHERE resource_type = $1 AND resource_id = $2`,
       data.resourceType,
       data.resourceId,
     );
@@ -75,14 +75,14 @@ async function processJob(job: Job<AiEmbeddingJob>): Promise<void> {
 
   // Delete existing
   await prisma.$executeRawUnsafe(
-    `DELETE FROM ai_embeddings WHERE resource_type = $1 AND resource_id = $2`,
+    `DELETE FROM "public"."ai_embeddings" WHERE resource_type = $1 AND resource_id = $2`,
     data.resourceType,
     data.resourceId,
   );
 
   // Insert new
   await prisma.$queryRawUnsafe(
-    `INSERT INTO ai_embeddings (content, embedding, resource_type, resource_id, family_id, care_recipient_id, metadata)
+    `INSERT INTO "public"."ai_embeddings" (content, embedding, resource_type, resource_id, family_id, care_recipient_id, metadata)
      VALUES ($1, $2::vector, $3, $4, $5, $6, $7::jsonb)`,
     data.content,
     vectorStr,
