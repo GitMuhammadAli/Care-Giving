@@ -1,6 +1,18 @@
 # CareCircle
 
-A comprehensive caregiving coordination platform that helps families manage care for their loved ones together, in real-time.
+A comprehensive, AI-powered caregiving coordination platform that helps families manage care for their loved ones together, in real-time.
+
+**Live Demo** — log in and explore every feature instantly:
+
+| | URL |
+|--|-----|
+| **Web App** | [carecircle.vercel.app](https://carecircle.vercel.app) |
+| **API** | [carecircle-api.onrender.com](https://carecircle-api.onrender.com) |
+| **Demo Login** | `demo@carecircle.com` / `Demo1234!` |
+
+> The demo account is pre-loaded with a family, care recipient, medications, appointments, timeline entries, caregiver shifts, documents, and notifications. Profile/password changes are blocked — register your own account for full access.
+
+---
 
 ## The Problem We Solve
 
@@ -37,6 +49,12 @@ Track vitals, moods, incidents, and activities. See patterns over time.
 ### 👤 Caregiver Scheduling
 Manage shifts, check-ins/outs, and handoff notes between caregivers.
 
+### 🤖 AI-Powered Features (Google Gemini)
+- **Care Summaries** — Daily/weekly AI-generated summaries with highlights, concerns, and recommendations
+- **Smart Data Entry** — Describe events in natural language ("Mom's BP was 130/80 this morning, she ate oatmeal") and AI parses them into structured timeline entries
+- **Ask AI (RAG)** — Ask questions about your care recipient's history and get answers grounded in their actual data via vector search (pgvector)
+- **Graceful Degradation** — If AI is unavailable or rate-limited, all features fall back to basic non-AI responses; the app never breaks
+
 ### 📱 Mobile PWA
 Installable on any device, works offline for emergency info.
 
@@ -45,38 +63,37 @@ Installable on any device, works offline for emergency info.
 | Layer | Technology |
 |-------|------------|
 | **Frontend** | Next.js 14, React, TailwindCSS, Zustand |
-| **Backend** | NestJS, TypeORM, PostgreSQL |
+| **Backend** | NestJS, Prisma ORM, PostgreSQL |
+| **AI** | Google Gemini 2.0 Flash (text), Gemini Embedding 001 (vectors), pgvector |
 | **Real-time** | Socket.io, Web Push |
 | **Queue** | BullMQ, Redis |
-| **Storage** | Cloudinary / AWS S3 |
 | **Email** | Mailtrap (dev) / Resend (prod) |
-| **Database** | Neon (Serverless Postgres) with automatic backups |
-| **Monitoring** | Prometheus metrics, Sentry error tracking |
+| **Database** | PostgreSQL — Docker (local) / Neon Serverless (prod) |
+| **Cache** | Redis — Docker (local) / Upstash (prod) |
+| **Message Broker** | RabbitMQ — Docker (local) / CloudAMQP (prod) |
+| **Hosting** | Vercel (frontend), Render (API), Neon (database) |
+| **Monitoring** | Sentry error tracking, structured logging (pino) |
 
 ## Production Features
 
-### 🔒 Enterprise-Ready
-- **Automated Backups**: Neon DB provides automatic daily backups with Point-in-Time Recovery (PITR)
-- **High Availability**: 99.95% uptime SLA with instant failover
-- **Disaster Recovery**: RTO < 5 minutes, RPO < 1 minute
-- **Security**: AES-256 encryption at rest, TLS 1.3 in transit
-- **Compliance**: HIPAA-ready audit logging and access controls
+### 🔒 Security
+- JWT authentication with httpOnly cookie refresh tokens
+- Role-based access control (Admin / Member per family)
+- Demo user protection — guard + service-level defense-in-depth
+- Rate limiting on all sensitive endpoints (`@nestjs/throttler`)
+- AES-256 encryption at rest, TLS in transit
 
 ### 📊 Monitoring & Observability
-- Health check endpoints (`/health`, `/health/ready`, `/health/live`)
-- Prometheus metrics endpoint (`/metrics`)
-- Sentry-ready error tracking
+- Health check endpoints (`/api/v1/health`)
+- Sentry error tracking
+- Structured JSON logging (pino)
 - Comprehensive audit logging
 
-### 🚀 DevOps
-- CI/CD pipeline with GitHub Actions
-- Automated testing (unit + E2E)
-- Security scanning (npm audit, dependency checks)
-- K6 performance testing
-- Docker containerization
-- Kubernetes deployment ready
-
-For complete backup and disaster recovery procedures, see [BACKUP_PROCEDURES.md](docs/operations/BACKUP_PROCEDURES.md).
+### 🚀 Deployment
+- **Free-tier stack** — Render (API) + Vercel (Web) + Neon (DB) + Upstash (Redis) + CloudAMQP (RabbitMQ)
+- Zero-downtime deploys via Render auto-deploy from `main`
+- Database schema sync and demo seeding run automatically during build
+- Docker Compose for local development
 
 ## Quick Start
 
@@ -84,19 +101,22 @@ See [SETUP.md](./SETUP.md) for complete setup instructions.
 
 ```bash
 # Clone & Install
-git clone <repository-url>
-cd carecircle
+git clone https://github.com/GitMuhammadAli/Care-Giving.git
+cd Care-Giving
 pnpm install
 
 # Option A: Local Development (with Docker)
-docker compose up -d      # Start PostgreSQL, Redis, RabbitMQ
+docker compose up -d      # Start PostgreSQL (pgvector), Redis, RabbitMQ
+pnpm db:generate          # Generate Prisma client
+pnpm db:push              # Push schema to local DB
+pnpm db:seed:demo         # Seed demo user with full data
 pnpm dev                  # Auto-detects LOCAL → starts all services
 
 # Option B: Cloud Development (no Docker needed)
 pnpm dev                  # Auto-detects CLOUD → connects to Neon, Upstash, CloudAMQP
 ```
 
-That's it! The dev server **automatically detects** which environment to use based on running services.
+The dev server **automatically detects** which environment to use based on running services.
 
 ## Environment Management
 
@@ -169,10 +189,12 @@ pnpm dev:web              # Web app only (port 4173)
 pnpm dev:workers          # Background workers only
 
 # Database
+pnpm db:generate          # Generate Prisma client
+pnpm db:push              # Push schema (no migration history)
 pnpm db:migrate           # Run migrations (production)
 pnpm db:migrate:dev       # Run migrations (development)
 pnpm db:studio            # Open Prisma Studio
-pnpm db:generate          # Generate Prisma client
+pnpm db:seed:demo         # Seed demo user with pre-populated data
 
 # Testing & Quality
 pnpm test                 # Run all tests
@@ -198,7 +220,8 @@ carecircle/
 ├── apps/
 │   ├── api/              # NestJS backend
 │   │   ├── src/
-│   │   │   ├── auth/     # Authentication
+│   │   │   ├── ai/       # Gemini AI (summaries, smart entry, RAG, embeddings)
+│   │   │   ├── auth/     # Authentication (JWT, OAuth)
 │   │   │   ├── user/     # User management
 │   │   │   ├── family/   # Family & invites
 │   │   │   ├── care-recipient/
@@ -209,48 +232,57 @@ carecircle/
 │   │   │   ├── caregiver-shifts/
 │   │   │   ├── timeline/
 │   │   │   ├── notifications/
+│   │   │   ├── chat/     # Real-time messaging
 │   │   │   ├── gateway/  # WebSocket
-│   │   │   └── system/   # Core utilities
+│   │   │   └── system/   # Guards, decorators, helpers, config
 │   │   └── ...
 │   ├── web/              # Next.js frontend
 │   │   ├── src/
 │   │   │   ├── app/      # App router pages
 │   │   │   ├── components/
+│   │   │   │   ├── ai/   # AI panels (ask-ai, care-summary, smart-entry)
+│   │   │   │   └── ...
 │   │   │   ├── hooks/
 │   │   │   └── lib/
 │   │   └── ...
-│   └── workers/          # Background jobs
+│   └── workers/          # Standalone background workers (scaled deployments)
 ├── packages/
-│   └── database/         # Shared types
+│   ├── database/         # Prisma schema, migrations, seed scripts
+│   └── logger/           # Shared structured logger (pino)
+├── env/                  # Environment profiles (base, local, cloud)
 ├── docker-compose.yml
 └── pnpm-workspace.yaml
 ```
 
-## Phase A: Complete ✅
+## Roadmap
 
-- [x] Setup (Monorepo, Docker, TypeORM)
-- [x] Database Schema (All entities)
-- [x] Auth & Family Invites
-- [x] Care Recipients
-- [x] Calendar & Appointments
-- [x] Medications
-- [x] Document Vault
-- [x] Emergency Dashboard
-- [x] Caregiver Scheduling
-- [x] Health Timeline
-- [x] Real-time & Notifications
+### Phase A: Complete
+
+- [x] Monorepo setup (pnpm workspaces + Turborepo)
+- [x] Database schema (Prisma + PostgreSQL)
+- [x] Auth & family invites
+- [x] Care recipients
+- [x] Calendar & appointments
+- [x] Medications with logging
+- [x] Document vault
+- [x] Emergency dashboard
+- [x] Caregiver scheduling
+- [x] Health timeline
+- [x] Real-time notifications (WebSocket + push)
 - [x] Dashboard UI
 - [x] Mobile PWA
-- [x] Landing Page
+- [x] Landing page
+- [x] AI features (Care Summaries, Smart Entry, Ask AI / RAG)
+- [x] Demo user with full seed data
+- [x] Free-tier cloud deployment (Render + Vercel + Neon)
 
-## Phase B: Enterprise Features
+### Phase B: Enterprise Features
 
-- [ ] HIPAA Compliance
-- [ ] Analytics Dashboard
-- [ ] AI Insights
-- [ ] Telehealth Integration
-- [ ] Pharmacy Integration
-- [ ] Multi-tenant Support
+- [ ] HIPAA compliance
+- [ ] Analytics dashboard
+- [ ] Telehealth integration
+- [ ] Pharmacy integration
+- [ ] Multi-tenant support
 
 ## Contributing
 
