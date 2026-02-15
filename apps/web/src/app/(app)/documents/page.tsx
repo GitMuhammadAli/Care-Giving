@@ -196,15 +196,15 @@ export default function DocumentsPage() {
         {/* Expiring Soon Alert */}
         {expiringDocuments.length > 0 && (
           <Card variant="highlighted">
-            <CardContent className="flex items-center gap-3">
+            <CardContent className="flex items-start sm:items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-warning-light flex items-center justify-center flex-shrink-0">
                 <AlertCircle className="w-5 h-5 text-warning" />
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-text-primary">
                   {expiringDocuments.length} document{expiringDocuments.length > 1 ? 's' : ''} expiring soon
                 </p>
-                <p className="text-xs text-text-secondary">
+                <p className="text-xs text-text-secondary truncate">
                   {expiringDocuments.map((d) => d.name).join(', ')}
                 </p>
               </div>

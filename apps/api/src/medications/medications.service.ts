@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Inject, forwardRef, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheService, CACHE_KEYS, CACHE_TTL } from '../system/module/cache';
@@ -7,6 +7,7 @@ import { ROUTING_KEYS } from '../events/events.constants';
 import { CreateMedicationDto } from './dto/create-medication.dto';
 import { LogMedicationDto } from './dto/log-medication.dto';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EmbeddingIndexerService } from '../ai/services/embedding-indexer.service';
 
 @Injectable()
 export class MedicationsService {
@@ -17,6 +18,7 @@ export class MedicationsService {
     private eventPublisher: EventPublisherService,
     @Inject(forwardRef(() => NotificationsService))
     private notifications: NotificationsService,
+    @Optional() private embeddingIndexer?: EmbeddingIndexerService,
   ) {}
 
   private async verifyAccess(careRecipientId: string, userId: string) {
@@ -70,6 +72,9 @@ export class MedicationsService {
 
     // Invalidate cache
     await this.invalidateMedicationCache(careRecipientId);
+
+    // Index for AI search (non-blocking)
+    this.embeddingIndexer?.indexMedication(medication).catch(() => {});
 
     return medication;
   }

@@ -5,23 +5,35 @@ import { timelineApi, CreateTimelineEntryInput } from '@/lib/api';
 import { toast } from 'react-hot-toast';
 
 export function useTimeline(
-  careRecipientId: string,
+  careRecipientId: string | undefined,
   options?: { type?: string; limit?: number }
 ) {
+  const limit = options?.limit || 20;
+  const isEnabled = !!careRecipientId && careRecipientId.length > 0;
+
   return useInfiniteQuery({
-    queryKey: ['timeline', careRecipientId, options?.type],
-    queryFn: ({ pageParam = 0 }) =>
-      timelineApi.list(careRecipientId, {
+    queryKey: ['timeline', careRecipientId ?? '', options?.type],
+    queryFn: ({ pageParam = 0 }) => {
+      if (!careRecipientId) return Promise.resolve([] as any[]);
+      return timelineApi.list(careRecipientId, {
         type: options?.type,
-        limit: options?.limit || 20,
+        limit,
         offset: pageParam,
-      }),
+      });
+    },
     getNextPageParam: (lastPage, allPages) => {
-      if (!lastPage || !Array.isArray(lastPage) || lastPage.length < (options?.limit || 20)) return undefined;
-      return allPages.flat().length;
+      if (!lastPage || !Array.isArray(lastPage) || lastPage.length < limit) {
+        return undefined;
+      }
+      // Offset = total items loaded so far
+      const totalLoaded = allPages.reduce(
+        (sum, page) => sum + (Array.isArray(page) ? page.length : 0),
+        0,
+      );
+      return totalLoaded;
     },
     initialPageParam: 0,
-    enabled: !!careRecipientId && careRecipientId.length > 0,
+    enabled: isEnabled,
   });
 }
 
@@ -51,10 +63,11 @@ export function useCreateTimelineEntry(careRecipientId: string) {
       queryClient.setQueryData(
         ['timeline', careRecipientId, undefined],
         (old: any) => {
-          if (!old?.pages) return old;
+          if (!old?.pages?.length) return old;
+          const firstPage = Array.isArray(old.pages[0]) ? old.pages[0] : [];
           return {
             ...old,
-            pages: [[newEntry, ...old.pages[0]], ...old.pages.slice(1)],
+            pages: [[newEntry, ...firstPage], ...old.pages.slice(1)],
           };
         }
       );

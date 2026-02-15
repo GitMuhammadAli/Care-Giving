@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Inject, forwardRef, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheService, CACHE_KEYS, CACHE_TTL } from '../system/module/cache';
 import { CreateTimelineEntryDto } from './dto/create-timeline-entry.dto';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EmbeddingIndexerService } from '../ai/services/embedding-indexer.service';
 
 @Injectable()
 export class TimelineService {
@@ -11,6 +12,7 @@ export class TimelineService {
     private cacheService: CacheService,
     @Inject(forwardRef(() => NotificationsService))
     private notifications: NotificationsService,
+    @Optional() private embeddingIndexer?: EmbeddingIndexerService,
   ) {}
 
   private async verifyAccess(careRecipientId: string, userId: string) {
@@ -70,6 +72,9 @@ export class TimelineService {
 
     // Invalidate cache
     await this.invalidateTimelineCache(careRecipientId);
+
+    // Index for AI search (non-blocking)
+    this.embeddingIndexer?.indexTimelineEntry(entry).catch(() => {});
 
     return entry;
   }
@@ -153,7 +158,7 @@ export class TimelineService {
       throw new ForbiddenException('You can only update your own entries');
     }
 
-    return this.prisma.timelineEntry.update({
+    const updated = await this.prisma.timelineEntry.update({
       where: { id },
       data: {
         title: dto.title,
@@ -169,6 +174,11 @@ export class TimelineService {
         },
       },
     });
+
+    // Re-index for AI search (non-blocking)
+    this.embeddingIndexer?.indexTimelineEntry(updated).catch(() => {});
+
+    return updated;
   }
 
   async delete(id: string, userId: string) {
@@ -191,6 +201,9 @@ export class TimelineService {
     await this.prisma.timelineEntry.delete({
       where: { id },
     });
+
+    // Remove AI embedding (non-blocking)
+    this.embeddingIndexer?.removeEmbedding('timeline_entry', id).catch(() => {});
 
     return { success: true };
   }

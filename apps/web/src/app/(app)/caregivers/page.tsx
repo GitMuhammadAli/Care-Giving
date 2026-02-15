@@ -262,27 +262,28 @@ export default function CaregiversPage() {
         {/* Current On Duty */}
         {onDuty && (
           <Card variant="success">
-            <div className="flex items-center gap-4">
+            <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-wrap sm:flex-nowrap">
               <Avatar
                 name={onDuty.caregiver.fullName}
                 src={onDuty.caregiver.avatarUrl}
                 size="lg"
                 showStatus
                 status="online"
+                className="flex-shrink-0"
               />
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-success uppercase tracking-wide">
                   Currently On Duty
                 </p>
-                <h3 className="text-lg font-semibold text-text-primary">
+                <h3 className="text-base sm:text-lg font-semibold text-text-primary truncate">
                   {onDuty.caregiver.fullName}
                 </h3>
-                <p className="text-sm text-text-secondary">
+                <p className="text-xs sm:text-sm text-text-secondary">
                   {format(new Date(onDuty.shift.startTime), 'h:mm a')} -{' '}
                   {format(new Date(onDuty.shift.endTime), 'h:mm a')}
                 </p>
               </div>
-              <div className="text-right">
+              <div className="text-right flex-shrink-0">
                 <Badge variant="success">
                   <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
                   Checked In
@@ -308,7 +309,7 @@ export default function CaregiversPage() {
               >
                 <ChevronRight className="w-5 h-5 text-text-secondary rotate-180" />
               </button>
-              <h3 className="text-base font-semibold text-text-primary">
+              <h3 className="text-sm sm:text-base font-semibold text-text-primary">
                 {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
               </h3>
               <button
@@ -331,7 +332,7 @@ export default function CaregiversPage() {
                     key={day.toISOString()}
                     onClick={() => setSelectedDate(day)}
                     className={cn(
-                      'flex flex-col items-center min-w-[56px] py-3 px-2 rounded-xl transition-all',
+                      'flex flex-col items-center min-w-[48px] sm:min-w-[56px] py-2 sm:py-3 px-1.5 sm:px-2 rounded-xl transition-all',
                       isSelected
                         ? 'bg-accent-primary text-text-inverse'
                         : isTodayDay
@@ -365,7 +366,7 @@ export default function CaregiversPage() {
 
         {/* Selected Day's Shifts */}
         <div>
-          <h3 className="text-lg font-semibold text-text-primary mb-4">
+          <h3 className="text-base sm:text-lg font-semibold text-text-primary mb-4">
             {formatDate(selectedDate)}
           </h3>
 
@@ -418,22 +419,23 @@ export default function CaregiversPage() {
                     transition={{ delay: index * 0.05 }}
                   >
                     <Card variant={shift.status === 'IN_PROGRESS' ? 'success' : 'interactive'}>
-                      <div className="flex items-start gap-4">
+                      <div className="flex items-start gap-3 sm:gap-4">
                         <Avatar
                           name={shift.caregiver?.fullName || 'Unknown'}
                           src={shift.caregiver?.avatarUrl}
                           size="lg"
+                          className="flex-shrink-0"
                         />
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-semibold text-text-primary">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h4 className="font-semibold text-text-primary text-sm sm:text-base truncate">
                               {shift.caregiver?.fullName || 'Unknown'}
                             </h4>
                             <Badge className={status.color} size="sm">
                               {status.label}
                             </Badge>
                           </div>
-                          <div className="flex items-center gap-3 mt-1 text-sm text-text-secondary">
+                          <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1 text-xs sm:text-sm text-text-secondary">
                             <span className="flex items-center gap-1">
                               <Clock className="w-4 h-4" />
                               {format(new Date(shift.startTime), 'h:mm a')} -{' '}
@@ -479,7 +481,7 @@ export default function CaregiversPage() {
                           )}
 
                           {/* Actions */}
-                          <div className="flex gap-2 mt-3">
+                          <div className="flex flex-wrap gap-2 mt-3">
                             {canCheckIn && (
                               <Button
                                 variant="primary"

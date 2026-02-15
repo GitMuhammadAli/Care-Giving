@@ -138,8 +138,10 @@ export default function CalendarPage() {
               size="default"
               leftIcon={<Plus className="w-4 h-4" />}
               onClick={() => setIsAddModalOpen(true)}
+              className="text-xs sm:text-sm"
             >
-              Add Appointment
+              <span className="hidden sm:inline">Add Appointment</span>
+              <span className="sm:hidden">Add</span>
             </Button>
           ) : null
         }
@@ -161,7 +163,7 @@ export default function CalendarPage() {
               >
                 <ChevronLeft className="w-5 h-5 text-text-secondary" />
               </button>
-              <h2 className="text-lg font-semibold text-text-primary">
+              <h2 className="text-base sm:text-lg font-semibold text-text-primary">
                 {format(currentMonth, 'MMMM yyyy')}
               </h2>
               <button
@@ -294,23 +296,23 @@ export default function CalendarPage() {
                             )}
                           </div>
 
-                          <div className="mt-3 space-y-2 text-sm">
+                          <div className="mt-3 space-y-2 text-xs sm:text-sm">
                             {apt.location && (
-                              <div className="flex items-center gap-2 text-text-secondary">
-                                <MapPin className="w-4 h-4 text-text-tertiary" />
-                                <span>{apt.location}</span>
+                              <div className="flex items-center gap-2 text-text-secondary min-w-0">
+                                <MapPin className="w-4 h-4 text-text-tertiary flex-shrink-0" />
+                                <span className="truncate">{apt.location}</span>
                               </div>
                             )}
                             {apt.transportAssignment && (
-                              <div className="flex items-center gap-2 text-text-secondary">
-                                <User className="w-4 h-4 text-text-tertiary" />
-                                <span>Transport: {apt.transportAssignment.assignedTo.fullName}</span>
+                              <div className="flex items-center gap-2 text-text-secondary min-w-0">
+                                <User className="w-4 h-4 text-text-tertiary flex-shrink-0" />
+                                <span className="truncate">Transport: {apt.transportAssignment.assignedTo.fullName}</span>
                               </div>
                             )}
                             {apt.reminderMinutes && apt.reminderMinutes.length > 0 && (
-                              <div className="flex items-center gap-2 text-text-secondary">
-                                <Bell className="w-4 h-4 text-text-tertiary" />
-                                <span>
+                              <div className="flex items-center gap-2 text-text-secondary min-w-0">
+                                <Bell className="w-4 h-4 text-text-tertiary flex-shrink-0" />
+                                <span className="truncate">
                                   Reminders: {apt.reminderMinutes.map(m => 
                                     m >= 60 ? `${m / 60}h` : `${m}m`
                                   ).join(', ')} before
@@ -320,7 +322,7 @@ export default function CalendarPage() {
                           </div>
 
                           {(canEdit || canDelete) && (
-                            <div className="flex gap-2 mt-4">
+                            <div className="flex flex-wrap gap-2 mt-4">
                               {canEdit && (
                                 <>
                                   <Button variant="secondary" size="sm">Edit</Button>

@@ -21,6 +21,8 @@ import { shiftReminderWorker } from './workers/shift-reminder.worker';
 import { notificationWorker } from './workers/notification.worker';
 import { refillAlertWorker } from './workers/refill-alert.worker';
 import { deadLetterWorker } from './workers/dead-letter.worker';
+import { aiEmbeddingWorker } from './workers/ai-embedding.worker';
+import { aiSummaryWorker } from './workers/ai-summary.worker';
 
 // Scheduler
 import { reminderScheduler } from './scheduler';
@@ -66,6 +68,8 @@ const workers = [
   { name: 'notification', worker: notificationWorker },
   { name: 'refill-alert', worker: refillAlertWorker },
   { name: 'dead-letter', worker: deadLetterWorker },
+  { name: 'ai-embedding', worker: aiEmbeddingWorker },
+  { name: 'ai-summary', worker: aiSummaryWorker },
 ];
 
 async function getHealthStatus(): Promise<HealthStatus> {
@@ -303,6 +307,8 @@ function printBanner(): void {
   console.log('║   📱  Notification Worker (Push/Email/SMS)                   ║');
   console.log('║   💊  Refill Alert Worker                                    ║');
   console.log('║   📋  Dead Letter Queue Worker                               ║');
+  console.log('║   🤖  AI Embedding Worker                                    ║');
+  console.log('║   📊  AI Summary Worker                                      ║');
   console.log('║                                                              ║');
   console.log('╚══════════════════════════════════════════════════════════════╝');
   console.log('');

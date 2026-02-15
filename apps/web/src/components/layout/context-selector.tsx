@@ -103,7 +103,7 @@ export function ContextSelector({ compact = false, className }: ContextSelectorP
         </button>
 
         {familyOpen && (
-          <div className="absolute top-full left-0 mt-1 w-64 bg-card border border-border rounded-lg shadow-lg z-50 overflow-hidden animate-fade">
+          <div className="absolute top-full left-0 mt-1 w-[calc(100vw-2rem)] max-w-64 bg-card border border-border rounded-lg shadow-lg z-50 overflow-hidden animate-fade">
             <div className="p-2">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
                 Family Spaces
@@ -179,7 +179,7 @@ export function ContextSelector({ compact = false, className }: ContextSelectorP
           </button>
 
           {careRecipientOpen && careRecipients.length > 0 && (
-            <div className="absolute top-full left-0 mt-1 w-64 bg-card border border-border rounded-lg shadow-lg z-50 overflow-hidden animate-fade">
+            <div className="absolute top-full left-0 mt-1 w-[calc(100vw-2rem)] max-w-64 bg-card border border-border rounded-lg shadow-lg z-50 overflow-hidden animate-fade">
               <div className="p-2">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
                   Loved Ones

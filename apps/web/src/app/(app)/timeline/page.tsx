@@ -27,7 +27,10 @@ import {
   Smile,
   Activity,
   Search,
+  Wand2,
 } from 'lucide-react';
+import { SmartEntryInput } from '@/components/ai/smart-entry-input';
+import type { ParsedTimelineEntry } from '@/lib/api/ai';
 
 const filterOptions = [
   { value: 'all', label: 'All', icon: Activity },
@@ -55,6 +58,7 @@ export default function TimelinePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedEntryType, setSelectedEntryType] = useState<string | null>(null);
+  const [showSmartEntry, setShowSmartEntry] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -150,6 +154,33 @@ export default function TimelinePage() {
     createEntryMutation.mutate(entryData);
   };
 
+  const handleSmartEntryConfirm = (parsed: ParsedTimelineEntry) => {
+    if (!careRecipientId) return;
+
+    const entryData: CreateTimelineEntryInput = {
+      type: parsed.type,
+      title: parsed.title,
+      description: parsed.description,
+      severity: parsed.severity as any,
+    };
+
+    if (parsed.vitals) {
+      entryData.vitals = {
+        bloodPressure:
+          parsed.vitals.bloodPressureSystolic && parsed.vitals.bloodPressureDiastolic
+            ? `${parsed.vitals.bloodPressureSystolic}/${parsed.vitals.bloodPressureDiastolic}`
+            : undefined,
+        heartRate: parsed.vitals.heartRate,
+        temperature: parsed.vitals.temperature,
+        oxygenLevel: parsed.vitals.oxygenLevel,
+        bloodSugar: parsed.vitals.bloodSugar,
+      };
+    }
+
+    createEntryMutation.mutate(entryData);
+    setShowSmartEntry(false);
+  };
+
   if (!careRecipientId) {
     return (
       <div className="pb-6">
@@ -181,8 +212,10 @@ export default function TimelinePage() {
             size="default"
             leftIcon={<Plus className="w-4 h-4" />}
             onClick={() => setIsAddModalOpen(true)}
+            className="text-xs sm:text-sm"
           >
-            Add Entry
+            <span className="hidden sm:inline">Add Entry</span>
+            <span className="sm:hidden">Add</span>
           </Button>
         }
       />
@@ -202,8 +235,27 @@ export default function TimelinePage() {
           />
         </div>
 
+        {/* Smart Entry Toggle */}
+        <div className="mb-4">
+          {!showSmartEntry ? (
+            <button
+              onClick={() => setShowSmartEntry(true)}
+              className="flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl bg-sage/10 hover:bg-sage/20 text-sage-700 text-xs sm:text-sm font-medium transition-colors border border-sage/20"
+            >
+              <Wand2 className="w-4 h-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Smart Entry — type naturally, AI parses it</span>
+              <span className="sm:hidden">Smart Entry — AI powered</span>
+            </button>
+          ) : (
+            <SmartEntryInput
+              onConfirm={handleSmartEntryConfirm}
+              onCancel={() => setShowSmartEntry(false)}
+            />
+          )}
+        </div>
+
         {/* Filters */}
-        <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide mb-4">
+        <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide mb-4 -mx-1 px-1">
           {filterOptions.map((option) => {
             const Icon = option.icon;
             const isActive = filter === option.value;
@@ -231,7 +283,7 @@ export default function TimelinePage() {
         {isLoading ? (
           <div className="space-y-6">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="relative pl-12">
+              <div key={i} className="relative pl-10 sm:pl-12">
                 <Card>
                   <div className="space-y-3">
                     <Skeleton className="h-5 w-32" />
@@ -255,7 +307,7 @@ export default function TimelinePage() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="relative pl-12"
+                  className="relative pl-10 sm:pl-12"
                 >
                   <TimelineEntry
                     entry={entry}

@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@golevelup/nestjs-rabbitmq": "^5.3.0",
+    "@google/generative-ai": "^0.24.1",
     "@nestjs/bull": "^10.0.1",
     "@nestjs/common": "^10.3.0",
     "@nestjs/config": "^3.1.1",
