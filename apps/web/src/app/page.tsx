@@ -6,20 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { AnimatedBackground } from '@/components/ui/animated-background';
-import {
-  ArrowRight,
-  LayoutDashboard,
-  MessageSquareX,
-  Pill,
-  Users,
-  Bell,
-  Shield,
-  Clock,
-  Heart,
-  CheckCircle2,
-  Sparkles,
-  Star,
-} from 'lucide-react';
+import { ArrowRight, MessageSquareX, Pill, CheckCircle2 } from 'lucide-react';
+import LayoutDashboardIcon from '@/components/icons/layout-dashboard-icon';
+import UsersIcon from '@/components/icons/users-icon';
+import FilledBellIcon from '@/components/icons/filled-bell-icon';
+import ShieldCheck from '@/components/icons/shield-check';
+import ClockIcon from '@/components/icons/clock-icon';
+import HeartIcon from '@/components/icons/heart-icon';
+import SparklesIcon from '@/components/icons/sparkles-icon';
+import StarIcon from '@/components/icons/star-icon';
 import { useAuthContext } from '@/components/providers/auth-provider';
 
 // Pain points that resonate with caregivers (memoized outside component)
@@ -37,13 +32,13 @@ const painPoints = [
     description: 'See at a glance what\'s been given, what\'s due, and who\'s handling it.',
   },
   {
-    icon: Users,
+    icon: UsersIcon,
     problem: 'Sibling coordination nightmare',
     solution: 'Task assignment without guilt',
     description: 'Fair distribution of care duties. Everyone sees who\'s doing what—no awkward asks.',
   },
   {
-    icon: Bell,
+    icon: FilledBellIcon,
     problem: 'Feeling out of the loop',
     solution: 'Real-time updates to everyone',
     description: 'Doctor visits, mood changes, small wins—everyone in the circle knows instantly.',
@@ -52,9 +47,9 @@ const painPoints = [
 
 // Trust signals
 const trustBadges = [
-  { icon: Shield, text: 'Bank-level encryption' },
-  { icon: Clock, text: 'Set up in 2 minutes' },
-  { icon: Heart, text: '100% free forever' },
+  { icon: ShieldCheck, text: 'Bank-level encryption' },
+  { icon: ClockIcon, text: 'Set up in 2 minutes' },
+  { icon: HeartIcon, text: '100% free forever' },
 ] as const;
 
 // Social proof stats
@@ -80,19 +75,19 @@ const howItWorksSteps = [
     step: '1',
     title: 'Create your circle',
     description: 'Name it after your loved one. Takes 30 seconds.',
-    icon: Sparkles,
+    icon: SparklesIcon,
   },
   {
     step: '2',
     title: 'Invite family',
     description: 'Send a link. Siblings, nurses, anyone who helps.',
-    icon: Users,
+    icon: UsersIcon,
   },
   {
     step: '3',
     title: 'Care together',
     description: 'Share updates, coordinate tasks, stay connected.',
-    icon: Heart,
+    icon: HeartIcon,
   },
 ] as const;
 
@@ -127,7 +122,7 @@ export default function LandingPage() {
       isInitialized && isAuthenticated && user ? (
         <Link href="/dashboard">
           <Button variant="editorial" size={size} className={`gap-2 ${className}`}>
-            <LayoutDashboard className="w-4 h-4" />
+            <LayoutDashboardIcon size={16} />
             Go to Dashboard
           </Button>
         </Link>
@@ -165,7 +160,7 @@ export default function LandingPage() {
                     className="text-sage-600 font-medium mb-3 sm:mb-4 flex items-center justify-center lg:justify-start gap-2 text-sm sm:text-base animate-fade-in-up"
                     style={{ animationDelay: '0ms' }}
                   >
-                    <Heart className="w-4 h-4 text-sage fill-sage/30 flex-shrink-0" />
+                    <HeartIcon size={16} className="text-sage flex-shrink-0" />
                     <span>For the 53 million Americans caring for loved ones</span>
                   </p>
 
@@ -294,7 +289,7 @@ export default function LandingPage() {
                       style={{ animationDelay: '600ms' }}
                     >
                       <div className="flex items-center gap-2 text-sm">
-                        <Bell className="w-4 h-4 text-sage" />
+                        <FilledBellIcon size={16} className="text-sage" />
                         <span className="text-foreground font-medium">Never miss an update</span>
                       </div>
                     </div>
@@ -304,7 +299,7 @@ export default function LandingPage() {
                       style={{ animationDelay: '800ms' }}
                     >
                       <div className="flex items-center gap-2 text-sm">
-                        <Shield className="w-4 h-4 text-sage" />
+                        <ShieldCheck size={16} className="text-sage" />
                         <span className="text-foreground font-medium">Private & secure</span>
                       </div>
                     </div>
@@ -447,7 +442,7 @@ export default function LandingPage() {
                   >
                     <div className="flex gap-0.5 mb-3 sm:mb-4">
                       {[1, 2, 3, 4, 5].map((star) => (
-                        <Star key={star} className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 fill-amber-400" />
+                        <StarIcon key={star} size={16} className="text-amber-400" />
                       ))}
                     </div>
                     <blockquote className="text-foreground text-sm sm:text-base leading-relaxed mb-4 sm:mb-6">
@@ -502,7 +497,7 @@ export default function LandingPage() {
                           size="xl"
                           className="bg-sage text-sage-900 hover:bg-sage/90 font-semibold gap-2"
                         >
-                          <LayoutDashboard className="w-5 h-5" />
+                          <LayoutDashboardIcon size={20} />
                           Go to Dashboard
                         </Button>
                       </Link>

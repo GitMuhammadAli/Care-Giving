@@ -3,13 +3,16 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Home, Calendar, Pill, MessageCircle, Heart } from 'lucide-react';
+import { Calendar, Pill } from 'lucide-react';
+import HomeIcon from '@/components/icons/home-icon';
+import HeartIcon from '@/components/icons/heart-icon';
+import MessageCircleIcon from '@/components/icons/message-circle-icon';
 
-const navItems = [
-  { href: '/dashboard', icon: Home, label: 'Home' },
-  { href: '/care-recipients', icon: Heart, label: 'Loved Ones' },
+const navItems: { href: string; icon: any; label: string }[] = [
+  { href: '/dashboard', icon: HomeIcon, label: 'Home' },
+  { href: '/care-recipients', icon: HeartIcon, label: 'Loved Ones' },
   { href: '/medications', icon: Pill, label: 'Meds' },
-  { href: '/chat', icon: MessageCircle, label: 'Chat' },
+  { href: '/chat', icon: MessageCircleIcon, label: 'Chat' },
   { href: '/calendar', icon: Calendar, label: 'Calendar' },
 ];
 

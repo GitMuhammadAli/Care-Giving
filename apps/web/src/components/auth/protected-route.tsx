@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, ReactNode } from 'react';
+import { useEffect, useState, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthContext } from '@/components/providers/auth-provider';
 
@@ -64,14 +64,57 @@ export function ProtectedRoute({
 }
 
 /**
- * Default loading spinner for auth check
+ * Branded loading spinner for auth check with cold-start awareness.
  */
 function AuthLoadingSpinner() {
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="flex flex-col items-center gap-4">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
-        <p className="text-sm text-muted-foreground">Loading...</p>
+      <div className="flex flex-col items-center gap-5 max-w-xs text-center px-4">
+        {/* Branded logo */}
+        <div className="relative">
+          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <svg className="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          </div>
+          <div className="absolute -inset-1.5 rounded-2xl border-2 border-primary/20 animate-ping" style={{ animationDuration: '2s' }} />
+        </div>
+
+        <div>
+          <p className="text-lg font-semibold text-foreground">CareCircle</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {elapsed < 5
+              ? 'Preparing your dashboard...'
+              : elapsed < 15
+              ? 'Connecting to server...'
+              : 'Server is waking up — free tier may take a moment...'}
+          </p>
+        </div>
+
+        {/* Progress bar */}
+        <div className="w-48 h-1.5 bg-muted rounded-full overflow-hidden">
+          <div
+            className="h-full bg-primary rounded-full transition-all ease-out"
+            style={{
+              width: `${Math.min(95, elapsed * 4)}%`,
+              transitionDuration: '1s',
+            }}
+          />
+        </div>
+
+        {elapsed >= 10 && (
+          <p className="text-[11px] text-muted-foreground/70 animate-in fade-in">
+            Our free-tier server spins down after inactivity.
+            <br />First load may take up to 30 seconds.
+          </p>
+        )}
       </div>
     </div>
   );

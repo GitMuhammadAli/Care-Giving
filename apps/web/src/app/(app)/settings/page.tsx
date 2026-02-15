@@ -13,23 +13,20 @@ import { useNotificationPreferences } from '@/hooks/use-notification-preferences
 import { useNotifications } from '@/components/providers/notification-provider';
 import { authApi } from '@/lib/api/auth';
 import toast from 'react-hot-toast';
-import {
-  User,
-  Bell,
-  Shield,
-  LogOut,
-  Smartphone,
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  Check,
-  Save,
-  X,
-  RefreshCw,
-  Globe,
-  Loader2,
-} from 'lucide-react';
+import { Smartphone, Loader2 } from 'lucide-react';
+import UserIcon from '@/components/icons/user-icon';
+import FilledBellIcon from '@/components/icons/filled-bell-icon';
+import ShieldCheck from '@/components/icons/shield-check';
+import LogoutIcon from '@/components/icons/logout-icon';
+import MailFilledIcon from '@/components/icons/mail-filled-icon';
+import LockIcon from '@/components/icons/lock-icon';
+import EyeIcon from '@/components/icons/eye-icon';
+import EyeOffIcon from '@/components/icons/eye-off-icon';
+import CheckedIcon from '@/components/icons/checked-icon';
+import SaveIcon from '@/components/icons/save-icon';
+import XIcon from '@/components/icons/x-icon';
+import RefreshIcon from '@/components/icons/refresh-icon';
+import GlobeIcon from '@/components/icons/globe-icon';
 import { LanguageSelector } from '@/components/settings';
 import { useTranslation } from '@/lib/i18n';
 import type { NotificationPreferences } from '@/lib/api/user';
@@ -171,10 +168,10 @@ export default function SettingsPage() {
   };
 
   const tabs = [
-    { id: 'profile', label: t.settings.profile, icon: User },
-    { id: 'notifications', label: t.settings.notifications, icon: Bell },
-    { id: 'security', label: t.settings.security, icon: Shield },
-    { id: 'language', label: t.settings.language, icon: Globe },
+    { id: 'profile', label: t.settings.profile, icon: UserIcon },
+    { id: 'notifications', label: t.settings.notifications, icon: FilledBellIcon },
+    { id: 'security', label: t.settings.security, icon: ShieldCheck },
+    { id: 'language', label: t.settings.language, icon: GlobeIcon },
   ];
 
   return (
@@ -189,7 +186,7 @@ export default function SettingsPage() {
             onClick={() => syncWithServer()}
             className="text-text-secondary"
           >
-            <RefreshCw className="w-4 h-4 mr-2" />
+            <RefreshIcon size={16} className="mr-2" />
             Refresh
           </Button>
         }
@@ -240,7 +237,7 @@ export default function SettingsPage() {
                   value={profileData.fullName}
                   onChange={(e) => setProfileData({ ...profileData, fullName: e.target.value })}
                   disabled={!isEditing}
-                  leftIcon={<User className="w-5 h-5" />}
+                  leftIcon={<UserIcon size={20} />}
                   placeholder="Your full name"
                 />
                 <Input
@@ -248,7 +245,7 @@ export default function SettingsPage() {
                   type="email"
                   value={profileData.email}
                   disabled={true} // Email changes require verification
-                  leftIcon={<Mail className="w-5 h-5" />}
+                  leftIcon={<MailFilledIcon size={20} />}
                   helperText="Contact support to change your email address"
                 />
                 <Input
@@ -269,7 +266,7 @@ export default function SettingsPage() {
                       onClick={handleCancelEdit}
                       disabled={isUpdatingProfile}
                     >
-                      <X className="w-4 h-4 mr-2" />
+                      <XIcon size={16} className="mr-2" />
                       Cancel
                     </Button>
                     <Button
@@ -277,7 +274,7 @@ export default function SettingsPage() {
                       variant="primary"
                       isLoading={isUpdatingProfile}
                     >
-                      <Save className="w-4 h-4 mr-2" />
+                      <SaveIcon size={16} className="mr-2" />
                       Save Changes
                     </Button>
                   </div>
@@ -337,7 +334,7 @@ export default function SettingsPage() {
                     ) : pushNotifications.isSubscribed ? (
                       <div className="flex items-center gap-2">
                         <Badge variant="success">
-                          <Check className="w-3 h-3 mr-1" />
+                          <CheckedIcon size={12} className="mr-1" />
                           {t.settings.enableNotifications}d
                         </Badge>
                         <Button
@@ -356,7 +353,7 @@ export default function SettingsPage() {
                         onClick={handleEnableNotifications}
                         isLoading={pushNotifications.isLoading}
                       >
-                        <Bell className="w-4 h-4 mr-2" />
+                        <FilledBellIcon size={16} className="mr-2" />
                         {t.settings.enableNotifications}
                       </Button>
                     )
@@ -497,7 +494,7 @@ export default function SettingsPage() {
                     onChange={(e) =>
                       setPasswordData({ ...passwordData, currentPassword: e.target.value })
                     }
-                    leftIcon={<Lock className="w-5 h-5" />}
+                    leftIcon={<LockIcon size={20} />}
                     placeholder="Enter current password"
                   />
                 </div>
@@ -508,7 +505,7 @@ export default function SettingsPage() {
                   onChange={(e) =>
                     setPasswordData({ ...passwordData, newPassword: e.target.value })
                   }
-                  leftIcon={<Lock className="w-5 h-5" />}
+                  leftIcon={<LockIcon size={20} />}
                   placeholder="Enter new password"
                 />
                 <div className="relative">
@@ -519,7 +516,7 @@ export default function SettingsPage() {
                     onChange={(e) =>
                       setPasswordData({ ...passwordData, confirmPassword: e.target.value })
                     }
-                    leftIcon={<Lock className="w-5 h-5" />}
+                    leftIcon={<LockIcon size={20} />}
                     placeholder="Confirm new password"
                   />
                   <button
@@ -527,7 +524,7 @@ export default function SettingsPage() {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-9 text-text-tertiary hover:text-text-secondary transition-colors"
                   >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showPassword ? <EyeOffIcon size={20} /> : <EyeIcon size={20} />}
                   </button>
                 </div>
 
@@ -537,7 +534,7 @@ export default function SettingsPage() {
                   isLoading={isChangingPassword}
                   disabled={!passwordData.currentPassword || !passwordData.newPassword}
                 >
-                  <Lock className="w-4 h-4 mr-2" />
+                  <LockIcon size={16} className="mr-2" />
                   Change Password
                 </Button>
               </form>
@@ -553,7 +550,7 @@ export default function SettingsPage() {
                 onClick={handleLogoutAll}
                 isLoading={isLoggingOutAll}
               >
-                <LogOut className="w-4 h-4 mr-2" />
+                <LogoutIcon size={16} className="mr-2" />
                 Sign Out Other Devices
               </Button>
             </Card>
@@ -567,7 +564,7 @@ export default function SettingsPage() {
                 variant="danger" 
                 onClick={handleLogout}
               >
-                <LogOut className="w-4 h-4 mr-2" />
+                <LogoutIcon size={16} className="mr-2" />
                 {t.auth.logout}
               </Button>
             </Card>

@@ -4,28 +4,22 @@ import * as React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
-import {
-  Menu,
-  X,
-  Settings,
-  User,
-  LogOut,
-  ChevronDown,
-  Home,
-  Calendar,
-  Heart,
-  FileText,
-  Pill,
-  Activity,
-  MessageCircle,
-  Users,
-  AlertTriangle,
-  Globe,
-  Info,
-  BookOpen,
-  DollarSign,
-  Mail,
-} from 'lucide-react';
+import { Calendar, Pill, Activity, Menu } from 'lucide-react';
+import XIcon from '@/components/icons/x-icon';
+import GearIcon from '@/components/icons/gear-icon';
+import UserIcon from '@/components/icons/user-icon';
+import LogoutIcon from '@/components/icons/logout-icon';
+import DownChevron from '@/components/icons/down-chevron';
+import HomeIcon from '@/components/icons/home-icon';
+import HeartIcon from '@/components/icons/heart-icon';
+import FileDescriptionIcon from '@/components/icons/file-description-icon';
+import MessageCircleIcon from '@/components/icons/message-circle-icon';
+import UsersIcon from '@/components/icons/users-icon';
+import TriangleAlertIcon from '@/components/icons/triangle-alert-icon';
+import GlobeIcon from '@/components/icons/globe-icon';
+import InfoCircleIcon from '@/components/icons/info-circle-icon';
+import BookIcon from '@/components/icons/book-icon';
+import MailFilledIcon from '@/components/icons/mail-filled-icon';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { NotificationBell } from '@/components/notifications';
@@ -64,27 +58,27 @@ export function DashboardHeader({ className, currentUser }: DashboardHeaderProps
       .slice(0, 2);
   };
 
-  const mainNavLinks = [
-    { label: 'Home', href: '/dashboard', icon: Home },
-    { label: 'Loved Ones', href: '/care-recipients', icon: Heart },
+  const mainNavLinks: { label: string; href: string; icon: any }[] = [
+    { label: 'Home', href: '/dashboard', icon: HomeIcon },
+    { label: 'Loved Ones', href: '/care-recipients', icon: HeartIcon },
     { label: 'Calendar', href: '/calendar', icon: Calendar },
     { label: 'Medications', href: '/medications', icon: Pill },
-    { label: 'Documents', href: '/documents', icon: FileText },
+    { label: 'Documents', href: '/documents', icon: FileDescriptionIcon },
     { label: 'Activity', href: '/timeline', icon: Activity },
-    { label: 'Chat', href: '/chat', icon: MessageCircle },
+    { label: 'Chat', href: '/chat', icon: MessageCircleIcon },
   ];
 
-  const secondaryNavLinks = [
-    { label: 'Family Settings', href: '/family', icon: Users },
-    { label: 'Account', href: '/settings', icon: Settings },
+  const secondaryNavLinks: { label: string; href: string; icon: any }[] = [
+    { label: 'Family Settings', href: '/family', icon: UsersIcon },
+    { label: 'Account', href: '/settings', icon: GearIcon },
   ];
 
-  const exploreLinks = [
-    { label: 'Home', href: '/', icon: Globe },
-    { label: 'About', href: '/about', icon: Info },
-    { label: 'How It Works', href: '/how-it-works', icon: BookOpen },
-    { label: 'Pricing', href: '/pricing', icon: DollarSign },
-    { label: 'Contact', href: '/contact', icon: Mail },
+  const exploreLinks: { label: string; href: string; icon: any }[] = [
+    { label: 'Home', href: '/', icon: GlobeIcon },
+    { label: 'About', href: '/about', icon: InfoCircleIcon },
+    { label: 'How It Works', href: '/how-it-works', icon: BookIcon },
+    { label: 'Pricing', href: '/pricing', icon: HeartIcon },
+    { label: 'Contact', href: '/contact', icon: MailFilledIcon },
   ];
 
   return (
@@ -135,7 +129,7 @@ export function DashboardHeader({ className, currentUser }: DashboardHeaderProps
                 size="icon"
                 className="rounded-xl h-9 w-9"
               >
-                <Settings className="w-4 h-4" />
+                <GearIcon size={16} />
               </Button>
             </Link>
 
@@ -157,11 +151,11 @@ export function DashboardHeader({ className, currentUser }: DashboardHeaderProps
                 ) : (
                   <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-sm">
                     <span className="text-xs font-bold text-primary-foreground">
-                      {user?.fullName ? getInitials(user.fullName) : <User className="w-4 h-4" />}
+                      {user?.fullName ? getInitials(user.fullName) : <UserIcon size={16} />}
                     </span>
                   </div>
                 )}
-                <ChevronDown className="w-3 h-3 hidden md:block" />
+                <DownChevron size={12} className="hidden md:block" />
               </button>
 
               {userMenuOpen && (
@@ -179,7 +173,7 @@ export function DashboardHeader({ className, currentUser }: DashboardHeaderProps
                       onClick={() => setUserMenuOpen(false)}
                       className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-foreground hover:bg-accent hover:text-primary transition-colors font-semibold"
                     >
-                      <Settings className="w-4 h-4" />
+                      <GearIcon size={16} />
                       Account Settings
                     </Link>
                     <Link
@@ -187,7 +181,7 @@ export function DashboardHeader({ className, currentUser }: DashboardHeaderProps
                       onClick={() => setUserMenuOpen(false)}
                       className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-foreground hover:bg-accent hover:text-primary transition-colors font-semibold"
                     >
-                      <User className="w-4 h-4" />
+                      <UserIcon size={16} />
                       Profile
                     </Link>
 
@@ -211,7 +205,7 @@ export function DashboardHeader({ className, currentUser }: DashboardHeaderProps
                       onClick={handleLogout}
                       className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-destructive hover:bg-destructive/10 transition-colors w-full font-semibold"
                     >
-                      <LogOut className="w-4 h-4" />
+                      <LogoutIcon size={16} />
                       Sign Out
                     </button>
                   </div>
@@ -223,7 +217,7 @@ export function DashboardHeader({ className, currentUser }: DashboardHeaderProps
             <Button
               variant="emergency"
               size="sm"
-              leftIcon={<AlertTriangle className="w-4 h-4" />}
+              leftIcon={<TriangleAlertIcon size={16} />}
               className="hidden xl:flex"
             >
               Emergency
@@ -235,7 +229,7 @@ export function DashboardHeader({ className, currentUser }: DashboardHeaderProps
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label="Toggle menu"
             >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {mobileMenuOpen ? <XIcon size={20} /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
@@ -316,7 +310,7 @@ export function DashboardHeader({ className, currentUser }: DashboardHeaderProps
                 variant="emergency"
                 fullWidth
                 size="lg"
-                leftIcon={<AlertTriangle className="w-5 h-5" />}
+                leftIcon={<TriangleAlertIcon size={20} />}
                 onClick={() => {
                   setMobileMenuOpen(false);
                   router.push('/emergency');
@@ -332,7 +326,7 @@ export function DashboardHeader({ className, currentUser }: DashboardHeaderProps
                 onClick={handleLogout}
                 className="flex items-center gap-3 px-3 py-3 rounded-lg text-destructive hover:bg-destructive/10 transition-colors w-full"
               >
-                <LogOut className="w-5 h-5" />
+                <LogoutIcon size={20} />
                 Sign Out
               </button>
             </div>

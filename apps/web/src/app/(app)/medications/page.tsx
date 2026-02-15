@@ -39,6 +39,7 @@ function groupScheduleByTimeOfDay(items: ApiScheduleItem[]): { time: string; lab
   const evening: MedicationScheduleItem[] = [];
 
   for (const item of items) {
+    if (!item.time) continue;
     const hour = parseInt(item.time.split(':')[0], 10);
     const scheduleItem: MedicationScheduleItem = {
       medication: {

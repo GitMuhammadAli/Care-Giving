@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Heart } from 'lucide-react';
+import HeartIcon from '@/components/icons/heart-icon';
 import { PublicRoute } from '@/components/auth/public-route';
 
 /**
@@ -20,7 +20,7 @@ export default function AuthFlexibleLayout({ children }: { children: React.React
         <header className="p-4 sm:p-6">
           <Link href="/" className="inline-flex items-center gap-2">
             <div className="w-9 h-9 rounded-lg bg-sage flex items-center justify-center">
-              <Heart className="w-5 h-5 text-foreground" fill="currentColor" />
+              <HeartIcon size={20} className="text-foreground" />
             </div>
             <span className="font-serif text-xl text-foreground">CareCircle</span>
           </Link>

@@ -182,13 +182,40 @@ export const Spinner = memo(function Spinner({
   );
 });
 
-// Full page loading
+// Full page loading with branded CareCircle animation
 export const FullPageLoading = memo(function FullPageLoading() {
   return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="flex flex-col items-center gap-4">
-        <Spinner size="lg" />
-        <p className="text-muted-foreground text-sm">Loading...</p>
+    <div className="fixed inset-0 bg-background flex items-center justify-center z-50">
+      <div className="flex flex-col items-center gap-5 max-w-xs text-center px-4">
+        {/* Branded logo pulse */}
+        <div className="relative">
+          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center animate-pulse">
+            <svg className="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          </div>
+          <div className="absolute -inset-2 rounded-3xl border-2 border-primary/20 animate-ping" style={{ animationDuration: '2s' }} />
+        </div>
+        <div>
+          <p className="text-base font-semibold text-foreground">CareCircle</p>
+          <p className="text-xs text-muted-foreground mt-1">Loading your care dashboard...</p>
+        </div>
+        {/* Progress bar */}
+        <div className="w-48 h-1 bg-muted rounded-full overflow-hidden">
+          <div className="h-full bg-primary rounded-full animate-loading-bar" />
+        </div>
+        <style jsx>{`
+          @keyframes loading-bar {
+            0% { width: 0%; }
+            20% { width: 30%; }
+            50% { width: 60%; }
+            80% { width: 85%; }
+            100% { width: 95%; }
+          }
+          .animate-loading-bar {
+            animation: loading-bar 3s ease-out forwards;
+          }
+        `}</style>
       </div>
     </div>
   );

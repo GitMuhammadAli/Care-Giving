@@ -10,7 +10,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { Eye, EyeOff, Heart, Check } from 'lucide-react';
+import EyeIcon from '@/components/icons/eye-icon';
+import EyeOffIcon from '@/components/icons/eye-off-icon';
+import HeartIcon from '@/components/icons/heart-icon';
+import CheckedIcon from '@/components/icons/checked-icon';
 import { useAuth } from '@/hooks/use-auth';
 import { ApiError } from '@/lib/api/client';
 import { AUTH } from '@/lib/messages';
@@ -207,7 +210,7 @@ function RegisterContent() {
                       className="flex-shrink-0 w-6 h-6 rounded-full bg-sage/20 flex items-center justify-center mt-0.5"
                       whileHover={{ scale: 1.1, backgroundColor: 'rgba(139, 154, 126, 0.3)' }}
                     >
-                      <Check className="w-4 h-4 text-sage" />
+                      <CheckedIcon size={16} className="text-sage" />
                     </motion.div>
                     <span className="text-foreground">{benefit}</span>
                   </motion.li>
@@ -265,7 +268,7 @@ function RegisterContent() {
                       repeatDelay: 3,
                     }}
                   />
-                  <Heart className="w-8 h-8 text-sage" />
+                  <HeartIcon size={32} className="text-sage" />
                 </motion.div>
                 <h1 className="font-serif text-3xl text-foreground mb-2">Create Account</h1>
                 <p className="text-muted-foreground">Start caring together today</p>
@@ -381,7 +384,7 @@ function RegisterContent() {
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                       >
-                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        {showPassword ? <EyeOffIcon size={20} /> : <EyeIcon size={20} />}
                       </button>
                     </div>
 
@@ -441,7 +444,7 @@ function RegisterContent() {
                                   }}
                                   transition={{ duration: 0.2 }}
                                 >
-                                  <Check className="w-4 h-4" />
+                                  <CheckedIcon size={16} />
                                 </motion.div>
                                 <span
                                   className={cn(

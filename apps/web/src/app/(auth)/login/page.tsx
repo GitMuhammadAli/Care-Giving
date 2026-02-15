@@ -9,7 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
-import { Eye, EyeOff, Heart } from 'lucide-react';
+import EyeIcon from '@/components/icons/eye-icon';
+import EyeOffIcon from '@/components/icons/eye-off-icon';
+import HeartIcon from '@/components/icons/heart-icon';
 import { useAuth } from '@/hooks/use-auth';
 import { ApiError } from '@/lib/api/client';
 import { AUTH } from '@/lib/messages';
@@ -159,7 +161,7 @@ function LoginContent() {
               repeatDelay: 2,
             }}
           />
-          <Heart className="w-8 h-8 text-sage relative z-10" />
+          <HeartIcon size={32} className="text-sage relative z-10" />
         </motion.div>
         
         <motion.h1
@@ -259,7 +261,7 @@ function LoginContent() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPassword ? <EyeOffIcon size={20} /> : <EyeIcon size={20} />}
                 </button>
               </div>
             </motion.div>

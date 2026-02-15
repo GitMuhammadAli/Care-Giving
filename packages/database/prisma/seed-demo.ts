@@ -65,6 +65,33 @@ async function main() {
   console.log('╚═══════════════════════════════════════════════════════════════╝');
   console.log('');
 
+  // Ensure pgvector + ai_embeddings table exist (db:push doesn't create raw SQL tables)
+  console.log('🧠  Ensuring AI embeddings table exists...');
+  try {
+    await prisma.$executeRawUnsafe(`CREATE EXTENSION IF NOT EXISTS vector`);
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "ai_embeddings" (
+        "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
+        "content" TEXT NOT NULL,
+        "embedding" vector(768),
+        "resource_type" TEXT NOT NULL,
+        "resource_id" TEXT NOT NULL,
+        "family_id" TEXT NOT NULL,
+        "care_recipient_id" TEXT,
+        "metadata" JSONB DEFAULT '{}',
+        "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        CONSTRAINT "ai_embeddings_pkey" PRIMARY KEY ("id")
+      )
+    `);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "idx_embeddings_family" ON "ai_embeddings"("family_id")`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "idx_embeddings_care_recipient" ON "ai_embeddings"("care_recipient_id") WHERE "care_recipient_id" IS NOT NULL`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "idx_embeddings_resource" ON "ai_embeddings"("resource_type", "resource_id")`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "idx_embeddings_vector" ON "ai_embeddings" USING hnsw ("embedding" vector_cosine_ops) WITH (m = 16, ef_construction = 64)`);
+    console.log('   ✅ ai_embeddings table ready');
+  } catch (err: any) {
+    console.warn('   ⚠️  Could not create ai_embeddings table (pgvector may not be available):', err?.message);
+  }
+
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
 
   // ──────────────────────────────────────────

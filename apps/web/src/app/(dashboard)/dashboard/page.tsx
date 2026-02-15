@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -22,28 +22,28 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  Heart,
   Calendar,
   Pill,
-  MessageCircle,
-  Users,
   Plus,
-  Bell,
-  Clock,
   CheckCircle2,
-  ChevronRight,
-  ChevronDown,
-  Settings,
-  RefreshCw,
-  X,
-  Mail,
-  Pencil,
-  UserPlus,
-  Home,
-  Check,
-  Sparkles,
   Wand2,
 } from 'lucide-react';
+import HeartIcon from '@/components/icons/heart-icon';
+import MessageCircleIcon from '@/components/icons/message-circle-icon';
+import UsersIcon from '@/components/icons/users-icon';
+import FilledBellIcon from '@/components/icons/filled-bell-icon';
+import ClockIcon from '@/components/icons/clock-icon';
+import RightChevron from '@/components/icons/right-chevron';
+import DownChevron from '@/components/icons/down-chevron';
+import GearIcon from '@/components/icons/gear-icon';
+import RefreshIcon from '@/components/icons/refresh-icon';
+import XIcon from '@/components/icons/x-icon';
+import MailFilledIcon from '@/components/icons/mail-filled-icon';
+import PenIcon from '@/components/icons/pen-icon';
+import UserPlusIcon from '@/components/icons/user-plus-icon';
+import HomeIcon from '@/components/icons/home-icon';
+import CheckedIcon from '@/components/icons/checked-icon';
+import SparklesIcon from '@/components/icons/sparkles-icon';
 import { toast } from 'react-hot-toast';
 
 // Import dashboard components
@@ -78,7 +78,7 @@ import { CreateTimelineEntryInput } from '@/lib/api';
 const quickActions = [
   { icon: Pill, label: 'Log Medication', action: 'medication', bgClass: 'bg-primary/15', textClass: 'text-primary', comingSoon: false },
   { icon: Calendar, label: 'Add Appointment', action: 'appointment', bgClass: 'bg-secondary/20', textClass: 'text-secondary-foreground', comingSoon: false },
-  { icon: MessageCircle, label: 'Post Update', action: 'update', bgClass: 'bg-muted/20', textClass: 'text-muted-foreground', comingSoon: false },
+  { icon: MessageCircleIcon, label: 'Post Update', action: 'update', bgClass: 'bg-muted/20', textClass: 'text-muted-foreground', comingSoon: false },
   { icon: Wand2, label: 'Smart Entry', action: 'smart-entry', bgClass: 'bg-emerald-500/15', textClass: 'text-emerald-700', comingSoon: false },
 ];
 
@@ -161,6 +161,16 @@ const Dashboard = () => {
   const [editCareRecipientOpen, setEditCareRecipientOpen] = useState(false);
   const [askAiOpen, setAskAiOpen] = useState(false);
   const [showSmartEntry, setShowSmartEntry] = useState(false);
+  const smartEntryRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to Smart Entry when it opens
+  useEffect(() => {
+    if (showSmartEntry && smartEntryRef.current) {
+      setTimeout(() => {
+        smartEntryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
+  }, [showSmartEntry]);
 
   // Form states
   const [newTask, setNewTask] = useState({ title: '', time: '', type: 'appointment' });
@@ -475,7 +485,7 @@ const Dashboard = () => {
               className="relative border-border/60 hover:bg-accent hover:border-border rounded-xl h-10 w-10 sm:h-11 sm:w-11"
               onClick={() => setShowNotifications(!showNotifications)}
             >
-              <Bell className="w-5 h-5 text-muted-foreground" />
+              <FilledBellIcon size={20} className="text-muted-foreground" />
               {unreadCount > 0 && (
                 <span className="notification-badge absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive rounded-full border-2 border-background text-[10px] flex items-center justify-center text-destructive-foreground font-semibold">
                   {unreadCount}
@@ -526,13 +536,13 @@ const Dashboard = () => {
               onClick={() => setAskAiOpen(true)}
               title="Ask CareCircle AI"
             >
-              <Sparkles className="w-5 h-5 text-sage" />
+              <SparklesIcon size={20} className="text-sage" />
             </Button>
           )}
 
           <Link href="/settings">
             <Button variant="outline" size="icon" className="border-border/60 hover:bg-accent hover:border-border rounded-xl h-10 w-10 sm:h-11 sm:w-11">
-              <Settings className="w-5 h-5 text-muted-foreground" />
+              <GearIcon size={20} className="text-muted-foreground" />
             </Button>
           </Link>
 
@@ -578,9 +588,9 @@ const Dashboard = () => {
       {/* Navigation Tabs - Enhanced */}
       <div className="flex gap-1 mb-6 sm:mb-8 overflow-x-auto pb-1 scrollbar-hide -mx-1 px-1">
         {[
-          { id: 'overview', label: 'Overview', icon: Heart },
+          { id: 'overview', label: 'Overview', icon: HeartIcon },
           { id: 'medications', label: 'Medications', icon: Pill },
-          { id: 'contacts', label: 'Contacts', icon: Users },
+          { id: 'contacts', label: 'Contacts', icon: UsersIcon },
           { id: 'documents', label: 'Documents', icon: Calendar },
         ].map((tab) => (
           <button
@@ -608,7 +618,7 @@ const Dashboard = () => {
                 <div className="flex items-center gap-3 sm:gap-5">
                   <div className="relative">
                     <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/30 to-secondary/20 flex items-center justify-center shadow-inner">
-                      <Heart className="w-9 h-9 text-primary" />
+                      <HeartIcon size={36} className="text-primary" />
                     </div>
                     {careRecipientId && (
                       <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-card status-pulse" title="Status: Stable" />
@@ -643,13 +653,13 @@ const Dashboard = () => {
                         onClick={() => setEditCareRecipientOpen(true)}
                         className="text-muted-foreground hover:text-foreground hover:bg-accent rounded-xl"
                       >
-                        <Pencil className="w-4 h-4 mr-1.5" />
+                        <PenIcon size={16} className="mr-1.5" />
                         Edit
                       </Button>
                       <Link href={`/care-recipients/${careRecipientId}`}>
                         <Button variant="outline" size="sm" className="text-primary hover:text-primary hover:bg-primary/10 rounded-xl border-primary/20">
                           View Profile
-                          <ChevronRight className="w-4 h-4 ml-1" />
+                          <RightChevron size={16} className="ml-1" />
                         </Button>
                       </Link>
                     </>
@@ -658,7 +668,7 @@ const Dashboard = () => {
                       onClick={() => setAddCareRecipientOpen(true)}
                       className="rounded-xl"
                     >
-                      <UserPlus className="w-4 h-4 mr-2" />
+                      <UserPlusIcon size={16} className="mr-2" />
                       Add Care Recipient
                     </Button>
                   ) : null}
@@ -692,7 +702,7 @@ const Dashboard = () => {
               <div className="flex items-center justify-between mb-6 gap-2">
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
-                    <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                    <ClockIcon size={20} className="text-primary" />
                   </div>
                   <div className="min-w-0">
                     <h2 className="font-serif text-lg sm:text-xl text-foreground truncate">Today's Schedule</h2>
@@ -704,7 +714,7 @@ const Dashboard = () => {
                 <Link href="/calendar">
                   <Button variant="ghost" size="sm" className="text-primary hover:text-primary hover:bg-primary/10 rounded-xl">
                     View All
-                    <ChevronRight className="w-4 h-4 ml-1" />
+                    <RightChevron size={16} className="ml-1" />
                   </Button>
                 </Link>
               </div>
@@ -752,7 +762,7 @@ const Dashboard = () => {
                         ) : task.type === 'appointment' ? (
                           <Calendar className="w-5 h-5 text-muted-foreground" />
                         ) : (
-                          <Heart className="w-5 h-5 text-primary" />
+                          <HeartIcon size={20} className="text-primary" />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -760,7 +770,7 @@ const Dashboard = () => {
                           {task.title}
                         </p>
                         <p className="text-sm text-muted-foreground flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
+                          <ClockIcon size={12} />
                           {task.time}
                         </p>
                       </div>
@@ -772,7 +782,7 @@ const Dashboard = () => {
 
             {/* Smart Entry (AI) */}
             {showSmartEntry && careRecipientId && (
-              <div className="animate-fade-delay-3">
+              <div ref={smartEntryRef} className="animate-fade-delay-3">
                 <SmartEntryInput
                   onConfirm={handleSmartEntryConfirm}
                   onCancel={() => setShowSmartEntry(false)}
@@ -785,7 +795,7 @@ const Dashboard = () => {
               <div className="flex items-center justify-between mb-4 sm:mb-6 gap-2">
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-secondary/20 flex items-center justify-center flex-shrink-0">
-                    <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-secondary-foreground" />
+                    <MessageCircleIcon size={20} className="text-secondary-foreground" />
                   </div>
                   <div className="min-w-0">
                     <h2 className="font-serif text-lg sm:text-xl text-foreground truncate">Recent Updates</h2>
@@ -886,7 +896,7 @@ const Dashboard = () => {
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center">
-                    <Users className="w-4 h-4 text-primary" />
+                    <UsersIcon size={16} className="text-primary" />
                   </div>
                   <h2 className="font-serif text-lg text-foreground">Care Circle</h2>
                 </div>
@@ -971,7 +981,7 @@ const Dashboard = () => {
               {(pendingInvitations || []).length > 0 && (
                 <div className="mt-4 pt-4 border-t border-border/50">
                   <div className="flex items-center gap-2 mb-3">
-                    <Mail className="w-4 h-4 text-muted-foreground" />
+                    <MailFilledIcon size={16} className="text-muted-foreground" />
                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                       Pending Invitations ({pendingInvitations?.length})
                     </span>
@@ -983,7 +993,7 @@ const Dashboard = () => {
                         className="flex items-center gap-3 p-3 rounded-xl bg-secondary/10 border border-secondary/20"
                       >
                         <div className="w-10 h-10 rounded-xl bg-secondary/20 flex items-center justify-center">
-                          <Mail className="w-4 h-4 text-secondary-foreground" />
+                          <MailFilledIcon size={16} className="text-secondary-foreground" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-foreground text-sm truncate">{invitation.email}</p>
@@ -998,7 +1008,7 @@ const Dashboard = () => {
                             className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors"
                             title="Resend invitation"
                           >
-                            <RefreshCw className={`w-4 h-4 ${resendInvitation.isPending ? 'animate-spin' : ''}`} />
+                            <RefreshIcon size={16} className={resendInvitation.isPending ? 'animate-spin' : ''} />
                           </button>
                           <button
                             onClick={() => handleCancelInvitation(invitation.id)}
@@ -1006,7 +1016,7 @@ const Dashboard = () => {
                             className="p-1.5 rounded-lg hover:bg-destructive/10 text-destructive transition-colors"
                             title="Cancel invitation"
                           >
-                            <X className="w-4 h-4" />
+                            <XIcon size={16} />
                           </button>
                         </div>
                       </div>
@@ -1030,7 +1040,7 @@ const Dashboard = () => {
               <p className="text-muted-foreground mb-6">Add a care recipient to start tracking medications.</p>
               {familyId && (
                 <Button onClick={() => setAddCareRecipientOpen(true)} className="rounded-xl">
-                  <UserPlus className="w-4 h-4 mr-2" />
+                  <UserPlusIcon size={16} className="mr-2" />
                   Add Care Recipient
                 </Button>
               )}
@@ -1045,12 +1055,12 @@ const Dashboard = () => {
             <ContactsDirectory careRecipientId={careRecipientId} familyId={familyId} />
           ) : (
             <div className="dashboard-card text-center py-12">
-              <Users className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
+              <UsersIcon size={48} className="text-muted-foreground/50 mx-auto mb-4" />
               <h2 className="font-serif text-xl text-foreground mb-2">Contacts Directory</h2>
               <p className="text-muted-foreground mb-6">Add a care recipient to manage their contacts.</p>
               {familyId && (
                 <Button onClick={() => setAddCareRecipientOpen(true)} className="rounded-xl">
-                  <UserPlus className="w-4 h-4 mr-2" />
+                  <UserPlusIcon size={16} className="mr-2" />
                   Add Care Recipient
                 </Button>
               )}
@@ -1070,7 +1080,7 @@ const Dashboard = () => {
               <p className="text-muted-foreground mb-6">Add a care recipient to store and manage their documents.</p>
               {familyId && (
                 <Button onClick={() => setAddCareRecipientOpen(true)} className="rounded-xl">
-                  <UserPlus className="w-4 h-4 mr-2" />
+                  <UserPlusIcon size={16} className="mr-2" />
                   Add Care Recipient
                 </Button>
               )}

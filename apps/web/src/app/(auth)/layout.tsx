@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Heart } from 'lucide-react';
+import HeartIcon from '@/components/icons/heart-icon';
 import { PublicRoute } from '@/components/auth/public-route';
 import { AnimatedBackground } from '@/components/ui/animated-background';
 
@@ -16,7 +16,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <header className="p-4 sm:p-6 relative z-10">
           <Link href="/" className="inline-flex items-center gap-2 group">
             <div className="w-9 h-9 rounded-lg bg-sage flex items-center justify-center transition-transform duration-150 group-hover:scale-105">
-              <Heart className="w-5 h-5 text-cream" fill="currentColor" />
+              <HeartIcon size={20} className="text-cream" />
             </div>
             <span className="font-serif text-xl text-foreground">CareCircle</span>
           </Link>

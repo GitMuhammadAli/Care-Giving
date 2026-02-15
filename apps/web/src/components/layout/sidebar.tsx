@@ -5,35 +5,31 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import {
-  Home,
-  Calendar,
-  Pill,
-  FileText,
-  Activity,
-  Users,
-  Settings,
-  AlertTriangle,
-  ChevronDown,
-  LogOut,
-  Heart,
-  MessageCircle,
-} from 'lucide-react';
+import { Calendar, Pill, Activity } from 'lucide-react';
+import HomeIcon from '@/components/icons/home-icon';
+import HeartIcon from '@/components/icons/heart-icon';
+import FileDescriptionIcon from '@/components/icons/file-description-icon';
+import UsersIcon from '@/components/icons/users-icon';
+import GearIcon from '@/components/icons/gear-icon';
+import TriangleAlertIcon from '@/components/icons/triangle-alert-icon';
+import DownChevron from '@/components/icons/down-chevron';
+import LogoutIcon from '@/components/icons/logout-icon';
+import MessageCircleIcon from '@/components/icons/message-circle-icon';
 
-const mainNavItems = [
-  { href: '/dashboard', icon: Home, label: 'Home' },
-  { href: '/care-recipients', icon: Heart, label: 'Loved Ones' },
+const mainNavItems: { href: string; icon: any; label: string }[] = [
+  { href: '/dashboard', icon: HomeIcon, label: 'Home' },
+  { href: '/care-recipients', icon: HeartIcon, label: 'Loved Ones' },
   { href: '/calendar', icon: Calendar, label: 'Calendar' },
   { href: '/medications', icon: Pill, label: 'Medications' },
-  { href: '/documents', icon: FileText, label: 'Documents' },
+  { href: '/documents', icon: FileDescriptionIcon, label: 'Documents' },
   { href: '/timeline', icon: Activity, label: 'Activity' },
-  { href: '/chat', icon: MessageCircle, label: 'Family Chat' },
-  { href: '/caregivers', icon: Users, label: 'Caregivers' },
+  { href: '/chat', icon: MessageCircleIcon, label: 'Family Chat' },
+  { href: '/caregivers', icon: UsersIcon, label: 'Caregivers' },
 ];
 
-const secondaryNavItems = [
-  { href: '/family', icon: Users, label: 'Family Settings' },
-  { href: '/settings', icon: Settings, label: 'Account' },
+const secondaryNavItems: { href: string; icon: any; label: string }[] = [
+  { href: '/family', icon: UsersIcon, label: 'Family Settings' },
+  { href: '/settings', icon: GearIcon, label: 'Account' },
 ];
 
 interface SidebarProps {
@@ -66,7 +62,7 @@ export function Sidebar({ currentUser, careRecipient }: SidebarProps) {
       <div className="h-[72px] flex items-center px-5 border-b border-border">
         <Link href="/dashboard" className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-lg bg-sage flex items-center justify-center">
-            <Heart className="w-5 h-5 text-foreground" fill="currentColor" />
+            <HeartIcon size={20} className="text-foreground" />
           </div>
           <span className="font-editorial text-xl text-foreground">CareCircle</span>
         </Link>
@@ -93,7 +89,7 @@ export function Sidebar({ currentUser, careRecipient }: SidebarProps) {
               </p>
               <p className="text-xs text-muted-foreground">Care Recipient</p>
             </div>
-            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            <DownChevron size={16} className="text-muted-foreground" />
           </button>
         </div>
       )}
@@ -159,7 +155,7 @@ export function Sidebar({ currentUser, careRecipient }: SidebarProps) {
           variant="emergency"
           fullWidth
           size="lg"
-          leftIcon={<AlertTriangle className="w-5 h-5" />}
+          leftIcon={<TriangleAlertIcon size={20} />}
         >
           Emergency
         </Button>
@@ -178,7 +174,7 @@ export function Sidebar({ currentUser, careRecipient }: SidebarProps) {
               className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               aria-label="Log out"
             >
-              <LogOut className="w-4 h-4" />
+              <LogoutIcon size={16} />
             </button>
           </div>
         </div>

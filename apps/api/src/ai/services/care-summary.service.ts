@@ -71,14 +71,7 @@ export class CareSummaryService {
     };
 
     if (!this.geminiService.enabled) {
-      return {
-        summary: `Daily summary for ${name} on ${dateStr}: ${medStats.given}/${medStats.total} medications given, ${timelineEntries.length} timeline entries, ${appointments.length} appointments.`,
-        highlights: [],
-        concerns: [],
-        medications: medStats,
-        period: dateStr,
-        generatedAt: new Date().toISOString(),
-      };
+      return this.buildFallbackSummary(name, dateStr, timelineEntries, medicationLogs, appointments, medStats);
     }
 
     const systemPrompt = `You are CareCircle AI, a compassionate care summary assistant. Generate a warm, clear daily care summary for a family caregiver. Use plain language. Be concise but thorough. Focus on what matters most: medication adherence, health changes, and anything that needs attention.`;
@@ -121,14 +114,7 @@ Respond in this JSON format:
       };
     } catch (error) {
       this.logger.error({ error }, 'Failed to generate daily summary');
-      return {
-        summary: `Daily summary for ${name} on ${dateStr}: ${medStats.given}/${medStats.total} medications given, ${timelineEntries.length} timeline entries.`,
-        highlights: [],
-        concerns: [],
-        medications: medStats,
-        period: dateStr,
-        generatedAt: new Date().toISOString(),
-      };
+      return this.buildFallbackSummary(name, dateStr, timelineEntries, medicationLogs, appointments, medStats);
     }
   }
 
@@ -297,5 +283,74 @@ Respond in JSON:
     }
 
     return parts.join('\n');
+  }
+
+  /**
+   * Builds a meaningful fallback summary when Gemini is unavailable or fails.
+   * Includes actual timeline content instead of just counts.
+   */
+  private buildFallbackSummary(
+    name: string,
+    dateStr: string,
+    timelineEntries: Array<{ occurredAt: Date; type: string; title: string; description?: string | null }>,
+    medicationLogs: Array<{ status: string; medication?: { name: string; dosage: string } | null }>,
+    appointments: Array<{ title: string; status: string }>,
+    medStats: { total: number; given: number; missed: number; skipped: number },
+  ): CareSummary {
+    const highlights: string[] = [];
+    const concerns: string[] = [];
+
+    // Summarize timeline entries
+    for (const entry of timelineEntries.slice(0, 10)) {
+      const text = entry.description
+        ? `${entry.title} — ${entry.description.slice(0, 120)}`
+        : entry.title;
+      const lowerType = entry.type?.toLowerCase() || '';
+      if (lowerType === 'incident' || lowerType === 'emergency') {
+        concerns.push(text);
+      } else {
+        highlights.push(text);
+      }
+    }
+
+    // Summarize medications
+    if (medStats.missed > 0) {
+      const missedNames = medicationLogs
+        .filter((l) => l.status === 'MISSED')
+        .map((l) => l.medication?.name || 'Unknown')
+        .slice(0, 3)
+        .join(', ');
+      concerns.push(`Missed medications: ${missedNames}`);
+    }
+
+    if (medStats.given > 0) {
+      highlights.push(`${medStats.given}/${medStats.total} medications given on time`);
+    }
+
+    // Summarize appointments
+    for (const apt of appointments.slice(0, 3)) {
+      highlights.push(`Appointment: ${apt.title} (${apt.status})`);
+    }
+
+    // Build summary text
+    const summaryParts: string[] = [`Daily summary for ${name} on ${dateStr}.`];
+    if (timelineEntries.length > 0) {
+      summaryParts.push(`${timelineEntries.length} care update${timelineEntries.length > 1 ? 's' : ''} recorded.`);
+    }
+    if (medStats.total > 0) {
+      summaryParts.push(`${medStats.given}/${medStats.total} medications given.`);
+    }
+    if (appointments.length > 0) {
+      summaryParts.push(`${appointments.length} appointment${appointments.length > 1 ? 's' : ''}.`);
+    }
+
+    return {
+      summary: summaryParts.join(' '),
+      highlights,
+      concerns,
+      medications: medStats,
+      period: dateStr,
+      generatedAt: new Date().toISOString(),
+    };
   }
 }
