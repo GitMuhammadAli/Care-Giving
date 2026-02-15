@@ -9,7 +9,7 @@
     "dev:api": "pnpm --filter @carecircle/api dev",
     "dev:workers": "pnpm --filter @carecircle/workers dev",
     "build": "turbo build",
-    "build:render": "pnpm db:generate && turbo build --filter=@carecircle/api",
+    "build:render": "pnpm db:generate && pnpm db:push && turbo build --filter=@carecircle/api && pnpm db:seed:demo",
     "test": "turbo test",
     "test:e2e": "jest --config test/jest-e2e.json --runInBand",
     "test:e2e:api": "pnpm --filter @carecircle/api test:e2e",

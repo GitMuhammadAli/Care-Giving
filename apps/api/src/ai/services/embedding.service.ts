@@ -46,26 +46,31 @@ export class EmbeddingService {
     const vectorStr = `[${embedding.join(',')}]`;
 
     // Upsert: delete existing embedding for this resource, then insert new
-    await this.prisma.$executeRawUnsafe(
-      `DELETE FROM ai_embeddings WHERE resource_type = $1 AND resource_id = $2`,
-      resourceType,
-      resourceId,
-    );
+    try {
+      await this.prisma.$executeRawUnsafe(
+        `DELETE FROM "public"."ai_embeddings" WHERE resource_type = $1 AND resource_id = $2`,
+        resourceType,
+        resourceId,
+      );
 
-    const result = await this.prisma.$queryRawUnsafe<{ id: string }[]>(
-      `INSERT INTO ai_embeddings (content, embedding, resource_type, resource_id, family_id, care_recipient_id, metadata)
-       VALUES ($1, $2::vector, $3, $4, $5, $6, $7::jsonb)
-       RETURNING id`,
-      content,
-      vectorStr,
-      resourceType,
-      resourceId,
-      familyId,
-      careRecipientId || null,
-      JSON.stringify(metadata || {}),
-    );
+      const result = await this.prisma.$queryRawUnsafe<{ id: string }[]>(
+        `INSERT INTO "public"."ai_embeddings" (content, embedding, resource_type, resource_id, family_id, care_recipient_id, metadata)
+         VALUES ($1, $2::vector, $3, $4, $5, $6, $7::jsonb)
+         RETURNING id`,
+        content,
+        vectorStr,
+        resourceType,
+        resourceId,
+        familyId,
+        careRecipientId || null,
+        JSON.stringify(metadata || {}),
+      );
 
-    return result[0]?.id || '';
+      return result[0]?.id || '';
+    } catch (error) {
+      this.logger.error({ error }, 'Failed to store embedding — table may not exist or pgvector not enabled');
+      return '';
+    }
   }
 
   /**
@@ -109,47 +114,60 @@ export class EmbeddingService {
 
     queryParams.push(limit);
 
-    const results = await this.prisma.$queryRawUnsafe<any[]>(
-      `SELECT id, content, resource_type, resource_id, family_id, care_recipient_id, metadata, created_at,
-              1 - (embedding <=> $1::vector) AS similarity
-       FROM ai_embeddings
-       WHERE ${whereClause}
-       ORDER BY embedding <=> $1::vector
-       LIMIT $${paramIndex}`,
-      ...queryParams,
-    );
+    try {
+      const results = await this.prisma.$queryRawUnsafe<any[]>(
+        `SELECT id, content, resource_type, resource_id, family_id, care_recipient_id, metadata, created_at,
+                1 - (embedding <=> $1::vector) AS similarity
+         FROM "public"."ai_embeddings"
+         WHERE ${whereClause}
+         ORDER BY embedding <=> $1::vector
+         LIMIT $${paramIndex}`,
+        ...queryParams,
+      );
 
-    return results.map((row) => ({
-      id: row.id,
-      content: row.content,
-      resourceType: row.resource_type,
-      resourceId: row.resource_id,
-      familyId: row.family_id,
-      careRecipientId: row.care_recipient_id,
-      metadata: typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata,
-      similarity: Number(row.similarity),
-      createdAt: row.created_at,
-    }));
+      return results.map((row) => ({
+        id: row.id,
+        content: row.content,
+        resourceType: row.resource_type,
+        resourceId: row.resource_id,
+        familyId: row.family_id,
+        careRecipientId: row.care_recipient_id,
+        metadata: typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata,
+        similarity: Number(row.similarity),
+        createdAt: row.created_at,
+      }));
+    } catch (error) {
+      this.logger.error({ error }, 'Embedding search failed — table may not exist or pgvector not enabled');
+      return [];
+    }
   }
 
   /**
    * Delete embeddings for a specific resource (cleanup on delete).
    */
   async deleteByResource(resourceType: string, resourceId: string): Promise<void> {
-    await this.prisma.$executeRawUnsafe(
-      `DELETE FROM ai_embeddings WHERE resource_type = $1 AND resource_id = $2`,
-      resourceType,
-      resourceId,
-    );
+    try {
+      await this.prisma.$executeRawUnsafe(
+        `DELETE FROM "public"."ai_embeddings" WHERE resource_type = $1 AND resource_id = $2`,
+        resourceType,
+        resourceId,
+      );
+    } catch (error) {
+      this.logger.error({ error }, 'Failed to delete embedding by resource');
+    }
   }
 
   /**
    * Delete all embeddings for a family (e.g., family deleted).
    */
   async deleteByFamily(familyId: string): Promise<void> {
-    await this.prisma.$executeRawUnsafe(
-      `DELETE FROM ai_embeddings WHERE family_id = $1`,
-      familyId,
-    );
+    try {
+      await this.prisma.$executeRawUnsafe(
+        `DELETE FROM "public"."ai_embeddings" WHERE family_id = $1`,
+        familyId,
+      );
+    } catch (error) {
+      this.logger.error({ error }, 'Failed to delete embeddings by family');
+    }
   }
 }
