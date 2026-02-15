@@ -33,7 +33,6 @@ import {
   CheckCircle2,
   ChevronRight,
   ChevronDown,
-  Camera,
   Settings,
   RefreshCw,
   X,
@@ -42,6 +41,8 @@ import {
   UserPlus,
   Home,
   Check,
+  Sparkles,
+  Wand2,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -67,13 +68,18 @@ import { useUpcomingAppointments, useCreateAppointment } from '@/hooks/use-appoi
 import { useQuery } from '@tanstack/react-query';
 import { careRecipientsApi, CareRecipient } from '@/lib/api';
 import { useFamilySpace } from '@/contexts/family-space-context';
+import { CareSummaryCard } from '@/components/ai/care-summary-card';
+import { AskAiPanel } from '@/components/ai/ask-ai-panel';
+import { SmartEntryInput } from '@/components/ai/smart-entry-input';
+import type { ParsedTimelineEntry } from '@/lib/api/ai';
+import { CreateTimelineEntryInput } from '@/lib/api';
 
 // Quick actions with proper theme colors
 const quickActions = [
   { icon: Pill, label: 'Log Medication', action: 'medication', bgClass: 'bg-primary/15', textClass: 'text-primary', comingSoon: false },
   { icon: Calendar, label: 'Add Appointment', action: 'appointment', bgClass: 'bg-secondary/20', textClass: 'text-secondary-foreground', comingSoon: false },
   { icon: MessageCircle, label: 'Post Update', action: 'update', bgClass: 'bg-muted/20', textClass: 'text-muted-foreground', comingSoon: false },
-  { icon: Camera, label: 'Share Photo', action: 'photo', bgClass: 'bg-accent', textClass: 'text-accent-foreground', comingSoon: true },
+  { icon: Wand2, label: 'Smart Entry', action: 'smart-entry', bgClass: 'bg-emerald-500/15', textClass: 'text-emerald-700', comingSoon: false },
 ];
 
 const Dashboard = () => {
@@ -153,6 +159,8 @@ const Dashboard = () => {
   const [postUpdateOpen, setPostUpdateOpen] = useState(false);
   const [addCareRecipientOpen, setAddCareRecipientOpen] = useState(false);
   const [editCareRecipientOpen, setEditCareRecipientOpen] = useState(false);
+  const [askAiOpen, setAskAiOpen] = useState(false);
+  const [showSmartEntry, setShowSmartEntry] = useState(false);
 
   // Form states
   const [newTask, setNewTask] = useState({ title: '', time: '', type: 'appointment' });
@@ -172,9 +180,11 @@ const Dashboard = () => {
   // Get greeting based on time of day
   const getGreeting = () => {
     const hour = new Date().getHours();
+    if (hour < 5) return 'Good night';
     if (hour < 12) return 'Good morning';
     if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
+    if (hour < 21) return 'Good evening';
+    return 'Good night';
   };
 
   // Map alerts to display format
@@ -194,14 +204,19 @@ const Dashboard = () => {
   // Map timeline entries to recent updates
   const recentUpdates = useMemo(() => {
     if (!timelineData?.pages) return [];
-    const entries = timelineData.pages.flat();
-    return entries.slice(0, 5).map((entry: any) => ({
-      id: entry.id,
-      author: entry.createdBy?.fullName || 'Unknown',
-      message: entry.description || entry.title || 'Update',
-      time: new Date(entry.createdAt).toLocaleString(),
-      type: entry.type === 'MEDICAL_APPOINTMENT' || entry.type === 'VITAL_SIGN' ? 'medical' : 'update',
-    }));
+    const entries = timelineData.pages
+      .filter((page): page is any[] => Array.isArray(page))
+      .flat();
+    return entries
+      .filter((entry) => !!entry)
+      .slice(0, 5)
+      .map((entry: any) => ({
+        id: entry.id,
+        author: entry.createdBy?.fullName || 'Unknown',
+        message: entry.description || entry.title || 'Update',
+        time: new Date(entry.createdAt).toLocaleString(),
+        type: entry.type === 'MEDICAL_APPOINTMENT' || entry.type === 'VITAL_SIGN' ? 'medical' : 'update',
+      }));
   }, [timelineData]);
 
   // Map appointments to tasks
@@ -316,6 +331,33 @@ const Dashboard = () => {
     }
   };
 
+  const handleSmartEntryConfirm = (parsed: ParsedTimelineEntry) => {
+    if (!careRecipientId) return;
+
+    const entryData: CreateTimelineEntryInput = {
+      type: parsed.type,
+      title: parsed.title,
+      description: parsed.description,
+      severity: parsed.severity as any,
+    };
+
+    if (parsed.vitals) {
+      entryData.vitals = {
+        bloodPressure:
+          parsed.vitals.bloodPressureSystolic && parsed.vitals.bloodPressureDiastolic
+            ? `${parsed.vitals.bloodPressureSystolic}/${parsed.vitals.bloodPressureDiastolic}`
+            : undefined,
+        heartRate: parsed.vitals.heartRate,
+        temperature: parsed.vitals.temperature,
+        oxygenLevel: parsed.vitals.oxygenLevel,
+        bloodSugar: parsed.vitals.bloodSugar,
+      };
+    }
+
+    createTimelineEntry.mutate(entryData);
+    setShowSmartEntry(false);
+  };
+
   const handleQuickAction = (action: string) => {
     switch (action) {
       case 'medication':
@@ -327,8 +369,8 @@ const Dashboard = () => {
       case 'update':
         setPostUpdateOpen(true);
         break;
-      case 'photo':
-        toast('Photo sharing is coming soon! Stay tuned.', { icon: '📸', duration: 3000 });
+      case 'smart-entry':
+        setShowSmartEntry(true);
         break;
     }
   };
@@ -372,7 +414,7 @@ const Dashboard = () => {
 
   if (isLoading) {
     return (
-      <div className="container max-w-7xl mx-auto px-4 md:px-6">
+      <div className="container max-w-7xl mx-auto px-3 sm:px-4 md:px-6">
         <div className="space-y-6">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
             <div className="space-y-2">
@@ -405,7 +447,7 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="container max-w-7xl mx-auto px-4 md:px-6">
+    <div className="container max-w-7xl mx-auto px-3 sm:px-4 md:px-6">
       {/* Emergency Alert Banner */}
       <EmergencyAlertBanner
         alerts={alertsDisplay}
@@ -425,12 +467,12 @@ const Dashboard = () => {
           </h1>
           <p className="text-muted-foreground text-sm sm:text-lg truncate">{currentDate}</p>
         </div>
-        <div className="flex items-center gap-2 md:gap-3">
+        <div className="flex flex-wrap items-center gap-2 md:gap-3">
           <div className="relative">
             <Button
               variant="outline"
               size="icon"
-              className="relative border-border/60 hover:bg-accent hover:border-border rounded-xl h-11 w-11"
+              className="relative border-border/60 hover:bg-accent hover:border-border rounded-xl h-10 w-10 sm:h-11 sm:w-11"
               onClick={() => setShowNotifications(!showNotifications)}
             >
               <Bell className="w-5 h-5 text-muted-foreground" />
@@ -442,7 +484,7 @@ const Dashboard = () => {
             </Button>
 
             {showNotifications && (
-              <div className="absolute right-0 top-14 w-80 md:w-96 bg-card border border-border rounded-2xl shadow-xl z-50 p-5 animate-fade">
+              <div className="absolute right-0 top-14 w-[calc(100vw-2rem)] max-w-80 md:max-w-96 bg-card border border-border rounded-2xl shadow-xl z-50 p-4 sm:p-5 animate-fade">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-serif text-lg text-foreground">Notifications</h3>
                   <button
@@ -476,17 +518,29 @@ const Dashboard = () => {
             )}
           </div>
 
+          {careRecipientId && (
+            <Button
+              variant="outline"
+              size="icon"
+              className="border-sage/30 hover:bg-sage/10 hover:border-sage/50 rounded-xl h-10 w-10 sm:h-11 sm:w-11"
+              onClick={() => setAskAiOpen(true)}
+              title="Ask CareCircle AI"
+            >
+              <Sparkles className="w-5 h-5 text-sage" />
+            </Button>
+          )}
+
           <Link href="/settings">
-            <Button variant="outline" size="icon" className="border-border/60 hover:bg-accent hover:border-border rounded-xl h-11 w-11">
+            <Button variant="outline" size="icon" className="border-border/60 hover:bg-accent hover:border-border rounded-xl h-10 w-10 sm:h-11 sm:w-11">
               <Settings className="w-5 h-5 text-muted-foreground" />
             </Button>
           </Link>
 
           <Dialog open={addTaskOpen} onOpenChange={setAddTaskOpen}>
             <DialogTrigger asChild>
-              <Button className="rounded-xl h-11 px-5 shadow-sm">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Task
+              <Button className="rounded-xl h-10 sm:h-11 px-3 sm:px-5 shadow-sm">
+                <Plus className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Add Task</span>
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md rounded-2xl">
@@ -550,8 +604,8 @@ const Dashboard = () => {
           <div className="lg:col-span-2 space-y-6">
             {/* Loved One Card - Enhanced */}
             <div className="dashboard-card loved-one-card animate-fade-delay-1">
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-8">
-                <div className="flex items-center gap-5">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6 sm:mb-8">
+                <div className="flex items-center gap-3 sm:gap-5">
                   <div className="relative">
                     <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/30 to-secondary/20 flex items-center justify-center shadow-inner">
                       <Heart className="w-9 h-9 text-primary" />
@@ -580,7 +634,7 @@ const Dashboard = () => {
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {careRecipientId ? (
                     <>
                       <Button
@@ -617,17 +671,17 @@ const Dashboard = () => {
                   <button
                     key={index}
                     onClick={() => handleQuickAction(action.action)}
-                    className={`quick-action-btn flex flex-col items-center gap-3 p-5 rounded-2xl bg-background/60 hover:bg-background transition-all duration-200 border border-border/50 hover:border-primary/30 hover:shadow-md group relative ${action.comingSoon ? 'opacity-75' : ''}`}
+                    className={`quick-action-btn flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-5 rounded-2xl bg-background/60 hover:bg-background transition-all duration-200 border border-border/50 hover:border-primary/30 hover:shadow-md group relative ${action.comingSoon ? 'opacity-75' : ''}`}
                   >
                     {action.comingSoon && (
                       <div className="absolute -top-2 -right-2 z-10">
                         <ComingSoonBadge size="sm" showIcon={false} />
                       </div>
                     )}
-                    <div className={`w-12 h-12 rounded-xl ${action.bgClass} flex items-center justify-center transition-transform duration-200 group-hover:scale-110`}>
-                      <action.icon className={`w-5 h-5 ${action.textClass}`} />
+                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl ${action.bgClass} flex items-center justify-center transition-transform duration-200 group-hover:scale-110`}>
+                      <action.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${action.textClass}`} />
                     </div>
-                    <span className="text-sm font-medium text-foreground">{action.label}</span>
+                    <span className="text-xs sm:text-sm font-medium text-foreground text-center">{action.label}</span>
                   </button>
                 ))}
               </div>
@@ -635,14 +689,14 @@ const Dashboard = () => {
 
             {/* Today's Schedule - Enhanced */}
             <div className="dashboard-card animate-fade-delay-2">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-                    <Clock className="w-5 h-5 text-primary" />
+              <div className="flex items-center justify-between mb-6 gap-2">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
+                    <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                   </div>
-                  <div>
-                    <h2 className="font-serif text-xl text-foreground">Today's Schedule</h2>
-                    <p className="text-sm text-muted-foreground">
+                  <div className="min-w-0">
+                    <h2 className="font-serif text-lg sm:text-xl text-foreground truncate">Today's Schedule</h2>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
                       {tasks.filter(t => t.completed).length} of {tasks.length} completed
                     </p>
                   </div>
@@ -676,7 +730,7 @@ const Dashboard = () => {
                   tasks.map((task) => (
                     <div
                       key={task.id}
-                      className={`task-item flex items-center gap-4 p-4 rounded-xl border ${
+                      className={`task-item flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border ${
                         task.completed
                           ? 'bg-accent/30 border-transparent opacity-60'
                           : 'bg-background/50 border-border/50 hover:border-primary/20 hover:bg-accent/50'
@@ -716,16 +770,26 @@ const Dashboard = () => {
               </div>
             </div>
 
+            {/* Smart Entry (AI) */}
+            {showSmartEntry && careRecipientId && (
+              <div className="animate-fade-delay-3">
+                <SmartEntryInput
+                  onConfirm={handleSmartEntryConfirm}
+                  onCancel={() => setShowSmartEntry(false)}
+                />
+              </div>
+            )}
+
             {/* Recent Updates - Enhanced */}
             <div className="dashboard-card animate-fade-delay-3">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-secondary/20 flex items-center justify-center">
-                    <MessageCircle className="w-5 h-5 text-secondary-foreground" />
+              <div className="flex items-center justify-between mb-4 sm:mb-6 gap-2">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-secondary/20 flex items-center justify-center flex-shrink-0">
+                    <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-secondary-foreground" />
                   </div>
-                  <div>
-                    <h2 className="font-serif text-xl text-foreground">Recent Updates</h2>
-                    <p className="text-sm text-muted-foreground">From your care circle</p>
+                  <div className="min-w-0">
+                    <h2 className="font-serif text-lg sm:text-xl text-foreground truncate">Recent Updates</h2>
+                    <p className="text-xs sm:text-sm text-muted-foreground">From your care circle</p>
                   </div>
                 </div>
                 <Dialog open={postUpdateOpen} onOpenChange={setPostUpdateOpen}>
@@ -775,15 +839,15 @@ const Dashboard = () => {
                   recentUpdates.map((update, index) => (
                     <div
                       key={update.id}
-                      className={`p-4 rounded-xl bg-background/50 border border-border/50 hover:border-primary/20 transition-all hover:shadow-sm ${index === 0 ? 'ring-1 ring-primary/10' : ''}`}
+                      className={`p-3 sm:p-4 rounded-xl bg-background/50 border border-border/50 hover:border-primary/20 transition-all hover:shadow-sm ${index === 0 ? 'ring-1 ring-primary/10' : ''}`}
                     >
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center">
-                          <span className="text-sm font-semibold text-primary">
+                      <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center flex-shrink-0">
+                          <span className="text-xs sm:text-sm font-semibold text-primary">
                             {update.author.charAt(0)}
                           </span>
                         </div>
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <span className="font-medium text-foreground">{update.author}</span>
                           <p className="text-xs text-muted-foreground">{update.time}</p>
                         </div>
@@ -793,7 +857,7 @@ const Dashboard = () => {
                           </span>
                         )}
                       </div>
-                      <p className="text-foreground text-sm pl-13 leading-relaxed">{update.message}</p>
+                      <p className="text-foreground text-sm pl-[52px] leading-relaxed">{update.message}</p>
                     </div>
                   ))
                 )}
@@ -803,6 +867,14 @@ const Dashboard = () => {
 
           {/* Right Sidebar */}
           <div className="space-y-6">
+            {/* AI Care Summary */}
+            {careRecipientId && (
+              <CareSummaryCard
+                careRecipientId={careRecipientId}
+                careRecipientName={careRecipient?.preferredName || careRecipient?.fullName}
+              />
+            )}
+
             {/* Emergency Contacts */}
             <EmergencyContacts careRecipientId={careRecipientId} />
 
@@ -1024,6 +1096,16 @@ const Dashboard = () => {
           isOpen={editCareRecipientOpen}
           onClose={() => setEditCareRecipientOpen(false)}
           careRecipient={careRecipient}
+        />
+      )}
+
+      {/* Ask AI Panel */}
+      {careRecipientId && (
+        <AskAiPanel
+          careRecipientId={careRecipientId}
+          careRecipientName={careRecipient?.preferredName || careRecipient?.fullName}
+          isOpen={askAiOpen}
+          onClose={() => setAskAiOpen(false)}
         />
       )}
     </div>

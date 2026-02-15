@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException, Inject, forwardRef, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Inject, forwardRef, Logger, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheService, CACHE_KEYS, CACHE_TTL } from '../system/module/cache';
@@ -8,6 +8,7 @@ import { CreateAppointmentDto, RecurrencePattern } from './dto/create-appointmen
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
 import { AssignTransportDto } from './dto/assign-transport.dto';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EmbeddingIndexerService } from '../ai/services/embedding-indexer.service';
 import { addMonths, startOfDay, endOfDay, format, addMinutes, differenceInMinutes } from 'date-fns';
 import { RRule, RRuleSet, Frequency } from 'rrule';
 
@@ -22,6 +23,7 @@ export class AppointmentsService {
     private eventPublisher: EventPublisherService,
     @Inject(forwardRef(() => NotificationsService))
     private notifications: NotificationsService,
+    @Optional() private embeddingIndexer?: EmbeddingIndexerService,
   ) {}
 
   private async verifyAccess(careRecipientId: string, userId: string) {
@@ -74,6 +76,9 @@ export class AppointmentsService {
 
     // Invalidate cache
     await this.invalidateAppointmentCache(careRecipientId);
+
+    // Index for AI search (non-blocking)
+    this.embeddingIndexer?.indexAppointment(appointment).catch(() => {});
 
     // Get care recipient for family info
     const careRecipient = await this.prisma.careRecipient.findUnique({

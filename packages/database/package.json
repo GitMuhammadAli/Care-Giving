@@ -12,7 +12,8 @@
     "migrate": "npx prisma migrate dev",
     "migrate:deploy": "npx prisma migrate deploy",
     "seed": "ts-node prisma/seed.ts",
-    "seed:admin": "ts-node prisma/seed-admin.ts"
+    "seed:admin": "ts-node prisma/seed-admin.ts",
+    "seed:demo": "ts-node prisma/seed-demo.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

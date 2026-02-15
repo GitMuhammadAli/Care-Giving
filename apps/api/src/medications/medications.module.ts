@@ -8,9 +8,10 @@ import {
   GlobalInteractionsController,
 } from './medications.controller';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { AiModule } from '../ai/ai.module';
 
 @Module({
-  imports: [forwardRef(() => NotificationsModule)],
+  imports: [forwardRef(() => NotificationsModule), AiModule],
   controllers: [
     MedicationsController, 
     MedicationLogsController,

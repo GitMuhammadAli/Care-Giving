@@ -327,27 +327,28 @@ function FamilyContent() {
                 return (
                   <div key={member.id}>
                     <Card variant="interactive">
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-wrap sm:flex-nowrap">
                         <Avatar
                           name={member.user.fullName}
                           size="lg"
                           showStatus={false}
+                          className="flex-shrink-0"
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <h4 className="font-semibold text-text-primary truncate">
+                            <h4 className="font-semibold text-text-primary text-sm sm:text-base truncate">
                               {member.user.fullName}
                             </h4>
                             {isCurrentUser && (
                               <span className="text-xs text-text-tertiary">(You)</span>
                             )}
                           </div>
-                          <p className="text-sm text-text-secondary truncate">{member.user.email}</p>
+                          <p className="text-xs sm:text-sm text-text-secondary truncate">{member.user.email}</p>
                           <p className="text-xs text-text-tertiary mt-0.5">
                             Joined {new Date(member.joinedAt).toLocaleDateString()}
                           </p>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
                           <Badge className={role.color}>
                             <RoleIcon className="w-3.5 h-3.5 mr-1" />
                             {role.label}
@@ -368,7 +369,7 @@ function FamilyContent() {
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, y: -10 }}
                                     transition={{ duration: 0.15 }}
-                                    className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-border-default z-50 overflow-hidden"
+                                    className="absolute right-0 mt-2 w-[calc(100vw-3rem)] max-w-64 bg-white rounded-xl shadow-lg border border-border-default z-50 overflow-hidden"
                                   >
                                     <div className="py-1">
                                       <button
@@ -441,13 +442,13 @@ function FamilyContent() {
             <div className="space-y-3">
               {invitations.map((invite) => (
                 <Card key={invite.id} variant="highlighted">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-accent-warm-light flex items-center justify-center">
-                      <Mail className="w-6 h-6 text-accent-warm" />
+                  <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-wrap sm:flex-nowrap">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-accent-warm-light flex items-center justify-center flex-shrink-0">
+                      <Mail className="w-5 h-5 sm:w-6 sm:h-6 text-accent-warm" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-text-primary">{invite.email}</h4>
-                      <p className="text-sm text-text-secondary">
+                      <h4 className="font-medium text-text-primary text-sm sm:text-base truncate">{invite.email}</h4>
+                      <p className="text-xs sm:text-sm text-text-secondary">
                         Invited as {roleConfig[invite.role as keyof typeof roleConfig].label}
                       </p>
                       <p className="text-xs text-text-tertiary mt-0.5">
@@ -455,7 +456,7 @@ function FamilyContent() {
                         Sent {new Date(invite.createdAt).toLocaleDateString()}
                       </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-shrink-0">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -489,14 +490,14 @@ function FamilyContent() {
               Danger Zone
             </h3>
             <Card className="border-error/30 bg-error/5">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-error/10 flex items-center justify-center">
-                    <Trash2 className="w-6 h-6 text-error" />
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-error/10 flex items-center justify-center flex-shrink-0">
+                    <Trash2 className="w-5 h-5 sm:w-6 sm:h-6 text-error" />
                   </div>
-                  <div>
-                    <h4 className="font-semibold text-text-primary">Delete Family</h4>
-                    <p className="text-sm text-text-secondary">
+                  <div className="min-w-0">
+                    <h4 className="font-semibold text-text-primary text-sm sm:text-base">Delete Family</h4>
+                    <p className="text-xs sm:text-sm text-text-secondary">
                       Permanently delete this family and all its data
                     </p>
                   </div>

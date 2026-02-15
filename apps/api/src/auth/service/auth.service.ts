@@ -4,6 +4,7 @@ import {
   ConflictException,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -13,6 +14,7 @@ import { randomBytes, timingSafeEqual } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MailService } from '../../system/module/mail/mail.service';
 import { CacheService, CACHE_KEYS, CACHE_TTL } from '../../system/module/cache';
+import { isDemoUser } from '../../system/constants/demo.constant';
 import { RegisterDto } from '../dto/register.dto';
 import { LoginDto } from '../dto/login.dto';
 import { AuthEvent } from '@prisma/client';
@@ -387,6 +389,13 @@ export class AuthService {
       throw new BadRequestException(AUTH_MESSAGES.RESET_TOKEN_INVALID);
     }
 
+    // Block demo account from resetting password
+    if (isDemoUser(user.email)) {
+      throw new ForbiddenException(
+        'The demo account password cannot be reset. Please register your own account.',
+      );
+    }
+
     const passwordHash = await bcrypt.hash(newPassword, 12);
 
     await this.prisma.user.update({
@@ -421,6 +430,13 @@ export class AuthService {
 
     if (!user) {
       throw new NotFoundException(AUTH_MESSAGES.USER_NOT_FOUND);
+    }
+
+    // Block demo account from changing password
+    if (isDemoUser(user.email)) {
+      throw new ForbiddenException(
+        'The demo account password cannot be changed. Please register your own account.',
+      );
     }
 
     const isPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
@@ -509,6 +525,14 @@ export class AuthService {
   }
 
   async updateProfile(userId: string, dto: { fullName?: string; phone?: string; timezone?: string; avatarUrl?: string }) {
+    // Block demo account from profile changes
+    const existing = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+    if (existing && isDemoUser(existing.email)) {
+      throw new ForbiddenException(
+        'The demo account profile cannot be modified. Please register your own account.',
+      );
+    }
+
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: {

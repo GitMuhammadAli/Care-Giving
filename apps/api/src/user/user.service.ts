@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { isDemoUser } from '../system/constants/demo.constant';
 import * as bcrypt from 'bcrypt';
 
 export interface DataExport {
@@ -46,6 +47,8 @@ export class UserService {
     avatarUrl?: string;
     preferences?: any;
   }) {
+    await this.assertNotDemoUser(userId);
+
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -70,6 +73,8 @@ export class UserService {
   }
 
   async deactivateAccount(userId: string) {
+    await this.assertNotDemoUser(userId);
+
     await this.prisma.user.update({
       where: { id: userId },
       data: { status: 'DEACTIVATED' },
@@ -309,6 +314,8 @@ export class UserService {
    * This is a soft delete that anonymizes data
    */
   async deleteUserData(userId: string): Promise<{ success: boolean; deletedAt: string }> {
+    await this.assertNotDemoUser(userId);
+
     this.logger.warn(`Starting data deletion for user ${userId}`);
 
     // Anonymize user data
@@ -360,8 +367,24 @@ export class UserService {
       deletedAt: new Date().toISOString(),
     };
   }
+
+  // ──────────────────────────────────────────
+  // Demo user protection (defense-in-depth)
+  // ──────────────────────────────────────────
+
+  /**
+   * Throws ForbiddenException if the user is the demo account.
+   * Called before any profile/account mutation.
+   */
+  private async assertNotDemoUser(userId: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+    if (user && isDemoUser(user.email)) {
+      throw new ForbiddenException(
+        'The demo account cannot be modified. Please register your own account.',
+      );
+    }
+  }
 }
-
-
-
-

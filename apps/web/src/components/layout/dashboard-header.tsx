@@ -165,7 +165,7 @@ export function DashboardHeader({ className, currentUser }: DashboardHeaderProps
               </button>
 
               {userMenuOpen && (
-                <div className="absolute right-0 top-12 w-64 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden animate-fade">
+                <div className="absolute right-0 top-12 w-[calc(100vw-2rem)] max-w-64 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden animate-fade">
                   {/* User Info */}
                   <div className="p-4 border-b border-border bg-accent">
                     <p className="font-bold text-foreground truncate">{user?.fullName || 'User'}</p>

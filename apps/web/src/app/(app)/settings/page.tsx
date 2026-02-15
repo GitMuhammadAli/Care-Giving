@@ -221,8 +221,8 @@ export default function SettingsPage() {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-6"
           >
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
+            <Card className="p-4 sm:p-6">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-6">
                 <div>
                   <h2 className="text-lg font-semibold text-text-primary">Personal Information</h2>
                   <p className="text-sm text-text-secondary mt-1">Update your account details</p>
@@ -441,7 +441,7 @@ export default function SettingsPage() {
             </Card>
 
             {/* Notification Channels */}
-            <Card className="p-6">
+            <Card className="p-4 sm:p-6">
               <h2 className="text-lg font-semibold text-text-primary mb-6">Notification Channels</h2>
               
               {prefsLoading ? (

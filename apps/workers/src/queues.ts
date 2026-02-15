@@ -116,6 +116,31 @@ export const deadLetterQueue = createQueue<DeadLetterJob>(
   QUEUE_NAMES.DEAD_LETTER
 );
 
+// AI Queues
+export interface AiSummaryJob {
+  careRecipientId: string;
+  familyId: string;
+  type: 'daily' | 'weekly';
+}
+
+export interface AiEmbeddingJob {
+  content: string;
+  resourceType: string;
+  resourceId: string;
+  familyId: string;
+  careRecipientId?: string;
+  metadata?: Record<string, any>;
+  action: 'upsert' | 'delete';
+}
+
+export const aiSummaryQueue = createQueue<AiSummaryJob>(
+  QUEUE_NAMES.AI_SUMMARIES
+);
+
+export const aiEmbeddingQueue = createQueue<AiEmbeddingJob>(
+  QUEUE_NAMES.AI_EMBEDDINGS
+);
+
 // ============================================================================
 // HELPER: MOVE TO DLQ
 // ============================================================================
@@ -168,6 +193,8 @@ const queues = [
   notificationQueue,
   refillAlertQueue,
   deadLetterQueue,
+  aiSummaryQueue,
+  aiEmbeddingQueue,
 ];
 
 export async function closeAllQueues(): Promise<void> {

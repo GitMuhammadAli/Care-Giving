@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Logger, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../system/module/storage/storage.service';
 import { EventPublisherService } from '../events/publishers/event-publisher.service';
 import { ROUTING_KEYS } from '../events/events.constants';
+import { EmbeddingIndexerService } from '../ai/services/embedding-indexer.service';
 
 @Injectable()
 export class DocumentsService {
@@ -14,6 +15,7 @@ export class DocumentsService {
     private storageService: StorageService,
     private eventEmitter: EventEmitter2,
     private eventPublisher: EventPublisherService,
+    @Optional() private embeddingIndexer?: EmbeddingIndexerService,
   ) {}
 
   private async verifyFamilyAccess(familyId: string, userId: string) {
@@ -91,6 +93,15 @@ export class DocumentsService {
       uploadedBy: uploader,
       familyId,
     });
+
+    // Index for AI search (non-blocking)
+    this.embeddingIndexer?.indexDocument({
+      id: document.id,
+      name: document.name,
+      type: document.type,
+      notes: dto.notes,
+      familyId,
+    }).catch(() => {});
 
     return document;
   }
