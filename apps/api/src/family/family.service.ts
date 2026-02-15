@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { isDemoUser } from '../system/constants/demo.constant';
 import { MailService } from '../system/module/mail/mail.service';
 import { CacheService, CACHE_KEYS, CACHE_TTL } from '../system/module/cache';
 import { EventPublisherService } from '../events/publishers/event-publisher.service';
@@ -490,6 +491,13 @@ export class FamilyService {
       throw new NotFoundException('Member not found');
     }
 
+    // Block removal of the demo user from their family
+    if (isDemoUser(member.user?.email)) {
+      throw new ForbiddenException(
+        'The demo user cannot be removed from their family.',
+      );
+    }
+
     if (member.role === 'ADMIN') {
       const adminCount = await this.prisma.familyMember.count({
         where: { familyId, role: 'ADMIN' },
@@ -640,11 +648,18 @@ export class FamilyService {
     // Verify user is admin of this family
     const admin = await this.prisma.familyMember.findUnique({
       where: { familyId_userId: { familyId, userId: adminId } },
-      include: { user: { select: { fullName: true } } },
+      include: { user: { select: { fullName: true, email: true } } },
     });
 
     if (!admin || admin.role !== 'ADMIN') {
       throw new ForbiddenException('Only admins can delete the family');
+    }
+
+    // Block demo account from deleting its family
+    if (isDemoUser(admin.user?.email)) {
+      throw new ForbiddenException(
+        'The demo family cannot be deleted. Please register your own account to create and manage families.',
+      );
     }
 
     // Get family info
@@ -706,6 +721,13 @@ export class FamilyService {
 
     if (!member) {
       throw new NotFoundException('Member not found in this family');
+    }
+
+    // Block password reset for the demo user
+    if (isDemoUser(member.user?.email)) {
+      throw new ForbiddenException(
+        'The demo account password cannot be reset. Please register your own account.',
+      );
     }
 
     // Generate temporary password

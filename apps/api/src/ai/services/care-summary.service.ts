@@ -228,13 +228,35 @@ Respond in JSON:
     }
   }
 
+  /**
+   * Converts raw database records into a human-readable text block for the LLM.
+   * Caps timeline entries at 20 and medication logs at 15 to stay within token limits.
+   */
   private buildDayContext(
-    name: string,
-    dateStr: string,
-    timelineEntries: any[],
-    medicationLogs: any[],
-    appointments: any[],
-    shifts: any[],
+    _name: string,
+    _dateStr: string,
+    timelineEntries: Array<{
+      occurredAt: Date;
+      type: string;
+      title: string;
+      description?: string | null;
+      createdBy?: { fullName: string } | null;
+    }>,
+    medicationLogs: Array<{
+      status: string;
+      medication?: { name: string; dosage: string } | null;
+      givenBy?: { fullName: string } | null;
+    }>,
+    appointments: Array<{
+      title: string;
+      status: string;
+      doctor?: { name: string; specialty?: string | null } | null;
+    }>,
+    shifts: Array<{
+      status: string;
+      checkedInAt?: Date | null;
+      caregiver?: { fullName: string } | null;
+    }>,
   ): string {
     const parts: string[] = [];
 

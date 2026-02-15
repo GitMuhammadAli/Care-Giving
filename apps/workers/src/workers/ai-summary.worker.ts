@@ -84,8 +84,9 @@ Data:
 
 Respond in JSON with keys: summary (string), highlights (string[]), concerns (string[])`;
 
+  const modelName = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
   const model = ai.getGenerativeModel({
-    model: 'gemini-2.0-flash',
+    model: modelName,
     generationConfig: {
       responseMimeType: 'application/json',
       responseSchema: {
@@ -104,7 +105,25 @@ Respond in JSON with keys: summary (string), highlights (string[]), concerns (st
   const result = await model.generateContent(prompt);
   const text = result.response.text();
 
-  jobLogger.info({ careRecipientId, type, resultLength: text.length }, 'Summary generated');
+  // Parse the result to validate it's valid JSON
+  try {
+    const parsed = JSON.parse(text);
+    jobLogger.info(
+      {
+        careRecipientId,
+        type,
+        resultLength: text.length,
+        highlightsCount: parsed.highlights?.length || 0,
+        concernsCount: parsed.concerns?.length || 0,
+      },
+      'Summary generated successfully',
+    );
+  } catch {
+    jobLogger.warn(
+      { careRecipientId, type, resultLength: text.length },
+      'Summary generated but response was not valid JSON',
+    );
+  }
 }
 
 // ============================================================================

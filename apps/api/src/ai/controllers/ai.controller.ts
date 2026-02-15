@@ -5,18 +5,33 @@ import {
   Body,
   Param,
   Query,
-  UseGuards,
   HttpCode,
   HttpStatus,
-  BadRequestException,
+  UnauthorizedException,
+  ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { CareSummaryService } from '../services/care-summary.service';
 import { SmartEntryService, ParsedTimelineEntry } from '../services/smart-entry.service';
 import { RagService, RagAnswer } from '../services/rag.service';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { CurrentUser, CurrentUserPayload } from '../../common/decorators/current-user.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ParseSmartEntryDto } from '../dto/parse-smart-entry.dto';
+import { AskQuestionDto } from '../dto/ask-question.dto';
 
+/**
+ * AI Controller
+ *
+ * Rate limits:
+ * - Summaries: 5 per minute (they call Gemini and are expensive)
+ * - Smart Entry: 10 per minute
+ * - RAG Ask: 8 per minute (embedding + Gemini text)
+ *
+ * Gemini free tier allows 15 RPM total, so these limits protect against
+ * a single user exhausting the quota for everyone.
+ */
 @ApiTags('AI')
 @ApiBearerAuth()
 @Controller('ai')
@@ -33,11 +48,14 @@ export class AiController {
   // ═══════════════════════════════════════════════════════════════
 
   @Get('summary/daily/:careRecipientId')
+  @Throttle({ short: { ttl: 60000, limit: 5 } })
   @ApiOperation({ summary: 'Generate daily care summary' })
+  @ApiParam({ name: 'careRecipientId', description: 'Care recipient ID' })
+  @ApiQuery({ name: 'date', required: false, description: 'Date (YYYY-MM-DD), defaults to today' })
   async getDailySummary(
     @Param('careRecipientId') careRecipientId: string,
     @Query('date') dateStr?: string,
-    @CurrentUser() user?: any,
+    @CurrentUser() user?: CurrentUserPayload,
   ) {
     await this.verifyAccess(careRecipientId, user?.id);
     const date = dateStr ? new Date(dateStr) : new Date();
@@ -45,11 +63,14 @@ export class AiController {
   }
 
   @Get('summary/weekly/:careRecipientId')
+  @Throttle({ short: { ttl: 60000, limit: 5 } })
   @ApiOperation({ summary: 'Generate weekly care summary' })
+  @ApiParam({ name: 'careRecipientId', description: 'Care recipient ID' })
+  @ApiQuery({ name: 'date', required: false, description: 'Date within the week (YYYY-MM-DD), defaults to this week' })
   async getWeeklySummary(
     @Param('careRecipientId') careRecipientId: string,
     @Query('date') dateStr?: string,
-    @CurrentUser() user?: any,
+    @CurrentUser() user?: CurrentUserPayload,
   ) {
     await this.verifyAccess(careRecipientId, user?.id);
     const date = dateStr ? new Date(dateStr) : new Date();
@@ -61,18 +82,13 @@ export class AiController {
   // ═══════════════════════════════════════════════════════════════
 
   @Post('smart-entry/parse')
+  @Throttle({ short: { ttl: 60000, limit: 10 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Parse natural language into a structured timeline entry' })
   async parseSmartEntry(
-    @Body() body: { text: string },
+    @Body() dto: ParseSmartEntryDto,
   ): Promise<ParsedTimelineEntry> {
-    if (!body.text || body.text.trim().length === 0) {
-      throw new BadRequestException('Text is required');
-    }
-    if (body.text.length > 2000) {
-      throw new BadRequestException('Text must be under 2000 characters');
-    }
-    return this.smartEntryService.parseNaturalLanguage(body.text.trim());
+    return this.smartEntryService.parseNaturalLanguage(dto.text.trim());
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -80,25 +96,19 @@ export class AiController {
   // ═══════════════════════════════════════════════════════════════
 
   @Post('ask')
+  @Throttle({ short: { ttl: 60000, limit: 8 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Ask a question about care history (RAG)' })
   async askQuestion(
-    @Body() body: { question: string; careRecipientId: string },
-    @CurrentUser() user?: any,
+    @Body() dto: AskQuestionDto,
+    @CurrentUser() user?: CurrentUserPayload,
   ): Promise<RagAnswer> {
-    if (!body.question || body.question.trim().length === 0) {
-      throw new BadRequestException('Question is required');
-    }
-    if (body.question.length > 500) {
-      throw new BadRequestException('Question must be under 500 characters');
-    }
-
-    const careRecipient = await this.verifyAccess(body.careRecipientId, user?.id);
+    const careRecipient = await this.verifyAccess(dto.careRecipientId, user?.id);
 
     return this.ragService.ask({
-      question: body.question.trim(),
+      question: dto.question.trim(),
       familyId: careRecipient.familyId,
-      careRecipientId: body.careRecipientId,
+      careRecipientId: dto.careRecipientId,
     });
   }
 
@@ -107,7 +117,9 @@ export class AiController {
   // ═══════════════════════════════════════════════════════════════
 
   private async verifyAccess(careRecipientId: string, userId?: string) {
-    if (!userId) throw new BadRequestException('User not authenticated');
+    if (!userId) {
+      throw new UnauthorizedException('Authentication required');
+    }
 
     const careRecipient = await this.prisma.careRecipient.findUnique({
       where: { id: careRecipientId },
@@ -115,10 +127,10 @@ export class AiController {
     });
 
     if (!careRecipient) {
-      throw new BadRequestException('Care recipient not found');
+      throw new NotFoundException('Care recipient not found');
     }
 
-    // Verify user is a member of this family
+    // Verify user is an active member of this family
     const membership = await this.prisma.familyMember.findFirst({
       where: {
         familyId: careRecipient.familyId,
@@ -128,7 +140,7 @@ export class AiController {
     });
 
     if (!membership) {
-      throw new BadRequestException('Access denied');
+      throw new ForbiddenException('You do not have access to this care recipient');
     }
 
     return careRecipient;

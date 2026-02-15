@@ -45,6 +45,7 @@ import {
 
 import { Public } from "../../system/decorator/public.decorator";
 import { JwtAuthGuard } from "../../system/guard/jwt-auth.guard";
+import { DemoUserGuard } from "../../system/guard/demo-user.guard";
 import { GetUser } from "../../system/decorator/current-user.decorator";
 import { CurrentUser } from "../../system/helper/context.helper";
 
@@ -299,7 +300,7 @@ Now all protected endpoints will use this token automatically.
   }
 
   @Post("change-password")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, DemoUserGuard)
   @ApiBearerAuth("JWT-auth")
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: "Change password (authenticated)" })
@@ -359,12 +360,12 @@ Now all protected endpoints will use this token automatically.
   }
 
   @Patch("me")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, DemoUserGuard)
   @ApiBearerAuth("JWT-auth")
   @ApiOperation({
     summary: "Update current user profile",
     description:
-      "Updates the authenticated user's profile. Requires valid JWT token.",
+      "Updates the authenticated user's profile. Requires valid JWT token. Blocked for the demo account.",
   })
   @ApiResponse({
     status: 200,

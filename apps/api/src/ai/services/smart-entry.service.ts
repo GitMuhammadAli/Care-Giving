@@ -29,10 +29,10 @@ export class SmartEntryService {
    */
   async parseNaturalLanguage(text: string): Promise<ParsedTimelineEntry> {
     if (!this.geminiService.enabled) {
-      // Fallback: create a basic NOTE entry
+      // Fallback: create a basic NOTE entry when AI is not configured
       return {
         type: 'NOTE',
-        title: text.slice(0, 60),
+        title: text.slice(0, 100),
         description: text,
         severity: 'LOW',
       };
@@ -92,10 +92,10 @@ Rules:
 
       return result;
     } catch (error) {
-      this.logger.error({ error }, 'Failed to parse natural language entry');
+      this.logger.error({ error }, 'Failed to parse natural language entry — falling back to NOTE');
       return {
         type: 'NOTE',
-        title: text.slice(0, 60),
+        title: text.slice(0, 100),
         description: text,
         severity: 'LOW',
       };

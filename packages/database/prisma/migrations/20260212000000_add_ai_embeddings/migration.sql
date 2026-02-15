@@ -19,6 +19,9 @@ CREATE TABLE "ai_embeddings" (
 -- Index for filtering by family (security: scoped queries)
 CREATE INDEX "idx_embeddings_family" ON "ai_embeddings"("family_id");
 
+-- Index for filtering by care recipient (RAG queries scoped to a specific person)
+CREATE INDEX "idx_embeddings_care_recipient" ON "ai_embeddings"("care_recipient_id") WHERE "care_recipient_id" IS NOT NULL;
+
 -- Index for resource lookups (update/delete on source change)
 CREATE INDEX "idx_embeddings_resource" ON "ai_embeddings"("resource_type", "resource_id");
 

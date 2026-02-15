@@ -8,6 +8,7 @@ import {
   Res,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -21,6 +22,8 @@ import { Throttle } from '@nestjs/throttler';
 import { UserService } from './user.service';
 import { GetUser } from '../system/decorator/current-user.decorator';
 import { CurrentUser } from '../system/helper/context.helper';
+import { JwtAuthGuard } from '../system/guard/jwt-auth.guard';
+import { DemoUserGuard } from '../system/guard/demo-user.guard';
 
 @ApiTags('User')
 @ApiBearerAuth('JWT-auth')
@@ -57,9 +60,10 @@ export class UserController {
    * Update notification preferences
    */
   @Patch('preferences/notifications')
+  @UseGuards(JwtAuthGuard, DemoUserGuard)
   @ApiOperation({
     summary: 'Update notification preferences',
-    description: 'Updates the user notification preferences.',
+    description: 'Updates the user notification preferences. Blocked for the demo account.',
   })
   @ApiResponse({ status: 200, description: 'Preferences updated successfully' })
   async updateNotificationPreferences(
@@ -117,11 +121,12 @@ export class UserController {
    * GDPR Data Deletion - Request account deletion
    */
   @Delete('delete-account')
+  @UseGuards(JwtAuthGuard, DemoUserGuard)
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 1, ttl: 86400000 } }) // 1 per day
   @ApiOperation({
     summary: 'Delete user account and data (GDPR)',
-    description: 'Permanently deletes the user account and anonymizes all associated data. This action cannot be undone.',
+    description: 'Permanently deletes the user account and anonymizes all associated data. This action cannot be undone. Blocked for the demo account.',
   })
   @ApiResponse({ status: 200, description: 'Account deletion initiated' })
   @ApiResponse({ status: 429, description: 'Too many deletion requests' })

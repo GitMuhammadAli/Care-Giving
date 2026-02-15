@@ -37,7 +37,8 @@ async function generateEmbedding(text: string): Promise<number[]> {
   const ai = getGenAI();
   if (!ai) throw new Error('GEMINI_API_KEY not configured');
 
-  const model = ai.getGenerativeModel({ model: 'gemini-embedding-001' });
+  const embeddingModel = process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-001';
+  const model = ai.getGenerativeModel({ model: embeddingModel });
   const result = await model.embedContent(text);
   return result.embedding.values;
 }
