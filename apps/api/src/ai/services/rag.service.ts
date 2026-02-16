@@ -55,6 +55,8 @@ export class RagService {
 
     try {
       // 1. Search for relevant context
+      this.logger.log({ question, familyId, careRecipientId }, 'RAG: starting search');
+
       const results = await this.embeddingService.search({
         query: question,
         familyId,
@@ -62,12 +64,18 @@ export class RagService {
         limit: 10,
       });
 
+      this.logger.log(
+        { totalResults: results.length, topSimilarity: results[0]?.similarity },
+        'RAG: search complete',
+      );
+
       // Filter out very low similarity results (noise)
       const relevantResults = results.filter(
         (r) => (r.similarity ?? 0) >= MIN_CONTEXT_SIMILARITY,
       );
 
       if (relevantResults.length === 0) {
+        this.logger.log('RAG: no relevant results above threshold');
         return {
           answer:
             "I don't have enough care records to answer this question yet. " +
@@ -91,6 +99,11 @@ export class RagService {
           similarity: Math.round((r.similarity ?? 0) * 100) / 100,
         }));
 
+      this.logger.log(
+        { relevantCount: relevantResults.length, sourceCount: sources.length, contextLength: context.length },
+        'RAG: context built, calling Gemini for answer',
+      );
+
       // 3. Generate answer using Gemini
       const systemPrompt = `You are CareCircle AI, a helpful assistant for family caregivers.
 Answer the question using ONLY the provided context from the family's care records.
@@ -104,16 +117,25 @@ Do not make up information that is not in the provided context.`;
 
       try {
         const answer = await this.geminiService.generateText(prompt, systemPrompt);
+        this.logger.log({ answerLength: answer.length }, 'RAG: Gemini answered successfully');
         return { answer, sources };
       } catch (genError) {
         // Gemini text generation failed (rate limit, timeout, etc.)
-        // Return a context-based fallback instead of a generic error
-        this.logger.warn({ error: genError }, 'Gemini text generation failed for RAG — using fallback');
+        // Return a context-based fallback showing the actual records found
+        const errMsg = genError instanceof Error ? genError.message : String(genError);
+        this.logger.warn(
+          { error: errMsg, relevantCount: relevantResults.length },
+          'RAG: Gemini text generation failed — returning context fallback',
+        );
         const fallbackAnswer = this.buildFallbackAnswer(question, relevantResults);
         return { answer: fallbackAnswer, sources };
       }
     } catch (error) {
-      this.logger.error({ error }, 'RAG pipeline failed (search or embedding)');
+      const errMsg = error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        { error: errMsg },
+        'RAG: pipeline failed (search or embedding generation)',
+      );
       return {
         answer:
           "I'm having trouble searching care records right now. " +

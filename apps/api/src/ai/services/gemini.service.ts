@@ -4,7 +4,22 @@ import {
   GoogleGenerativeAI,
   GenerativeModel,
   SchemaType,
+  HarmCategory,
+  HarmBlockThreshold,
 } from '@google/generative-ai';
+
+/**
+ * Safety settings for CareCircle's healthcare context.
+ * Medical terms (blood pressure, medications, symptoms) can trigger
+ * Gemini's default safety filters. We use BLOCK_ONLY_HIGH to allow
+ * legitimate healthcare content while still blocking truly harmful output.
+ */
+const CARE_SAFETY_SETTINGS = [
+  { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+  { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+  { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+  { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+];
 
 @Injectable()
 export class GeminiService implements OnModuleInit {
@@ -29,7 +44,10 @@ export class GeminiService implements OnModuleInit {
     }
 
     this.genAI = new GoogleGenerativeAI(apiKey);
-    this.textModel = this.genAI.getGenerativeModel({ model: this.modelName });
+    this.textModel = this.genAI.getGenerativeModel({
+      model: this.modelName,
+      safetySettings: CARE_SAFETY_SETTINGS,
+    });
     this.isEnabled = true;
     this.logger.log(
       `Gemini AI initialized (text: ${this.modelName}, embedding: ${this.embeddingModelName})`,
@@ -51,7 +69,11 @@ export class GeminiService implements OnModuleInit {
     this.assertEnabled();
 
     const model = systemInstruction
-      ? this.genAI!.getGenerativeModel({ model: this.modelName, systemInstruction })
+      ? this.genAI!.getGenerativeModel({
+          model: this.modelName,
+          systemInstruction,
+          safetySettings: CARE_SAFETY_SETTINGS,
+        })
       : this.textModel!;
 
     try {
@@ -83,6 +105,7 @@ export class GeminiService implements OnModuleInit {
           properties: schema,
         },
       },
+      safetySettings: CARE_SAFETY_SETTINGS,
       ...(systemInstruction ? { systemInstruction } : {}),
     });
 
@@ -166,6 +189,14 @@ export class GeminiService implements OnModuleInit {
       return new Error(
         `Gemini API key is invalid or has been revoked. ` +
         'Check the key at https://aistudio.google.com/apikey',
+      );
+    }
+
+    if (message.includes('SAFETY') || message.includes('blocked')) {
+      this.logger.warn(`Gemini response blocked by safety filter during ${operation}`);
+      return new Error(
+        `Gemini response was blocked by safety filters during ${operation}. ` +
+        'This can happen with medical/health content. The safety settings have been relaxed for healthcare context.',
       );
     }
 
