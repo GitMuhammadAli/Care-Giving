@@ -94,8 +94,8 @@ export default function ChatPage() {
 
   return (
     <div className="h-full w-full flex flex-col overflow-hidden">
-      {/* Header with Context Selector */}
-      <header className="flex-shrink-0 bg-background/80 backdrop-blur-md px-3 sm:px-6 py-2.5 sm:py-3 border-b border-border">
+      {/* Header with Context Selector — z-20 so dropdowns appear above chat */}
+      <header className="flex-shrink-0 bg-background/80 backdrop-blur-md px-3 sm:px-6 py-2.5 sm:py-3 border-b border-border relative z-20">
         <div className="flex items-center justify-between gap-2 sm:gap-4">
           <div className="flex-1 min-w-0">
             <h1 className="font-semibold text-lg sm:text-xl text-foreground truncate">Family Chat</h1>
