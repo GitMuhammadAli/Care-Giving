@@ -13,8 +13,7 @@ import * as Sentry from '@sentry/node';
 import { AppModule } from './app.module';
 import { setupSwagger } from './swagger';
 import { ContextHelper } from './system/helper/context.helper';
-import { LoggingInterceptor } from './system/interceptor';
-import { LoggingService } from './system/module/logging';
+// LoggingInterceptor is registered globally via APP_INTERCEPTOR in AppModule — not here
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -123,9 +122,8 @@ async function bootstrap() {
     }
   }
 
-  // Global logging interceptor for request/response logging
-  const loggingService = app.get(LoggingService);
-  app.useGlobalInterceptors(new LoggingInterceptor(loggingService));
+  // LoggingInterceptor is already registered globally via APP_INTERCEPTOR in AppModule.
+  // Do NOT register it again here — duplicate registration causes every request to be logged twice.
 
   // Enable graceful shutdown
   app.enableShutdownHooks();

@@ -20,8 +20,11 @@ export function useDailySummary(careRecipientId: string | undefined, date?: stri
     queryKey: ['ai', 'summary', 'daily', careRecipientId, date],
     queryFn: () => getDailySummary(careRecipientId!, date),
     enabled: !!careRecipientId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 30 * 60 * 1000, // 30 minutes — avoid hitting Gemini on every page visit
+    gcTime: 60 * 60 * 1000, // 1 hour cache
     retry: 1,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
   });
 }
 
@@ -30,8 +33,11 @@ export function useWeeklySummary(careRecipientId: string | undefined, date?: str
     queryKey: ['ai', 'summary', 'weekly', careRecipientId, date],
     queryFn: () => getWeeklySummary(careRecipientId!, date),
     enabled: !!careRecipientId,
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 60 * 60 * 1000, // 1 hour — weekly data doesn't change often
+    gcTime: 2 * 60 * 60 * 1000, // 2 hour cache
     retry: 1,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
   });
 }
 
