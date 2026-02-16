@@ -180,22 +180,27 @@ const Dashboard = () => {
   // Tab state
   const [activeTab, setActiveTab] = useState<'overview' | 'medications' | 'contacts' | 'documents'>('overview');
 
-  const currentDate = new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  // Greeting & date — computed client-side only to avoid SSR timezone mismatch
+  const [greeting, setGreeting] = useState('Welcome');
+  const [currentDate, setCurrentDate] = useState('');
 
-  // Get greeting based on time of day
-  const getGreeting = () => {
+  useEffect(() => {
     const hour = new Date().getHours();
-    if (hour < 5) return 'Good night';
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    if (hour < 21) return 'Good evening';
-    return 'Good night';
-  };
+    if (hour < 5) setGreeting('Good night');
+    else if (hour < 12) setGreeting('Good morning');
+    else if (hour < 17) setGreeting('Good afternoon');
+    else if (hour < 21) setGreeting('Good evening');
+    else setGreeting('Good night');
+
+    setCurrentDate(
+      new Date().toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }),
+    );
+  }, []);
 
   // Map alerts to display format
   const alertsDisplay = useMemo(() => {
@@ -473,7 +478,7 @@ const Dashboard = () => {
         <div className="space-y-0.5 sm:space-y-1 min-w-0">
           <p className="label-caps text-muted-foreground text-[10px] sm:text-xs">Care Dashboard</p>
           <h1 className="font-serif text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-foreground tracking-tight truncate">
-            {getGreeting()}, {user?.fullName?.split(' ')[0] || 'there'}
+            {greeting}, {user?.fullName?.split(' ')[0] || 'there'}
           </h1>
           <p className="text-muted-foreground text-sm sm:text-lg truncate">{currentDate}</p>
         </div>
