@@ -5,7 +5,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE TABLE "ai_embeddings" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "content" TEXT NOT NULL,
-    "embedding" vector(768),
+    "embedding" vector(3072),
     "resource_type" TEXT NOT NULL,
     "resource_id" TEXT NOT NULL,
     "family_id" TEXT NOT NULL,

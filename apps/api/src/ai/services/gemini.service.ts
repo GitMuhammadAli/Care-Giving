@@ -98,7 +98,7 @@ export class GeminiService implements OnModuleInit {
 
   /**
    * Generate an embedding vector for a single text.
-   * Returns a 768-dimensional float array (gemini-embedding-001).
+   * Returns a 3072-dimensional float array (gemini-embedding-001).
    */
   async generateEmbedding(text: string): Promise<number[]> {
     this.assertEnabled();

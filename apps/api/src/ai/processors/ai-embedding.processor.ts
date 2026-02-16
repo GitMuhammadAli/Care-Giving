@@ -48,7 +48,7 @@ export class AiEmbeddingProcessor {
 
     this.logger.log(`Generating embedding for ${resourceType}:${resourceId}`);
 
-    // Generate the 768-dim embedding vector via Gemini
+    // Generate the 3072-dim embedding vector via Gemini (gemini-embedding-001)
     const embedding = await this.geminiService.generateEmbedding(content);
     const vectorStr = `[${embedding.join(',')}]`;
 

@@ -66,6 +66,7 @@ async function main() {
   console.log('');
 
   // Ensure pgvector + ai_embeddings table exist (db:push doesn't create raw SQL tables)
+  // gemini-embedding-001 outputs 3072 dimensions
   console.log('🧠  Ensuring AI embeddings table exists...');
   try {
     await prisma.$executeRawUnsafe(`CREATE EXTENSION IF NOT EXISTS vector`);
@@ -73,7 +74,7 @@ async function main() {
       CREATE TABLE IF NOT EXISTS "ai_embeddings" (
         "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
         "content" TEXT NOT NULL,
-        "embedding" vector(768),
+        "embedding" vector(3072),
         "resource_type" TEXT NOT NULL,
         "resource_id" TEXT NOT NULL,
         "family_id" TEXT NOT NULL,
@@ -83,11 +84,22 @@ async function main() {
         CONSTRAINT "ai_embeddings_pkey" PRIMARY KEY ("id")
       )
     `);
+
+    // Fix dimension mismatch: if the table already existed with vector(768), alter it
+    // This is safe — the column is empty (all 768-dim inserts failed)
+    try {
+      await prisma.$executeRawUnsafe(`DROP INDEX IF EXISTS "idx_embeddings_vector"`);
+      await prisma.$executeRawUnsafe(`ALTER TABLE "ai_embeddings" ALTER COLUMN "embedding" TYPE vector(3072)`);
+      console.log('   🔄 Updated embedding column to 3072 dimensions');
+    } catch (_) {
+      // Column is already 3072 or doesn't need changing
+    }
+
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "idx_embeddings_family" ON "ai_embeddings"("family_id")`);
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "idx_embeddings_care_recipient" ON "ai_embeddings"("care_recipient_id") WHERE "care_recipient_id" IS NOT NULL`);
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "idx_embeddings_resource" ON "ai_embeddings"("resource_type", "resource_id")`);
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "idx_embeddings_vector" ON "ai_embeddings" USING hnsw ("embedding" vector_cosine_ops) WITH (m = 16, ef_construction = 64)`);
-    console.log('   ✅ ai_embeddings table ready');
+    console.log('   ✅ ai_embeddings table ready (3072 dimensions)');
   } catch (err: any) {
     console.warn('   ⚠️  Could not create ai_embeddings table (pgvector may not be available):', err?.message);
   }
