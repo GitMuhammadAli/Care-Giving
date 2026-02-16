@@ -57,28 +57,42 @@ export function AskAiPanel({
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isBackfilling, setIsBackfilling] = useState(false);
+  const [hasSynced, setHasSynced] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const askMutation = useAskAI();
 
-  const handleBackfill = async () => {
+  const handleBackfill = async (silent = false) => {
     try {
       setIsBackfilling(true);
       const result = await backfillEmbeddings(careRecipientId);
-      if (result.total > 0) {
-        toast.success(
-          `Synced ${result.total} care records. AI can now answer questions about your care history!`,
-          { duration: 5000 },
-        );
-      } else {
-        toast('No care records found yet. Start logging updates and medications first!');
+      setHasSynced(true);
+      if (!silent) {
+        if (result.total > 0) {
+          toast.success(
+            `Synced ${result.total} care records. AI is ready!`,
+            { duration: 4000 },
+          );
+        } else {
+          toast.success('All care data is already synced!', { duration: 3000 });
+        }
       }
     } catch {
-      toast.error('Failed to sync care data. Please try again.');
+      if (!silent) {
+        toast.error('Failed to sync care data. Please try again.');
+      }
     } finally {
       setIsBackfilling(false);
     }
   };
+
+  // Auto-sync when panel opens for the first time
+  useEffect(() => {
+    if (isOpen && !hasSynced && careRecipientId) {
+      handleBackfill(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, careRecipientId]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -160,9 +174,16 @@ export function AskAiPanel({
             <div>
               <h3 className="font-medium text-sm text-foreground">Ask CareCircle AI</h3>
               <p className="text-[11px] text-muted-foreground">
-                {careRecipientName
-                  ? `About ${careRecipientName}'s care`
-                  : 'Questions about care history'}
+                {isBackfilling ? (
+                  <span className="flex items-center gap-1">
+                    <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                    Syncing care data...
+                  </span>
+                ) : careRecipientName ? (
+                  `About ${careRecipientName}'s care`
+                ) : (
+                  'Questions about care history'
+                )}
               </p>
             </div>
           </div>
@@ -199,15 +220,33 @@ export function AskAiPanel({
                 ))}
               </div>
 
-              {/* Sync button */}
-              <button
-                onClick={handleBackfill}
-                disabled={isBackfilling}
-                className="mt-4 flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors mx-auto"
-              >
-                <RefreshCw className={`w-3 h-3 ${isBackfilling ? 'animate-spin' : ''}`} />
-                {isBackfilling ? 'Syncing your care data...' : 'Sync care data for better answers'}
-              </button>
+              {/* Sync card */}
+              <div className="mt-5 w-full">
+                <button
+                  onClick={() => handleBackfill(false)}
+                  disabled={isBackfilling}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-sage/30 bg-sage/5 hover:bg-sage/10 hover:border-sage/50 transition-all group disabled:opacity-60"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-sage/10 group-hover:bg-sage/20 flex items-center justify-center flex-shrink-0 transition-colors">
+                    <RefreshCw className={`w-4 h-4 text-sage ${isBackfilling ? 'animate-spin' : ''}`} />
+                  </div>
+                  <div className="text-left min-w-0">
+                    <p className="text-xs font-medium text-foreground">
+                      {isBackfilling ? 'Syncing care data...' : hasSynced ? 'Re-sync care data' : 'Sync care data'}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
+                      {isBackfilling
+                        ? 'Indexing records so AI can search them'
+                        : hasSynced
+                        ? 'Data is synced — click to refresh'
+                        : 'Index your records for better AI answers'}
+                    </p>
+                  </div>
+                  {hasSynced && !isBackfilling && (
+                    <span className="ml-auto flex-shrink-0 w-2 h-2 rounded-full bg-green-500" />
+                  )}
+                </button>
+              </div>
             </div>
           ) : (
             <>
