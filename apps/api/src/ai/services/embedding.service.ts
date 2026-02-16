@@ -90,31 +90,31 @@ export class EmbeddingService {
 
     const { query, familyId, careRecipientId, resourceTypes, limit = 10 } = params;
 
-    // Generate query embedding
-    const queryEmbedding = await this.geminiService.generateEmbedding(query);
-    const vectorStr = `[${queryEmbedding.join(',')}]`;
-
-    // Build WHERE clause
-    let whereClause = `family_id = $2`;
-    const queryParams: any[] = [vectorStr, familyId];
-    let paramIndex = 3;
-
-    if (careRecipientId) {
-      whereClause += ` AND care_recipient_id = $${paramIndex}`;
-      queryParams.push(careRecipientId);
-      paramIndex++;
-    }
-
-    if (resourceTypes && resourceTypes.length > 0) {
-      const placeholders = resourceTypes.map((_, i) => `$${paramIndex + i}`).join(', ');
-      whereClause += ` AND resource_type IN (${placeholders})`;
-      queryParams.push(...resourceTypes);
-      paramIndex += resourceTypes.length;
-    }
-
-    queryParams.push(limit);
-
     try {
+      // Generate query embedding
+      const queryEmbedding = await this.geminiService.generateEmbedding(query);
+      const vectorStr = `[${queryEmbedding.join(',')}]`;
+
+      // Build WHERE clause
+      let whereClause = `family_id = $2`;
+      const queryParams: any[] = [vectorStr, familyId];
+      let paramIndex = 3;
+
+      if (careRecipientId) {
+        whereClause += ` AND care_recipient_id = $${paramIndex}`;
+        queryParams.push(careRecipientId);
+        paramIndex++;
+      }
+
+      if (resourceTypes && resourceTypes.length > 0) {
+        const placeholders = resourceTypes.map((_, i) => `$${paramIndex + i}`).join(', ');
+        whereClause += ` AND resource_type IN (${placeholders})`;
+        queryParams.push(...resourceTypes);
+        paramIndex += resourceTypes.length;
+      }
+
+      queryParams.push(limit);
+
       const results = await this.prisma.$queryRawUnsafe<any[]>(
         `SELECT id, content, resource_type, resource_id, family_id, care_recipient_id, metadata, created_at,
                 1 - (embedding <=> $1::vector) AS similarity
@@ -137,7 +137,7 @@ export class EmbeddingService {
         createdAt: row.created_at,
       }));
     } catch (error) {
-      this.logger.error({ error }, 'Embedding search failed — table may not exist or pgvector not enabled');
+      this.logger.error({ error }, 'Embedding search failed — query embedding or pgvector query error');
       return [];
     }
   }

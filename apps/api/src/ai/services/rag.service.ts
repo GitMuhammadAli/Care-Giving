@@ -53,47 +53,31 @@ export class RagService {
       };
     }
 
-    // 1. Search for relevant context
-    const results = await this.embeddingService.search({
-      query: question,
-      familyId,
-      careRecipientId,
-      limit: 10,
-    });
-
-    // Filter out very low similarity results (noise)
-    const relevantResults = results.filter(
-      (r) => (r.similarity ?? 0) >= MIN_CONTEXT_SIMILARITY,
-    );
-
-    if (relevantResults.length === 0) {
-      return {
-        answer:
-          "I don't have enough care records to answer this question yet. " +
-          "As more timeline entries, medications, and appointments are logged, I'll be able to help better.",
-        sources: [],
-      };
-    }
-
-    // 2. Build context from retrieved chunks
-    const context = this.buildContext(relevantResults);
-
-    // 3. Generate answer using Gemini
-    const systemPrompt = `You are CareCircle AI, a helpful assistant for family caregivers.
-Answer the question using ONLY the provided context from the family's care records.
-If you cannot answer from the context, say so honestly.
-Always cite which record you used (e.g., "According to the timeline entry from Jan 15...").
-Be compassionate and use plain language — the user may not be medically trained.
-Keep answers concise but thorough.
-Do not make up information that is not in the provided context.`;
-
-    const prompt = `Context from care records:
-${context}
-
-Question: ${question}`;
-
     try {
-      const answer = await this.geminiService.generateText(prompt, systemPrompt);
+      // 1. Search for relevant context
+      const results = await this.embeddingService.search({
+        query: question,
+        familyId,
+        careRecipientId,
+        limit: 10,
+      });
+
+      // Filter out very low similarity results (noise)
+      const relevantResults = results.filter(
+        (r) => (r.similarity ?? 0) >= MIN_CONTEXT_SIMILARITY,
+      );
+
+      if (relevantResults.length === 0) {
+        return {
+          answer:
+            "I don't have enough care records to answer this question yet. " +
+            "As more timeline entries, medications, and appointments are logged, I'll be able to help better.",
+          sources: [],
+        };
+      }
+
+      // 2. Build context from retrieved chunks
+      const context = this.buildContext(relevantResults);
 
       // Build source citations (only include records above the source threshold)
       const sources = relevantResults
@@ -107,14 +91,59 @@ Question: ${question}`;
           similarity: Math.round((r.similarity ?? 0) * 100) / 100,
         }));
 
-      return { answer, sources };
+      // 3. Generate answer using Gemini
+      const systemPrompt = `You are CareCircle AI, a helpful assistant for family caregivers.
+Answer the question using ONLY the provided context from the family's care records.
+If you cannot answer from the context, say so honestly.
+Always cite which record you used (e.g., "According to the timeline entry from Jan 15...").
+Be compassionate and use plain language — the user may not be medically trained.
+Keep answers concise but thorough.
+Do not make up information that is not in the provided context.`;
+
+      const prompt = `Context from care records:\n${context}\n\nQuestion: ${question}`;
+
+      try {
+        const answer = await this.geminiService.generateText(prompt, systemPrompt);
+        return { answer, sources };
+      } catch (genError) {
+        // Gemini text generation failed (rate limit, timeout, etc.)
+        // Return a context-based fallback instead of a generic error
+        this.logger.warn({ error: genError }, 'Gemini text generation failed for RAG — using fallback');
+        const fallbackAnswer = this.buildFallbackAnswer(question, relevantResults);
+        return { answer: fallbackAnswer, sources };
+      }
     } catch (error) {
-      this.logger.error({ error }, 'Failed to generate RAG answer');
+      this.logger.error({ error }, 'RAG pipeline failed (search or embedding)');
       return {
-        answer: 'I encountered an error while processing your question. Please try again.',
+        answer:
+          "I'm having trouble searching care records right now. " +
+          'This is usually temporary — please try again in a moment.',
         sources: [],
       };
     }
+  }
+
+  /**
+   * Build a plain-text fallback answer from the retrieved records when Gemini is unavailable.
+   */
+  private buildFallbackAnswer(question: string, records: EmbeddingRecord[]): string {
+    const parts: string[] = [
+      `Here's what I found in the care records (AI summary unavailable right now):`,
+      '',
+    ];
+
+    for (const r of records.slice(0, 5)) {
+      const date = this.safeLocalDate(r.createdAt);
+      const title = r.metadata?.title || '';
+      const snippet = r.content.length > 150 ? r.content.slice(0, 150) + '...' : r.content;
+      parts.push(`• ${title ? title + ' — ' : ''}${snippet} (${r.resourceType}, ${date})`);
+    }
+
+    if (records.length > 5) {
+      parts.push(`\n...and ${records.length - 5} more related records.`);
+    }
+
+    return parts.join('\n');
   }
 
   /**

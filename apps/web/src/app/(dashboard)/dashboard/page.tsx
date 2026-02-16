@@ -682,23 +682,37 @@ const Dashboard = () => {
 
               {/* Quick Actions - Enhanced */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {quickActions.map((action, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleQuickAction(action.action)}
-                    className={`quick-action-btn flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-5 rounded-2xl bg-background/60 hover:bg-background transition-all duration-200 border border-border/50 hover:border-primary/30 hover:shadow-md group relative ${action.comingSoon ? 'opacity-75' : ''}`}
-                  >
-                    {action.comingSoon && (
-                      <div className="absolute -top-2 -right-2 z-10">
-                        <ComingSoonBadge size="sm" showIcon={false} />
+                {quickActions.map((action, index) => {
+                  const isSmartEntry = action.action === 'smart-entry';
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => handleQuickAction(action.action)}
+                      className={`quick-action-btn flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-5 rounded-2xl transition-all duration-200 border hover:shadow-md group relative ${
+                        isSmartEntry
+                          ? 'bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 border-emerald-200/60 dark:border-emerald-800/40 hover:border-emerald-400/60 hover:shadow-emerald-100/50 dark:hover:shadow-emerald-900/30 ring-1 ring-emerald-100/50 dark:ring-emerald-800/20'
+                          : `bg-background/60 hover:bg-background border-border/50 hover:border-primary/30 ${action.comingSoon ? 'opacity-75' : ''}`
+                      }`}
+                    >
+                      {action.comingSoon && (
+                        <div className="absolute -top-2 -right-2 z-10">
+                          <ComingSoonBadge size="sm" showIcon={false} />
+                        </div>
+                      )}
+                      {isSmartEntry && (
+                        <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-10">
+                          <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 text-[10px] font-semibold whitespace-nowrap">
+                            <SparklesIcon size={10} /> AI-powered
+                          </span>
+                        </div>
+                      )}
+                      <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl ${action.bgClass} flex items-center justify-center transition-transform duration-200 group-hover:scale-110`}>
+                        <action.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${action.textClass}`} />
                       </div>
-                    )}
-                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl ${action.bgClass} flex items-center justify-center transition-transform duration-200 group-hover:scale-110`}>
-                      <action.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${action.textClass}`} />
-                    </div>
-                    <span className="text-xs sm:text-sm font-medium text-foreground text-center">{action.label}</span>
-                  </button>
-                ))}
+                      <span className={`text-xs sm:text-sm font-medium text-center ${isSmartEntry ? 'text-emerald-700 dark:text-emerald-300' : 'text-foreground'}`}>{action.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -807,6 +821,14 @@ const Dashboard = () => {
                     <p className="text-xs sm:text-sm text-muted-foreground">From your care circle</p>
                   </div>
                 </div>
+                <div className="flex items-center gap-2">
+                  <Link
+                    href="/timeline"
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors hidden sm:inline-flex items-center gap-1"
+                  >
+                    View All
+                    <RightChevron size={12} />
+                  </Link>
                 <Dialog open={postUpdateOpen} onOpenChange={setPostUpdateOpen}>
                   <DialogTrigger asChild>
                     <Button size="sm" className="rounded-xl shadow-sm">
@@ -839,6 +861,7 @@ const Dashboard = () => {
                     </form>
                   </DialogContent>
                 </Dialog>
+                </div>
               </div>
 
               <div className="space-y-3">
@@ -851,30 +874,39 @@ const Dashboard = () => {
                     </Button>
                   </div>
                 ) : (
-                  recentUpdates.map((update, index) => (
-                    <div
-                      key={update.id}
-                      className={`p-3 sm:p-4 rounded-xl bg-background/50 border border-border/50 hover:border-primary/20 transition-all hover:shadow-sm ${index === 0 ? 'ring-1 ring-primary/10' : ''}`}
-                    >
-                      <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-                        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center flex-shrink-0">
-                          <span className="text-xs sm:text-sm font-semibold text-primary">
-                            {update.author.charAt(0)}
-                          </span>
+                  <>
+                    {recentUpdates.map((update, index) => (
+                      <div
+                        key={update.id}
+                        className={`p-3 sm:p-4 rounded-xl bg-background/50 border border-border/50 hover:border-primary/20 transition-all hover:shadow-sm ${index === 0 ? 'ring-1 ring-primary/10' : ''}`}
+                      >
+                        <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs sm:text-sm font-semibold text-primary">
+                              {update.author.charAt(0)}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="font-medium text-foreground">{update.author}</span>
+                            <p className="text-xs text-muted-foreground">{update.time}</p>
+                          </div>
+                          {update.type === 'medical' && (
+                            <span className="text-xs bg-secondary/20 text-secondary-foreground px-3 py-1 rounded-full font-medium">
+                              Medical
+                            </span>
+                          )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <span className="font-medium text-foreground">{update.author}</span>
-                          <p className="text-xs text-muted-foreground">{update.time}</p>
-                        </div>
-                        {update.type === 'medical' && (
-                          <span className="text-xs bg-secondary/20 text-secondary-foreground px-3 py-1 rounded-full font-medium">
-                            Medical
-                          </span>
-                        )}
+                        <p className="text-foreground text-sm pl-[52px] leading-relaxed">{update.message}</p>
                       </div>
-                      <p className="text-foreground text-sm pl-[52px] leading-relaxed">{update.message}</p>
-                    </div>
-                  ))
+                    ))}
+                    <Link
+                      href="/timeline"
+                      className="flex items-center justify-center gap-1.5 py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-xl hover:bg-muted/30"
+                    >
+                      View all updates
+                      <RightChevron size={14} />
+                    </Link>
+                  </>
                 )}
               </div>
             </div>
