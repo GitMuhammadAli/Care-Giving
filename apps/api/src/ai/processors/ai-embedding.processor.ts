@@ -42,14 +42,11 @@ export class AiEmbeddingProcessor {
     const { content, resourceType, resourceId, familyId, careRecipientId, metadata } = job.data;
 
     if (!this.geminiService.enabled) {
-      this.logger.debug('AI disabled — skipping embedding');
+      this.logger.warn('AI disabled — skipping embedding');
       return;
     }
 
-    this.logger.debug(
-      { resourceType, resourceId },
-      'Generating embedding',
-    );
+    this.logger.log(`Generating embedding for ${resourceType}:${resourceId}`);
 
     // Generate the 768-dim embedding vector via Gemini
     const embedding = await this.geminiService.generateEmbedding(content);
@@ -74,7 +71,7 @@ export class AiEmbeddingProcessor {
       JSON.stringify(metadata || {}),
     );
 
-    this.logger.debug({ resourceType, resourceId }, 'Embedding stored');
+    this.logger.log(`Embedding stored for ${resourceType}:${resourceId}`);
   }
 
   @Process('delete-embedding')
@@ -92,7 +89,7 @@ export class AiEmbeddingProcessor {
 
   @OnQueueCompleted()
   onCompleted(job: Job<AiEmbeddingJobData>) {
-    this.logger.debug({ jobId: job.id, name: job.name }, 'Embedding job completed');
+    this.logger.log(`Job ${job.id} (${job.name}) completed`);
   }
 
   @OnQueueFailed()

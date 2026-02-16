@@ -115,7 +115,7 @@ import { AiModule } from './ai/ai.module';
           enableReadyCheck: false, // Faster startup, saves Redis commands
           connectTimeout: 20000, // 20 second connect timeout for cloud
           keepAlive: 60000, // Reduced: keepalive every 60 seconds (saves commands)
-          lazyConnect: true, // Only connect when needed (saves connections)
+          lazyConnect: false, // Must be false — Bull worker needs active subscriber connection to process jobs
           retryStrategy: (times: number) => Math.min(times * 2000, 60000), // Slower retries
         };
 

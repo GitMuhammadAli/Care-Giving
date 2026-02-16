@@ -157,7 +157,7 @@ Respond in this JSON format:
     };
 
     if (!this.geminiService.enabled) {
-      return this.buildFallbackSummary(name, periodStr, timelineEntries, medicationLogs, appointments, medStats);
+      return this.buildFallbackSummary(name, periodStr, timelineEntries, medicationLogs, appointments, medStats, 'weekly');
     }
 
     const adherenceRate = medStats.total > 0
@@ -199,7 +199,7 @@ Respond in JSON:
       };
     } catch (error) {
       this.logger.error({ error }, 'Failed to generate weekly summary');
-      return this.buildFallbackSummary(name, periodStr, timelineEntries, medicationLogs, appointments, medStats);
+      return this.buildFallbackSummary(name, periodStr, timelineEntries, medicationLogs, appointments, medStats, 'weekly');
     }
   }
 
@@ -285,6 +285,7 @@ Respond in JSON:
     medicationLogs: Array<{ status: string; medication?: { name: string; dosage: string } | null }>,
     appointments: Array<{ title: string; status: string }>,
     medStats: { total: number; given: number; missed: number; skipped: number },
+    type: 'daily' | 'weekly' = 'daily',
   ): CareSummary {
     const highlights: string[] = [];
     const concerns: string[] = [];
@@ -322,7 +323,8 @@ Respond in JSON:
     }
 
     // Build summary text
-    const summaryParts: string[] = [`Daily summary for ${name} on ${dateStr}.`];
+    const label = type === 'weekly' ? 'Weekly summary' : 'Daily summary';
+    const summaryParts: string[] = [`${label} for ${name} on ${dateStr}.`];
     if (timelineEntries.length > 0) {
       summaryParts.push(`${timelineEntries.length} care update${timelineEntries.length > 1 ? 's' : ''} recorded.`);
     }
