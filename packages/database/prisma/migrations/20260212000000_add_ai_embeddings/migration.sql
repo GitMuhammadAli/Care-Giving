@@ -25,6 +25,7 @@ CREATE INDEX "idx_embeddings_care_recipient" ON "ai_embeddings"("care_recipient_
 -- Index for resource lookups (update/delete on source change)
 CREATE INDEX "idx_embeddings_resource" ON "ai_embeddings"("resource_type", "resource_id");
 
--- HNSW index for fast approximate nearest neighbor search
-CREATE INDEX "idx_embeddings_vector" ON "ai_embeddings"
-    USING hnsw ("embedding" vector_cosine_ops) WITH (m = 16, ef_construction = 64);
+-- Note: HNSW index has a 2000-dim limit in pgvector.
+-- gemini-embedding-001 outputs 3072 dims, so we skip the vector index.
+-- Sequential scan is fast for datasets under 100k rows.
+-- For large-scale deployments, use outputDimensionality=768 or IVFFlat.

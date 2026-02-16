@@ -98,8 +98,9 @@ async function main() {
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "idx_embeddings_family" ON "ai_embeddings"("family_id")`);
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "idx_embeddings_care_recipient" ON "ai_embeddings"("care_recipient_id") WHERE "care_recipient_id" IS NOT NULL`);
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "idx_embeddings_resource" ON "ai_embeddings"("resource_type", "resource_id")`);
-    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "idx_embeddings_vector" ON "ai_embeddings" USING hnsw ("embedding" vector_cosine_ops) WITH (m = 16, ef_construction = 64)`);
-    console.log('   ✅ ai_embeddings table ready (3072 dimensions)');
+    // Note: HNSW index has a 2000-dimension limit in pgvector.
+    // With 3072 dims, we skip the vector index — sequential scan is fast for < 100k rows.
+    console.log('   ✅ ai_embeddings table ready (3072 dimensions, no HNSW index needed for small datasets)');
   } catch (err: any) {
     console.warn('   ⚠️  Could not create ai_embeddings table (pgvector may not be available):', err?.message);
   }
