@@ -10,6 +10,7 @@ import { EmbeddingIndexerService } from './services/embedding-indexer.service';
 import { CareSummaryService } from './services/care-summary.service';
 import { SmartEntryService } from './services/smart-entry.service';
 import { RagService } from './services/rag.service';
+import { EmbeddingSyncCron } from './services/embedding-sync.cron';
 
 // In-process processors (no separate worker deployment needed)
 import { AiEmbeddingProcessor } from './processors/ai-embedding.processor';
@@ -49,6 +50,8 @@ import { AiController } from './controllers/ai.controller';
     // In-process processors (process BullMQ jobs inside the API)
     AiEmbeddingProcessor,
     AiSummaryProcessor,
+    // Cron: auto-sync unindexed records every 6 hours
+    EmbeddingSyncCron,
   ],
   exports: [
     GeminiService,

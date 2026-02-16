@@ -136,6 +136,9 @@ Respond in this JSON format:
           medication: { careRecipientId },
           scheduledTime: { gte: weekStart, lte: weekEnd },
         },
+        include: {
+          medication: { select: { name: true, dosage: true } },
+        },
       }),
       this.prisma.appointment.findMany({
         where: { careRecipientId, startTime: { gte: weekStart, lte: weekEnd } },
@@ -154,14 +157,7 @@ Respond in this JSON format:
     };
 
     if (!this.geminiService.enabled) {
-      return {
-        summary: `Weekly summary for ${name} (${periodStr}): ${medStats.given}/${medStats.total} medications given, ${timelineEntries.length} timeline entries, ${appointments.length} appointments.`,
-        highlights: [],
-        concerns: [],
-        medications: medStats,
-        period: periodStr,
-        generatedAt: new Date().toISOString(),
-      };
+      return this.buildFallbackSummary(name, periodStr, timelineEntries, medicationLogs, appointments, medStats);
     }
 
     const adherenceRate = medStats.total > 0
@@ -203,14 +199,7 @@ Respond in JSON:
       };
     } catch (error) {
       this.logger.error({ error }, 'Failed to generate weekly summary');
-      return {
-        summary: `Weekly summary for ${name} (${periodStr}).`,
-        highlights: [],
-        concerns: [],
-        medications: medStats,
-        period: periodStr,
-        generatedAt: new Date().toISOString(),
-      };
+      return this.buildFallbackSummary(name, periodStr, timelineEntries, medicationLogs, appointments, medStats);
     }
   }
 

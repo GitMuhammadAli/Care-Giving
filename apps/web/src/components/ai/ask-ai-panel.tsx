@@ -67,14 +67,14 @@ export function AskAiPanel({
       const result = await backfillEmbeddings(careRecipientId);
       if (result.total > 0) {
         toast.success(
-          `Indexed ${result.total} records (${result.timelineEntries} entries, ${result.medications} medications, ${result.appointments} appointments). AI is ready!`,
+          `Synced ${result.total} care records. AI can now answer questions about your care history!`,
           { duration: 5000 },
         );
       } else {
-        toast('No records found to index. Add some data first!');
+        toast('No care records found yet. Start logging updates and medications first!');
       }
     } catch {
-      toast.error('Failed to index records. Please try again.');
+      toast.error('Failed to sync care data. Please try again.');
     } finally {
       setIsBackfilling(false);
     }
@@ -199,14 +199,14 @@ export function AskAiPanel({
                 ))}
               </div>
 
-              {/* Backfill button */}
+              {/* Sync button */}
               <button
                 onClick={handleBackfill}
                 disabled={isBackfilling}
                 className="mt-4 flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors mx-auto"
               >
                 <RefreshCw className={`w-3 h-3 ${isBackfilling ? 'animate-spin' : ''}`} />
-                {isBackfilling ? 'Indexing existing records...' : 'Index existing records for AI'}
+                {isBackfilling ? 'Syncing your care data...' : 'Sync care data for better answers'}
               </button>
             </div>
           ) : (
