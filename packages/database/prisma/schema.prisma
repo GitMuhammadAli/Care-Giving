@@ -794,3 +794,23 @@ enum CronStatus {
   FAILED
 }
 
+// ═══════════════════════════════════════════════════════════════
+// AI Embeddings (pgvector) — used by RAG for semantic search
+// The "embedding" column uses Unsupported because Prisma doesn't
+// natively support pgvector types. All queries use raw SQL.
+// ═══════════════════════════════════════════════════════════════
+model ai_embeddings {
+  id               String   @id @default(dbgenerated("gen_random_uuid()"))
+  content          String
+  embedding        Unsupported("vector(3072)")?
+  resource_type    String
+  resource_id      String
+  family_id        String
+  care_recipient_id String?
+  metadata         Json?    @default(dbgenerated("'{}'::jsonb"))
+  created_at       DateTime @default(now()) @db.Timestamptz
+
+  @@index([family_id], map: "idx_embeddings_family")
+  @@index([resource_type, resource_id], map: "idx_embeddings_resource")
+}
+
