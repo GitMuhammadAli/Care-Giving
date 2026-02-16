@@ -186,6 +186,82 @@ export class EmbeddingIndexerService implements OnModuleInit {
   }
 
   // ═══════════════════════════════════════════════════════════════
+  // BACKFILL — re-index all existing records for a care recipient
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * Re-index all existing records for a care recipient.
+   * Call this to backfill embeddings for records that were created
+   * before the AI system was deployed.
+   */
+  async backfillCareRecipient(careRecipientId: string): Promise<{
+    timelineEntries: number;
+    medications: number;
+    appointments: number;
+    total: number;
+  }> {
+    if (!this.isEnabled) {
+      return { timelineEntries: 0, medications: 0, appointments: 0, total: 0 };
+    }
+
+    this.logger.log({ careRecipientId }, 'Starting embedding backfill');
+
+    let timelineCount = 0;
+    let medicationCount = 0;
+    let appointmentCount = 0;
+
+    // Backfill timeline entries
+    const timelineEntries = await this.prisma.timelineEntry.findMany({
+      where: { careRecipientId },
+      select: { id: true, title: true, description: true, type: true, severity: true, careRecipientId: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+
+    for (const entry of timelineEntries) {
+      await this.indexTimelineEntry(entry);
+      timelineCount++;
+    }
+
+    // Backfill medications
+    const medications = await this.prisma.medication.findMany({
+      where: { careRecipientId, isActive: true },
+      select: { id: true, name: true, dosage: true, frequency: true, instructions: true, careRecipientId: true },
+    });
+
+    for (const med of medications) {
+      await this.indexMedication(med);
+      medicationCount++;
+    }
+
+    // Backfill appointments
+    const appointments = await this.prisma.appointment.findMany({
+      where: { careRecipientId },
+      select: { id: true, title: true, type: true, notes: true, location: true, careRecipientId: true, startTime: true },
+      orderBy: { startTime: 'desc' },
+      take: 100,
+    });
+
+    for (const apt of appointments) {
+      await this.indexAppointment(apt);
+      appointmentCount++;
+    }
+
+    const total = timelineCount + medicationCount + appointmentCount;
+    this.logger.log(
+      { careRecipientId, timelineCount, medicationCount, appointmentCount, total },
+      'Embedding backfill complete — jobs enqueued',
+    );
+
+    return {
+      timelineEntries: timelineCount,
+      medications: medicationCount,
+      appointments: appointmentCount,
+      total,
+    };
+  }
+
+  // ═══════════════════════════════════════════════════════════════
   // HELPERS
   // ═══════════════════════════════════════════════════════════════
 

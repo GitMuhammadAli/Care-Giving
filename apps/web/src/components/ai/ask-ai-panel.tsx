@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAskAI } from '@/hooks/use-ai';
 import type { RagAnswer } from '@/lib/api/ai';
+import { backfillEmbeddings } from '@/lib/api/ai';
 import {
   Sparkles,
   Send,
@@ -13,8 +14,10 @@ import {
   Calendar,
   Clock,
   ExternalLink,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import toast from 'react-hot-toast';
 
 interface AskAiPanelProps {
   careRecipientId: string;
@@ -53,9 +56,29 @@ export function AskAiPanel({
 }: AskAiPanelProps) {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
+  const [isBackfilling, setIsBackfilling] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const askMutation = useAskAI();
+
+  const handleBackfill = async () => {
+    try {
+      setIsBackfilling(true);
+      const result = await backfillEmbeddings(careRecipientId);
+      if (result.total > 0) {
+        toast.success(
+          `Indexed ${result.total} records (${result.timelineEntries} entries, ${result.medications} medications, ${result.appointments} appointments). AI is ready!`,
+          { duration: 5000 },
+        );
+      } else {
+        toast('No records found to index. Add some data first!');
+      }
+    } catch {
+      toast.error('Failed to index records. Please try again.');
+    } finally {
+      setIsBackfilling(false);
+    }
+  };
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -175,6 +198,16 @@ export function AskAiPanel({
                   </button>
                 ))}
               </div>
+
+              {/* Backfill button */}
+              <button
+                onClick={handleBackfill}
+                disabled={isBackfilling}
+                className="mt-4 flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors mx-auto"
+              >
+                <RefreshCw className={`w-3 h-3 ${isBackfilling ? 'animate-spin' : ''}`} />
+                {isBackfilling ? 'Indexing existing records...' : 'Index existing records for AI'}
+              </button>
             </div>
           ) : (
             <>

@@ -16,6 +16,7 @@ import { Throttle } from '@nestjs/throttler';
 import { CareSummaryService } from '../services/care-summary.service';
 import { SmartEntryService, ParsedTimelineEntry } from '../services/smart-entry.service';
 import { RagService, RagAnswer } from '../services/rag.service';
+import { EmbeddingIndexerService } from '../services/embedding-indexer.service';
 import { CurrentUser, CurrentUserPayload } from '../../common/decorators/current-user.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ParseSmartEntryDto } from '../dto/parse-smart-entry.dto';
@@ -40,6 +41,7 @@ export class AiController {
     private readonly careSummaryService: CareSummaryService,
     private readonly smartEntryService: SmartEntryService,
     private readonly ragService: RagService,
+    private readonly embeddingIndexer: EmbeddingIndexerService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -110,6 +112,23 @@ export class AiController {
       familyId: careRecipient.familyId,
       careRecipientId: dto.careRecipientId,
     });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // BACKFILL — re-index existing records for RAG
+  // ═══════════════════════════════════════════════════════════════
+
+  @Post('backfill/:careRecipientId')
+  @Throttle({ short: { ttl: 60000, limit: 2 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Backfill embeddings for existing records (for RAG)' })
+  @ApiParam({ name: 'careRecipientId', description: 'Care recipient ID' })
+  async backfillEmbeddings(
+    @Param('careRecipientId') careRecipientId: string,
+    @CurrentUser() user?: CurrentUserPayload,
+  ) {
+    await this.verifyAccess(careRecipientId, user?.id);
+    return this.embeddingIndexer.backfillCareRecipient(careRecipientId);
   }
 
   // ═══════════════════════════════════════════════════════════════

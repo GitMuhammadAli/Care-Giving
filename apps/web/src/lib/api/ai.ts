@@ -84,3 +84,18 @@ export async function askAI(
 ): Promise<RagAnswer> {
   return api.post<RagAnswer>('/ai/ask', { question, careRecipientId });
 }
+
+// ═══════════════════════════════════════════════════════════════
+// BACKFILL — re-index existing records for RAG
+// ═══════════════════════════════════════════════════════════════
+
+export interface BackfillResult {
+  timelineEntries: number;
+  medications: number;
+  appointments: number;
+  total: number;
+}
+
+export async function backfillEmbeddings(careRecipientId: string): Promise<BackfillResult> {
+  return api.post<BackfillResult>(`/ai/backfill/${careRecipientId}`, {});
+}
