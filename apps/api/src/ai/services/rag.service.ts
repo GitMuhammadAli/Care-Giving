@@ -116,16 +116,14 @@ Do not make up information that is not in the provided context.`;
       const prompt = `Context from care records:\n${context}\n\nQuestion: ${question}`;
 
       try {
-        const answer = await this.geminiService.generateText(prompt, systemPrompt);
+        const answer = await this.generateWithRetry(prompt, systemPrompt);
         this.logger.log({ answerLength: answer.length }, 'RAG: Gemini answered successfully');
         return { answer, sources };
       } catch (genError) {
-        // Gemini text generation failed (rate limit, timeout, etc.)
-        // Return a context-based fallback showing the actual records found
         const errMsg = genError instanceof Error ? genError.message : String(genError);
         this.logger.warn(
           { error: errMsg, relevantCount: relevantResults.length },
-          'RAG: Gemini text generation failed — returning context fallback',
+          'RAG: Gemini text generation failed after retries — returning context fallback',
         );
         const fallbackAnswer = this.buildFallbackAnswer(question, relevantResults);
         return { answer: fallbackAnswer, sources };
@@ -142,6 +140,28 @@ Do not make up information that is not in the provided context.`;
           'This is usually temporary — please try again in a moment.',
         sources: [],
       };
+    }
+  }
+
+  /**
+   * Try generating text, retry once after a short delay if the first attempt fails (rate limit).
+   */
+  private async generateWithRetry(prompt: string, systemPrompt: string, retries = 1): Promise<string> {
+    try {
+      return await this.geminiService.generateText(prompt, systemPrompt);
+    } catch (error) {
+      if (retries > 0) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        const isRateLimit = errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED');
+        const delay = isRateLimit ? 5000 : 2000;
+        this.logger.warn(
+          { error: errMsg, retriesLeft: retries, delayMs: delay },
+          `RAG: Gemini failed, retrying in ${delay}ms`,
+        );
+        await new Promise((r) => setTimeout(r, delay));
+        return this.generateWithRetry(prompt, systemPrompt, retries - 1);
+      }
+      throw error;
     }
   }
 

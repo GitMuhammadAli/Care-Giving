@@ -78,7 +78,24 @@ export class GeminiService implements OnModuleInit {
 
     try {
       const result = await model.generateContent(prompt);
-      return result.response.text();
+      const response = result.response;
+
+      // Log safety/finish info for debugging
+      const candidate = response.candidates?.[0];
+      if (!candidate) {
+        const blockReason = response.promptFeedback?.blockReason;
+        this.logger.warn({ blockReason }, 'Gemini returned no candidates');
+        throw new Error(`Gemini returned no candidates (blockReason: ${blockReason || 'unknown'})`);
+      }
+
+      if (candidate.finishReason && candidate.finishReason !== 'STOP') {
+        this.logger.warn(
+          { finishReason: candidate.finishReason, safetyRatings: candidate.safetyRatings },
+          'Gemini finished with non-STOP reason',
+        );
+      }
+
+      return response.text();
     } catch (error) {
       this.logger.error({ error }, 'Gemini generateText failed');
       throw this.wrapError(error, 'text generation');
