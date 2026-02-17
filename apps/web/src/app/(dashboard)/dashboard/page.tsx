@@ -180,26 +180,32 @@ const Dashboard = () => {
   // Tab state
   const [activeTab, setActiveTab] = useState<'overview' | 'medications' | 'contacts' | 'documents'>('overview');
 
-  // Greeting & date — computed client-side only to avoid SSR timezone mismatch
+  // Greeting & date — computed client-side, updates every minute to stay current
   const [greeting, setGreeting] = useState('Welcome');
   const [currentDate, setCurrentDate] = useState('');
 
   useEffect(() => {
-    const hour = new Date().getHours();
-    if (hour < 5) setGreeting('Good night');
-    else if (hour < 12) setGreeting('Good morning');
-    else if (hour < 17) setGreeting('Good afternoon');
-    else if (hour < 21) setGreeting('Good evening');
-    else setGreeting('Good night');
+    const updateGreeting = () => {
+      const hour = new Date().getHours();
+      if (hour < 5) setGreeting('Good night');
+      else if (hour < 12) setGreeting('Good morning');
+      else if (hour < 17) setGreeting('Good afternoon');
+      else if (hour < 21) setGreeting('Good evening');
+      else setGreeting('Good night');
 
-    setCurrentDate(
-      new Date().toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      }),
-    );
+      setCurrentDate(
+        new Date().toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        }),
+      );
+    };
+
+    updateGreeting();
+    const interval = setInterval(updateGreeting, 60_000);
+    return () => clearInterval(interval);
   }, []);
 
   // Map alerts to display format
