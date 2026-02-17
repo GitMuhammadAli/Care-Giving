@@ -1,6 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { SchemaType } from '@google/generative-ai';
 import { GeminiService } from './gemini.service';
 import { EmbeddingService, EmbeddingRecord } from './embedding.service';
+
+/** Schema for RAG answer — forces Gemini to return structured JSON */
+const RAG_ANSWER_SCHEMA = {
+  answer: {
+    type: SchemaType.STRING,
+    description: 'A helpful answer to the question, based only on the provided care records. Cite which records you used.',
+  },
+};
 
 export interface RagAnswer {
   answer: string;
@@ -104,11 +113,11 @@ export class RagService {
         'RAG: context built, calling Gemini for answer',
       );
 
-      // 3. Generate answer using Gemini
+      // 3. Generate answer using Gemini (structured output — same method that works for summaries)
       const systemPrompt = `You are CareCircle AI, a helpful assistant for family caregivers.
 Answer the question using ONLY the provided context from the family's care records.
 If you cannot answer from the context, say so honestly.
-Always cite which record you used (e.g., "According to the timeline entry from Jan 15...").
+Always cite which record you used (e.g., "According to the timeline entry from Feb 17...").
 Be compassionate and use plain language — the user may not be medically trained.
 Keep answers concise but thorough.
 Do not make up information that is not in the provided context.`;
@@ -116,14 +125,19 @@ Do not make up information that is not in the provided context.`;
       const prompt = `Context from care records:\n${context}\n\nQuestion: ${question}`;
 
       try {
-        const answer = await this.generateWithRetry(prompt, systemPrompt);
+        const result = await this.geminiService.generateStructuredOutput<{ answer: string }>(
+          prompt,
+          RAG_ANSWER_SCHEMA,
+          systemPrompt,
+        );
+        const answer = result.answer || '';
         this.logger.log({ answerLength: answer.length }, 'RAG: Gemini answered successfully');
         return { answer, sources };
       } catch (genError) {
         const errMsg = genError instanceof Error ? genError.message : String(genError);
         this.logger.warn(
           { error: errMsg, relevantCount: relevantResults.length },
-          'RAG: Gemini text generation failed after retries — returning context fallback',
+          'RAG: Gemini structured output failed — returning context fallback',
         );
         const fallbackAnswer = this.buildFallbackAnswer(question, relevantResults);
         return { answer: fallbackAnswer, sources };
