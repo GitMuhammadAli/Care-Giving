@@ -21,6 +21,12 @@ const CARE_SAFETY_SETTINGS = [
   { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
 ];
 
+/** Max retries for transient errors (429, network) */
+const MAX_RETRIES = 2;
+
+/** Min delay between any two Gemini API calls (ms) — keeps us safely under 15 RPM */
+const MIN_REQUEST_GAP_MS = 4500;
+
 @Injectable()
 export class GeminiService implements OnModuleInit {
   private readonly logger = new Logger(GeminiService.name);
@@ -29,6 +35,11 @@ export class GeminiService implements OnModuleInit {
   private modelName: string;
   private embeddingModelName: string;
   private isEnabled = false;
+
+  /** Simple throttle: timestamp of last API call */
+  private lastRequestTime = 0;
+  /** Serialization queue: ensures only 1 Gemini call at a time */
+  private requestQueue: Promise<any> = Promise.resolve();
 
   constructor(private readonly configService: ConfigService) {
     this.modelName = this.configService.get<string>('ai.model') || 'gemini-2.0-flash';
@@ -58,53 +69,32 @@ export class GeminiService implements OnModuleInit {
     return this.isEnabled;
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // PUBLIC API
+  // ═══════════════════════════════════════════════════════════════
+
   /**
    * Generate free-form text from a prompt.
-   * Uses the cached text model or creates one with a system instruction.
    */
-  async generateText(
-    prompt: string,
-    systemInstruction?: string,
-  ): Promise<string> {
+  async generateText(prompt: string, systemInstruction?: string): Promise<string> {
     this.assertEnabled();
 
-    const model = systemInstruction
-      ? this.genAI!.getGenerativeModel({
-          model: this.modelName,
-          systemInstruction,
-          safetySettings: CARE_SAFETY_SETTINGS,
-        })
-      : this.textModel!;
+    return this.withRetry('generateText', async () => {
+      const model = systemInstruction
+        ? this.genAI!.getGenerativeModel({
+            model: this.modelName,
+            systemInstruction,
+            safetySettings: CARE_SAFETY_SETTINGS,
+          })
+        : this.textModel!;
 
-    try {
       const result = await model.generateContent(prompt);
-      const response = result.response;
-
-      // Log safety/finish info for debugging
-      const candidate = response.candidates?.[0];
-      if (!candidate) {
-        const blockReason = response.promptFeedback?.blockReason;
-        this.logger.warn({ blockReason }, 'Gemini returned no candidates');
-        throw new Error(`Gemini returned no candidates (blockReason: ${blockReason || 'unknown'})`);
-      }
-
-      if (candidate.finishReason && candidate.finishReason !== 'STOP') {
-        this.logger.warn(
-          { finishReason: candidate.finishReason, safetyRatings: candidate.safetyRatings },
-          'Gemini finished with non-STOP reason',
-        );
-      }
-
-      return response.text();
-    } catch (error) {
-      this.logger.error({ error }, 'Gemini generateText failed');
-      throw this.wrapError(error, 'text generation');
-    }
+      return result.response.text();
+    });
   }
 
   /**
    * Generate a structured JSON response matching the given schema.
-   * A new model instance is created per call because the schema is part of the model config.
    */
   async generateStructuredOutput<T>(
     prompt: string,
@@ -113,27 +103,24 @@ export class GeminiService implements OnModuleInit {
   ): Promise<T> {
     this.assertEnabled();
 
-    const model = this.genAI!.getGenerativeModel({
-      model: this.modelName,
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: SchemaType.OBJECT,
-          properties: schema,
+    return this.withRetry('generateStructuredOutput', async () => {
+      const model = this.genAI!.getGenerativeModel({
+        model: this.modelName,
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: SchemaType.OBJECT,
+            properties: schema,
+          },
         },
-      },
-      safetySettings: CARE_SAFETY_SETTINGS,
-      ...(systemInstruction ? { systemInstruction } : {}),
-    });
+        safetySettings: CARE_SAFETY_SETTINGS,
+        ...(systemInstruction ? { systemInstruction } : {}),
+      });
 
-    try {
       const result = await model.generateContent(prompt);
       const text = result.response.text();
       return JSON.parse(text) as T;
-    } catch (error) {
-      this.logger.error({ error }, 'Gemini generateStructuredOutput failed');
-      throw this.wrapError(error, 'structured output');
-    }
+    });
   }
 
   /**
@@ -143,16 +130,13 @@ export class GeminiService implements OnModuleInit {
   async generateEmbedding(text: string): Promise<number[]> {
     this.assertEnabled();
 
-    try {
+    return this.withRetry('generateEmbedding', async () => {
       const embeddingModel = this.genAI!.getGenerativeModel({
         model: this.embeddingModelName,
       });
       const result = await embeddingModel.embedContent(text);
       return result.embedding.values;
-    } catch (error) {
-      this.logger.error({ error }, 'Gemini generateEmbedding failed');
-      throw this.wrapError(error, 'embedding generation');
-    }
+    });
   }
 
   /**
@@ -161,7 +145,7 @@ export class GeminiService implements OnModuleInit {
   async generateEmbeddings(texts: string[]): Promise<number[][]> {
     this.assertEnabled();
 
-    try {
+    return this.withRetry('batchEmbed', async () => {
       const embeddingModel = this.genAI!.getGenerativeModel({
         model: this.embeddingModelName,
       });
@@ -171,10 +155,78 @@ export class GeminiService implements OnModuleInit {
         })),
       });
       return result.embeddings.map((e) => e.values);
-    } catch (error) {
-      this.logger.error({ error }, 'Gemini batchEmbedContents failed');
-      throw this.wrapError(error, 'batch embedding');
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // RETRY + THROTTLE ENGINE
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * Execute a Gemini API call with:
+   * 1. Serialization (only 1 call at a time)
+   * 2. Throttle (minimum gap between calls)
+   * 3. Retry with exponential backoff for transient errors
+   */
+  private async withRetry<T>(operation: string, fn: () => Promise<T>): Promise<T> {
+    // Chain onto the request queue so calls are serialized
+    const result = this.requestQueue.then(async () => {
+      let lastError: Error | null = null;
+
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          await this.throttle();
+          const value = await fn();
+          return value;
+        } catch (error) {
+          lastError = error instanceof Error ? error : new Error(String(error));
+          const msg = lastError.message;
+          const isRetryable =
+            msg.includes('429') ||
+            msg.includes('RESOURCE_EXHAUSTED') ||
+            msg.includes('503') ||
+            msg.includes('UNAVAILABLE') ||
+            msg.includes('DEADLINE_EXCEEDED') ||
+            msg.includes('fetch failed') ||
+            msg.includes('ECONNRESET');
+
+          if (isRetryable && attempt < MAX_RETRIES) {
+            const delay = (attempt + 1) * 5000; // 5s, 10s
+            this.logger.warn(
+              `[${operation}] Attempt ${attempt + 1} failed (${msg.slice(0, 80)}), retrying in ${delay}ms`,
+            );
+            await this.sleep(delay);
+            continue;
+          }
+
+          // Non-retryable or exhausted retries
+          this.logger.error(`[${operation}] Failed after ${attempt + 1} attempt(s): ${msg.slice(0, 120)}`);
+          break;
+        }
+      }
+
+      throw this.wrapError(lastError!, operation);
+    });
+
+    // Update the queue (don't let failures break the chain)
+    this.requestQueue = result.catch(() => {});
+    return result;
+  }
+
+  /**
+   * Enforce minimum gap between API calls to stay under rate limits.
+   */
+  private async throttle(): Promise<void> {
+    const now = Date.now();
+    const elapsed = now - this.lastRequestTime;
+    if (elapsed < MIN_REQUEST_GAP_MS) {
+      await this.sleep(MIN_REQUEST_GAP_MS - elapsed);
     }
+    this.lastRequestTime = Date.now();
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -189,16 +241,14 @@ export class GeminiService implements OnModuleInit {
 
   /**
    * Wraps Gemini SDK errors with a more descriptive message.
-   * Detects rate-limit (429) and quota errors for clearer logging.
    */
-  private wrapError(error: unknown, operation: string): Error {
-    const message = error instanceof Error ? error.message : String(error);
+  private wrapError(error: Error, operation: string): Error {
+    const message = error.message || String(error);
 
     if (message.includes('429') || message.includes('RESOURCE_EXHAUSTED')) {
       return new Error(
         `Gemini rate limit exceeded during ${operation}. ` +
-        'Free tier allows 15 RPM for Flash, 1500 RPM for embeddings. ' +
-        'The request will be retried automatically if using BullMQ.',
+        'Free tier allows 15 RPM for Flash, 1500 RPM for embeddings.',
       );
     }
 
@@ -209,11 +259,9 @@ export class GeminiService implements OnModuleInit {
       );
     }
 
-    if (message.includes('SAFETY') || message.includes('blocked')) {
-      this.logger.warn(`Gemini response blocked by safety filter during ${operation}`);
+    if (message.includes('SAFETY') || message.includes('blocked') || message.includes('no candidates')) {
       return new Error(
-        `Gemini response was blocked by safety filters during ${operation}. ` +
-        'This can happen with medical/health content. The safety settings have been relaxed for healthcare context.',
+        `Gemini response was blocked by safety filters during ${operation}.`,
       );
     }
 

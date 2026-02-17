@@ -119,7 +119,7 @@ export class EmbeddingService {
         `SELECT id, content, resource_type, resource_id, family_id, care_recipient_id, metadata, created_at,
                 1 - (embedding <=> $1::vector) AS similarity
          FROM "public"."ai_embeddings"
-         WHERE ${whereClause}
+         WHERE ${whereClause} AND embedding IS NOT NULL
          ORDER BY embedding <=> $1::vector
          LIMIT $${paramIndex}`,
         ...queryParams,

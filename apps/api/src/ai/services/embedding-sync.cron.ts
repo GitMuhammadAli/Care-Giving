@@ -56,11 +56,11 @@ export class EmbeddingSyncCron implements OnModuleInit {
         return;
       }
 
-      // Get all existing embedded resource IDs in one query
+      // Get resource IDs that already have valid (non-null) embeddings
       let existingIds: Set<string>;
       try {
         const rows = await this.prisma.$queryRawUnsafe<{ resource_id: string }[]>(
-          `SELECT resource_id FROM "public"."ai_embeddings"`,
+          `SELECT resource_id FROM "public"."ai_embeddings" WHERE embedding IS NOT NULL`,
         );
         existingIds = new Set(rows.map((r) => r.resource_id));
       } catch {
